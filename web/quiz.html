@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="zh-Hant" data-lang="zh" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>LUNA Quiz</title>
+<style>
+:root{
+  --ground:#080B12; --surface:#0F141E; --surface-2:#161D2B; --sunk:#0B0F17;
+  --ink:#E7EBF3; --ink-2:#AEB7CA; --muted:#7C869C; --rule:#232B3B;
+  --accent:#8CB8FF; --accent-2:#C2B4FF; --accent-soft:#16233D;
+  --warm:#F4C26B; --warm-soft:#2A2314; --good:#5FD3A0; --bad:#FF7B8B;
+  --c-grid:#F4C26B; --c-gmm:#C2B4FF; --c-km:#5FD3A0;
+  --shadow:0 1px 2px rgba(0,0,0,.5),0 12px 32px -14px rgba(0,0,0,.7);
+  --serif:Georgia,"Noto Serif TC","PingFang TC","Microsoft JhengHei",serif;
+  --sans:system-ui,-apple-system,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:ui-monospace,"SFMono-Regular",Consolas,"Courier New",monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased}
+:root[data-lang="zh"] [lang="en"]{display:none}
+:root:not([data-lang="zh"]) [lang="zh"]{display:none}
+:root[data-lang="zh"] body{line-height:1.85}
+.wrap{max-width:1440px;margin:0 auto;padding-inline:clamp(28px,4.5vw,72px)}
+.col{max-width:100ch;margin-inline:0}
+/* top bar */
+.bar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--ground) 86%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--rule)}
+.bar-in{max-width:1440px;margin:0 auto;padding:9px clamp(28px,4.5vw,72px);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.mark{font-weight:700;font-size:15px;letter-spacing:.02em;display:flex;align-items:center;gap:9px;margin-right:auto}
+.pill{font-family:var(--mono);font-size:11px;padding:3px 9px;border:1px solid var(--rule);border-radius:999px;color:var(--muted);background:var(--surface)}
+.pill b{color:var(--warm);font-weight:600}
+.pill.live b{color:var(--good)}
+.btn{font-family:var(--sans);font-size:12px;font-weight:600;padding:5px 12px;border:1px solid var(--rule);border-radius:999px;background:var(--surface);color:var(--ink-2);cursor:pointer}
+.btn:hover{border-color:var(--accent);color:var(--ink)}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:999px;overflow:hidden;background:var(--surface)}
+.seg button{font-family:var(--sans);font-size:12px;font-weight:600;padding:5px 13px;border:0;background:transparent;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#0A1020}
+.toc{max-width:1440px;margin:0 auto;padding:0 clamp(28px,4.5vw,72px) 8px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.toc a{font-family:var(--mono);font-size:11px;color:var(--muted);text-decoration:none;padding:3px 9px;border-radius:999px;white-space:nowrap;border:1px solid transparent}
+.toc a:hover{color:var(--ink);border-color:var(--rule)}
+/* type */
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+h1{font-weight:800;font-size:clamp(38px,6vw,68px);line-height:1.02;letter-spacing:-.035em;margin:0 0 18px;text-wrap:balance;
+   background:linear-gradient(120deg,#fff 10%,var(--accent) 60%,var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-weight:650;font-size:clamp(23px,2.8vw,31px);line-height:1.18;letter-spacing:-.02em;margin:0 0 6px;text-wrap:balance}
+h3{font-weight:600;font-size:17px;margin:0 0 6px}
+p{margin:0 0 16px}
+a{color:var(--accent)}
+strong{font-weight:600;color:var(--ink)}
+code{font-family:var(--mono);font-size:.86em;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+.lede{font-size:clamp(18px,2vw,21px);line-height:1.6;color:var(--ink-2)}
+section{padding-block:clamp(44px,6vw,76px);border-top:1px solid var(--rule)}
+section:first-of-type{border-top:0}
+.sec-head{display:grid;grid-template-columns:auto 1fr;gap:18px;max-width:none;margin:0 0 clamp(22px,3vw,34px)}
+.sec-wide .sec-head{max-width:none}
+.sec-num{font-family:var(--mono);font-size:clamp(34px,4vw,52px);font-weight:700;line-height:1;letter-spacing:-.04em;color:var(--accent);opacity:.55;padding-top:.05em;min-width:1.7em}
+.sec-sub{color:var(--muted);font-size:15px;margin:4px 0 0}
+.hero{padding-block:clamp(48px,7vw,90px) clamp(36px,4vw,54px)}
+.meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:6px;margin-top:32px;overflow:hidden}
+.meta-cell{background:var(--surface);padding:13px 15px}
+.meta-k{font-size:10px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin:0 0 3px}
+.meta-v{font-family:var(--mono);font-size:13px;margin:0;line-height:1.45}
+/* figure / lab */
+.figure{background:var(--surface);border:1px solid var(--rule);border-radius:8px;box-shadow:var(--shadow);overflow:hidden}
+.fig-head{padding:14px 20px;border-bottom:1px solid var(--rule);display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+.fig-title{font-weight:650;font-size:14px;margin:0}
+.fig-note{font-size:13px;color:var(--muted);margin:0}
+.badge-sim{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--warm);border:1px solid var(--warm);border-radius:3px;padding:1px 6px;letter-spacing:.06em}
+.badge-paper{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--good);border:1px solid var(--good);border-radius:3px;padding:1px 6px;letter-spacing:.06em}
+.demo{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
+@media(max-width:900px){.demo{grid-template-columns:1fr}.meta-grid{grid-template-columns:1fr 1fr}}
+.demo-vis{padding:16px 18px;border-right:1px solid var(--rule);background:var(--sunk);min-width:0}
+@media(max-width:900px){.demo-vis{border-right:0;border-bottom:1px solid var(--rule)}}
+.demo-side{padding:16px 18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.vis-label{font-size:10px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin:0 0 7px}
+.vis-box{background:var(--surface);border:1px solid var(--rule);border-radius:5px;padding:4px;position:relative}
+svg.stage{display:block;width:100%;height:auto}
+svg text{font-family:var(--mono)}
+.ctrls{display:flex;flex-direction:column;gap:11px}
+.ctrl-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ctrl-lab{font-size:12px;font-weight:600;color:var(--ink-2);white-space:nowrap}
+input[type=range]{flex:1;min-width:110px;accent-color:var(--accent);height:20px}
+select{font-family:var(--sans);font-size:12.5px;background:var(--surface-2);color:var(--ink);border:1px solid var(--rule);border-radius:5px;padding:5px 8px}
+.kval{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent);min-width:2.6em;text-align:right}
+.switch{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--ink-2)}
+.switch input{accent-color:var(--accent);margin:0}
+.scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:5px;overflow:hidden}
+.score{background:var(--surface-2);padding:9px 12px}
+.score-k{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.score-v{font-family:var(--mono);font-size:22px;font-weight:600;line-height:1.1;margin:0}
+.score-n{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin:3px 0 0}
+.note{font-size:13.5px;color:var(--ink-2);background:var(--surface-2);border-radius:5px;padding:10px 13px;line-height:1.6;margin:0}
+.note b{color:var(--warm);font-weight:600}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);padding:10px 18px;border-top:1px solid var(--rule);background:var(--surface-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:10px;height:10px;border-radius:2px;flex:none;display:inline-block}
+.stack{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.item{background:var(--surface);padding:16px 20px;display:grid;grid-template-columns:auto 1fr;gap:16px}
+.item-n{font-family:var(--mono);font-size:11.5px;color:var(--accent);padding-top:.3em}
+.item p{margin:0;font-size:15px;line-height:1.6;color:var(--ink-2)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:16px 18px}
+.card p{margin:0;font-size:14.5px;line-height:1.6;color:var(--ink-2)}
+.card .tag{font-family:var(--mono);font-size:10.5px;color:var(--muted);display:block;margin-bottom:6px}
+.tablewrap{overflow-x:auto;border:1px solid var(--rule);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px}
+th,td{text-align:left;padding:8px 13px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.num{font-family:var(--mono);white-space:nowrap}
+.callout{border-left:3px solid var(--warm);background:var(--warm-soft);padding:14px 18px;border-radius:0 6px 6px 0;margin:0 0 18px}
+.callout p{margin:0;font-size:15px;line-height:1.6}
+.callout .h{font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--warm);display:block;margin-bottom:4px}
+.mathblock{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:8px 16px;margin:0 0 14px}
+.tex-fallback{font-family:var(--mono);font-size:13px;color:var(--ink-2)}
+.katex{color:var(--ink)}
+/* pipeline */
+.stages{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:760px){.stages{grid-template-columns:1fr 1fr}}
+.stage-btn{text-align:left;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:12px 14px;color:var(--ink-2);cursor:pointer;font-family:var(--sans)}
+.stage-btn .n{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.stage-btn .t{display:block;font-weight:600;font-size:14px;color:var(--ink);margin-top:2px}
+.stage-btn[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.stage-btn[aria-pressed="true"] .n{color:var(--accent)}
+.stage-panel{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+@media(max-width:760px){.stage-panel{grid-template-columns:1fr}}
+.stage-panel>div{background:var(--surface);padding:16px 18px;font-size:14.5px;color:var(--ink-2);line-height:1.65}
+.stage-panel h4{margin:0 0 6px;font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.stage-panel ul{margin:0;padding-left:18px}
+/* tokens */
+.tok-row{display:flex;flex-wrap:wrap;gap:8px;padding:6px 2px}
+.tok{border:1px solid var(--rule);border-radius:6px;padding:6px 10px 5px;text-align:center;min-width:54px;cursor:default}
+.tok .w{font-family:var(--mono);font-size:14px;font-weight:600}
+.tok .s{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:1px}
+.tok .v{font-family:var(--mono);font-size:11px;margin-top:2px}
+.tok.first{outline:2px solid var(--bad);outline-offset:2px}
+.verdict{display:inline-block;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:4px;border:1px solid currentColor}
+.v-bad{color:var(--bad)} .v-good{color:var(--good)}
+.tabs{margin-bottom:16px}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:14px}
+.metric{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:15px 17px}
+.metric h3{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.metric .ab{font-family:var(--mono);font-size:11px;color:var(--accent);border:1px solid var(--accent);border-radius:3px;padding:0 5px}
+.metric .dir{font-size:12px;color:var(--muted);margin:6px 0 0}
+.metric p{font-size:13.5px;color:var(--ink-2);margin:6px 0 0;line-height:1.6}
+.metric .tex,.mathblock .tex,.fx-item .tex{display:block;font-size:1em;padding:6px 0}
+.fx{border-top:1px solid var(--rule);background:var(--surface);padding:16px 18px 18px}
+.fx-h{font-size:10px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.in-lab{background:var(--sunk)!important;border:1px dashed var(--rule)!important;border-left:3px solid var(--muted)!important;position:relative}
+.in-lab .katex,.in-lab h3,.in-lab p,.in-lab .sec-sub{color:var(--ink-2)}
+.in-lab .ab{color:var(--muted);border-color:var(--muted)}
+.lab-tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--rule);border-radius:3px;padding:0 6px;background:var(--surface)}
+.in-lab>.lab-tag{position:absolute;top:8px;right:10px}
+.in-lab-key{font-size:13px;color:var(--muted);margin:0 0 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.fx-top{display:flex;align-items:center;gap:6px 16px;flex-wrap:wrap;margin:0 0 10px}
+.fx-top .fx-h,.fx-top .fx-tabs{margin:0}
+.fx{padding:12px 18px 14px}
+@media(min-width:1100px){
+  .demo{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+  .demo-vis svg.stage{max-height:380px}
+  .demo-vis.twin{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto;grid-auto-flow:column;column-gap:14px;align-content:start}
+  .demo-vis.twin .vis-label{margin-top:0!important}
+  .demo-vis.twin svg.stage{max-height:352px}
+  #l2-scores{grid-template-columns:repeat(4,minmax(0,1fr))}
+  #l2-scores .score{padding:8px 10px}
+  #l2-scores .score-v{font-size:19px}
+  .t5>:nth-child(1){grid-area:1/1}
+  .t5>:nth-child(2){grid-area:2/1/4/2}
+  .t5>:nth-child(3){grid-area:1/2}
+  .t5>:nth-child(4){grid-area:2/2}
+  .t5>:nth-child(5){grid-area:3/2;margin-top:10px}
+  #l3-chart{max-height:200px}
+}
+.fx-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.fx-tab{font-family:var(--sans);font-size:12px;font-weight:600;padding:4px 12px;border:1px solid var(--rule);border-radius:999px;background:var(--surface-2);color:var(--ink-2);cursor:pointer}
+.fx-tab:hover{border-color:var(--accent);color:var(--ink)}
+.fx-tab[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#0A1020}
+.fx-body{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:22px;align-items:center}
+@media(max-width:900px){.fx-body{grid-template-columns:1fr}}
+.fx-item{background:var(--surface-2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:10px 14px;min-width:0}
+.fx-role{min-width:0}
+.fx-role p{margin:4px 0 0;font-size:14.5px;line-height:1.65;color:var(--ink-2)}
+.fx-role .fx-name{font-size:12px;margin:0}
+#l5-top{min-width:0}
+#l5-top th,#l5-top td{padding:6px 10px}
+.fx-name{font-size:12px;font-weight:700;color:var(--accent);margin:0 0 2px}
+.katex-display{margin:.3em 0}
+.tex.tex-fallback{white-space:normal;overflow-wrap:anywhere}
+.fx-item p{margin:4px 0 0;font-size:13px;line-height:1.6;color:var(--ink-2)}
+.fx-item p b{color:var(--ink)}
+.metric .try,.mathblock .try{display:inline-block;margin-top:6px;font-size:12px;font-family:var(--mono)}
+#tip{position:fixed;z-index:99;pointer-events:none;background:#000d;border:1px solid var(--rule);color:var(--ink);font-family:var(--mono);font-size:11.5px;line-height:1.5;padding:6px 9px;border-radius:5px;max-width:280px;display:none;backdrop-filter:blur(6px)}
+footer{border-top:1px solid var(--rule);padding-block:30px 48px;font-size:12.5px;color:var(--muted)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---- layout v2: left aligned, two-column use of width ---- */
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:clamp(28px,5vw,72px);align-items:center}
+.hero-grid .meta-grid{margin-top:0;grid-template-columns:1fr 1fr}
+.hero-grid .note{margin-top:14px!important}
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr}.hero-grid .meta-grid{margin-top:24px}}
+.sec-wide>.col{max-width:70%}
+@media(max-width:900px){.sec-wide>.col{max-width:none}}
+#s7>.col{max-width:none}
+#core-eq{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#core-eq .mathblock{margin:0}
+@media(max-width:900px){#core-eq{grid-template-columns:1fr}}
+.split{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:20px;align-items:stretch}
+.split .cards{grid-template-columns:1fr}
+.split>div:last-child{position:relative;min-height:300px}
+.split>div:last-child .cards{position:absolute;inset:0;overflow-y:auto;align-content:start;padding-right:6px}
+@media(max-width:1000px){.split{grid-template-columns:1fr}.split>div:last-child .cards{position:static}}
+.bg-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start;margin-bottom:22px}
+@media(max-width:1000px){.bg-grid{grid-template-columns:1fr}}
+.bg-note{margin:0;padding:12px 18px 16px;font-size:13.5px;line-height:1.65;color:var(--ink-2);border-top:1px solid var(--rule)}
+.bg-note ol{margin:0;padding-left:18px}
+.bg-svg{padding:12px 14px 6px}
+#bg-table table{min-width:0;font-size:12.5px}
+#bg-table th,#bg-table td{padding:6px 10px}
+#bg-table .tablewrap{border:0;border-top:1px solid var(--rule);border-radius:0}
+.stack.two{grid-template-columns:1fr 1fr}
+@media(max-width:900px){.stack.two{grid-template-columns:1fr}}
+
+/* ---- scrollbars matching the theme ---- */
+*{scrollbar-width:thin;scrollbar-color:#2F3A50 transparent}
+html{scrollbar-color:#2F3A50 var(--ground)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+html::-webkit-scrollbar-track{background:var(--ground)}
+::-webkit-scrollbar-thumb{background:var(--rule);border-radius:999px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:var(--muted);background-clip:padding-box;border:2px solid transparent}
+::-webkit-scrollbar-corner{background:transparent}
+
+/* ---- scroll spy + section reveal ---- */
+.toc a{transition:color .2s,background-color .2s,border-color .2s}
+.toc a.active{color:var(--ink);background:var(--accent-soft);border-color:var(--accent)}
+.reveal{opacity:0;transform:translateY(var(--ry,28px));transition:opacity .65s ease,transform .65s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+.katex .symx:hover{background:rgba(140,184,255,.22);border-radius:3px;cursor:help;box-shadow:0 0 0 1px rgba(140,184,255,.55)}
+
+/* ---- quiz page ---- */
+.hero h1{font-size:clamp(34px,5vw,56px)}
+.toc a.done::after{content:" ✓";color:var(--good)}
+.sum-top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.sum-big{font-size:15px;color:var(--muted);margin:0}.sum-big b{font-size:44px;color:var(--ink);font-weight:800;letter-spacing:-.03em}.sum-big span{margin-left:6px}
+.sum-rows{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.sum-row{display:grid;grid-template-columns:76px minmax(0,1.3fr) minmax(80px,1fr) 90px 74px;gap:14px;align-items:center;padding:11px 18px;background:var(--surface);text-decoration:none;color:var(--ink-2);font-size:14px}
+.sum-row:hover{background:var(--surface-2)}
+.sum-n{font-family:var(--mono);font-size:12px;color:var(--muted)}.sum-t{color:var(--ink);font-weight:600}
+.sum-bar{height:6px;background:var(--sunk);border-radius:999px;overflow:hidden}.sum-bar i{display:block;height:100%;background:var(--accent)}
+.sum-s{font-family:var(--mono);font-size:12.5px;text-align:right}
+.sum-p{font-size:12px;font-weight:700;text-align:center;border:1px solid var(--rule);border-radius:999px;padding:2px 8px;color:var(--muted)}.sum-p.pass{color:var(--good);border-color:var(--good)}
+@media(max-width:800px){.sum-row{grid-template-columns:1fr 1fr}}
+.stage-tag{font-size:12px;font-weight:700;border:1px solid var(--muted);color:var(--muted);border-radius:999px;padding:2px 10px;vertical-align:middle;margin-left:8px}.stage-tag.pass{color:var(--good);border-color:var(--good)}
+.stage-bar{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin:-8px 0 18px}
+.stage-sc{font-size:14px;color:var(--muted)}.stage-sc b{color:var(--ink);font-size:18px}.stage-sc span{margin-right:4px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip-link{font-size:12px;font-family:var(--mono);padding:3px 10px;border:1px solid var(--rule);border-radius:999px;color:var(--accent);text-decoration:none;background:var(--surface)}
+.chip-link:hover{border-color:var(--accent)}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,520px),1fr));gap:14px;align-items:start}
+.q{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:16px 18px 18px}
+.q.wide{grid-column:1/-1}
+.q.ok{border-color:rgba(95,211,160,.55)}.q.bad{border-color:rgba(255,123,139,.55)}
+.q-h{display:flex;gap:10px;align-items:center;margin-bottom:6px}
+.q-n{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:700}.q-t{font-size:11px;color:var(--muted);border:1px solid var(--rule);border-radius:999px;padding:0 8px}
+.q-q{font-size:15.5px;line-height:1.65;color:var(--ink);margin:0 0 12px;font-weight:600}
+.opts{display:grid;gap:8px}
+.opt{display:flex;gap:10px;align-items:flex-start;text-align:left;font-family:var(--sans);font-size:14px;line-height:1.55;padding:9px 13px;border:1px solid var(--rule);border-radius:7px;background:var(--surface-2);color:var(--ink-2);cursor:pointer;width:100%}
+.opt:hover:not([disabled]){border-color:var(--accent);color:var(--ink)}
+.opt.mine:not([disabled]){border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
+.opt[disabled]{cursor:default}
+.opt.right{border-color:var(--good);background:rgba(95,211,160,.12);color:var(--ink)}
+.opt.wrong{border-color:var(--bad);background:rgba(255,123,139,.12);color:var(--ink)}
+.opt.dim{opacity:.55}
+.opt .box{font-size:15px}
+.q-act{margin-top:12px;display:flex;gap:8px}
+.q-ex{margin-top:14px;padding:12px 14px;border-radius:7px;background:var(--sunk);border-left:3px solid var(--rule)}
+.q-ex.is-ok{border-left-color:var(--good)}.q-ex.is-bad{border-left-color:var(--bad)}
+.q-ex b{font-size:13px}.q-ex.is-ok b{color:var(--good)}.q-ex.is-bad b{color:var(--bad)}
+.q-ex p{margin:6px 0 8px;font-size:14px;line-height:1.7;color:var(--ink-2)}
+.ord{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.ord li{display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--rule);border-radius:7px;background:var(--surface-2);font-size:14px;color:var(--ink-2)}
+.ord-n{font-family:var(--mono);font-size:12px;color:var(--accent);width:1.4em}.ord-t{flex:1}
+.ord-b{display:flex;gap:4px}
+.mini{font-family:var(--mono);font-size:13px;width:28px;height:26px;border:1px solid var(--rule);border-radius:5px;background:var(--surface);color:var(--ink-2);cursor:pointer}
+.mini:hover:not([disabled]){border-color:var(--accent);color:var(--ink)}.mini[disabled]{opacity:.35;cursor:default}
+.q-fix{margin:12px 0 0;font-size:13.5px;line-height:1.7;color:var(--ink-2);background:var(--sunk);padding:10px 14px;border-radius:7px}
+.q-note{width:100%;background:var(--surface-2);color:var(--ink);border:1px solid var(--rule);border-radius:7px;padding:10px 12px;font-family:var(--sans);font-size:14px;line-height:1.7;resize:vertical}
+.q-ref{margin-top:12px;padding:12px 14px;border-radius:7px;background:var(--sunk);border-left:3px solid var(--warm)}
+.q-ref b{font-size:12px;color:var(--warm)}.q-ref p{margin:6px 0 10px;font-size:14px;line-height:1.75;color:var(--ink-2)}
+.q-rate{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.btn.on-ok{background:var(--good);color:#06130D;border-color:var(--good)}.btn.on-no{background:var(--bad);color:#1A0509;border-color:var(--bad)}
+</style>
+</head>
+<body>
+<div class="bar">
+  <div class="bar-in">
+    <span class="mark">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="mg" x1="0" x2="1"><stop offset="0" stop-color="#8CB8FF"/><stop offset="1" stop-color="#C2B4FF"/></linearGradient></defs><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="url(#mg)"/></svg>
+      LUNA Quiz
+    </span>
+    <a class="btn" href="luna.html" style="text-decoration:none">← LUNA 導讀</a>
+    <a class="btn" href="concepts.html" style="text-decoration:none">概念補充</a>
+  </div>
+  <nav class="toc" aria-label="階段">
+    <a href="#top">總覽</a>
+    <a href="#stage1">階段 1 看整體</a><a href="#stage2">階段 2 抽象與 DTMC</a><a href="#stage3">階段 3 語意與偵測</a><a href="#stage4">階段 4 公式與結果</a><a href="#stage5">階段 5 限制與彩排</a>
+  </nav>
+</div>
+<div class="wrap">
+<section class="hero" id="top">
+  <div class="hero-grid"><div>
+    <p class="eyebrow">每階段的過關檢查</p>
+    <h1>Quiz</h1>
+    <p class="lede">每個階段 9～11 題，檢查你是不是真的懂，而不只是看過。答完會立刻告訴你對錯與原因，並附上要回頭複習的段落。</p>
+  </div><div>
+    <p class="note"><b>怎麼算過關：</b>選擇、複選、排序題答對 80% 以上，而且「自我說明」題都自評為「我講得出來」。自我說明題請先用自己的話寫（或說）一遍，再看參考答案，不要偷看。<br><br>答題紀錄只存在這個瀏覽器裡（localStorage），可以隨時「再試一次」或清除。選項順序是固定打亂的，不會每次重新整理就變。</p>
+  </div></div>
+  <div id="summary" style="margin-top:34px"></div>
+</section>
+<div id="stages"></div>
+</div>
+<footer><div class="wrap">題目依 notes/LUNA_概念與公式整理.md 與論文內容編寫；答案與解析是我整理的，請在上台前與論文對照確認。</div></footer>
+
+<script>
+/* ============================ quiz content ============================
+   t: mc (one answer) | multi (select all) | order (arrange) | open (explain in your own words, then compare)
+   a: index (mc) / array of indexes (multi); for order, o is already in the correct order.
+   r: review links [label, href] */
+const STAGES = [
+ {id: 1, title: '看整體', sub: 'LUNA 是什麼、為什麼需要它', rv: [['導讀 01 動機', 'luna.html#s1'], ['導讀 02 流程', 'luna.html#s2'], ['概念：LLM 概觀', 'concepts.html#llm']], qs: [
+  {t: 'mc', q: 'LUNA 分析 LLM 時，主要讀取的是什麼？', o: ['模型最後輸出的文字', '每個 token 在解碼器區塊之後的隱藏狀態', '模型的訓練資料', '注意力權重的視覺化圖'], a: 1, e: 'LUNA 把「每個 token 的解碼器隱藏狀態」壓縮成小型機率模型，所以它是白箱方法，只讀輸出文字的是黑箱評測。', r: [['導讀 01', 'luna.html#s1']]},
+  {t: 'mc', q: 'Llama-7b 每個 token 的隱藏狀態共有多少個數字？', o: ['4,096', '32', '131,072', '70 億'], a: 2, e: '32 個解碼器區塊 × 每個區塊 4,096 維 = 131,072 個數字。這就是為什麼不能直接看，必須先壓縮。', r: [['導讀 01', 'luna.html#s1']]},
+  {t: 'order', q: '把 LUNA 的流程排成正確順序。', o: ['取出各 token 的隱藏狀態', 'PCA 降維並劃分成抽象狀態', '數轉移次數，建立 DTMC', '把「可信賴性語意」綁到狀態或轉移上', '取軌跡上語意的平均得到分數', '與門檻比較，判為正常或異常'], e: '對應整理 §1 的流程圖：剖析 → 抽象模型建構 → 語意綁定 → 模型品質評估 → 實際應用。', r: [['導讀 02 流程', 'luna.html#s2']]},
+  {t: 'multi', q: '下列哪些是論文研究的「可信賴性面向」？（可複選）', o: ['分布外偵測（OOD）', '對抗攻擊', '幻覺', '隱私洩漏', '模型壓縮'], a: [0, 1, 2], e: '論文的三個面向是 OOD、對抗攻擊、幻覺。隱私與壓縮不在範圍內。', r: [['概念：分布外', 'concepts.html#ood']]},
+  {t: 'mc', q: '論文說 LLM 比傳統分類 DNN 更難分析，列了三點。下列哪一項「不是」其中之一？', o: ['生成品質取決於整體結構與語意連貫，而非單一 token', '每一步的輸出都依賴所有先前的輸出', '輸出空間龐大且跨主題', 'LLM 的參數一定比分類器少'], a: 3, e: '前三項是論文的三點；LLM 參數通常遠多於分類器，這一項是錯的。', r: [['導讀 01', 'luna.html#s1']]},
+  {t: 'mc', q: 'LUNA 是「白箱」方法，這代表什麼限制？', o: ['只能分析英文模型', '需要取得 LLM 內部隱藏狀態，所以只能用開源模型', '一定要 GPU 才能執行', '只能偵測幻覺'], a: 1, e: '白箱＝需要讀取內部狀態。閉源模型（如 GPT-4）沒有提供隱藏狀態，所以不適用。', r: [['導讀 01', 'luna.html#s1']]},
+  {t: 'mc', q: '黑箱評測（如 HELM）與 LUNA 的差別，下列哪一個最準確？', o: ['黑箱評測只看輸出文字，只知道模型失敗，不知道內部哪裡出錯', '黑箱評測比 LUNA 更精確', '黑箱評測需要隱藏狀態', '兩者沒有差別'], a: 0, e: '導讀 01 右圖：黑箱評測只看輸出文字；LUNA 看整條狀態軌跡，還能指出從哪個 token 開始異常。', r: [['導讀 01', 'luna.html#s1']]},
+  {t: 'mc', q: 'RNN 是什麼的縮寫？', o: ['Recursive Neural Network', 'Recurrent Neural Network', 'Random Neural Network', 'Residual Neural Network'], a: 1, e: 'RNN 是 Recurrent（循環）神經網路：前一步的輸出會回饋成下一步的輸入。Recursive（遞迴）是另一種沿樹狀結構處理的模型。', r: [['整理 §12 名詞對照表', 'luna.html#s1']]},
+  {t: 'open', q: '不看筆記，用三句話向同學介紹 LUNA（問題、方法、用途）。', ans: '1. LLM 每寫一個字都有一個隱藏狀態（Llama-7b 每個字 131,072 個數字），一個答案是一條狀態路徑，人看不懂。\n2. LUNA 把這些狀態壓成少數抽象狀態，建成一個機率狀態機（DTMC），再把「好不好」的語意分數貼到狀態上。\n3. 用路徑上語意的平均當分數，低於門檻就判為異常，可偵測幻覺、分布外輸入與對抗攻擊，還能指出從哪個 token 開始壞掉。'}
+ ]},
+ {id: 2, title: '狀態抽象與 DTMC', sub: 'Lab 1、Lab 2', rv: [['導讀 03 Lab 1', 'luna.html#s3'], ['導讀 04 Lab 2', 'luna.html#s4'], ['概念：PCA', 'concepts.html#pca'], ['概念：K-Means', 'concepts.html#kmeans'], ['概念：馬可夫鏈', 'concepts.html#markov']], qs: [
+  {t: 'mc', q: 'PCA 在 LUNA 裡的作用是什麼？', o: ['把連續狀態分成離散的群', '降低維度，同時盡量保留變異量', '計算轉移機率', '判斷輸入是否異常'], a: 1, e: 'PCA 先降維；之後才由網格或分群把狀態分成離散的抽象狀態。', r: [['概念：PCA', 'concepts.html#pca']]},
+  {t: 'mc', q: '網格（Grid）劃分的主要缺點是什麼？', o: ['無法處理高維度', '會產生沒有任何具體狀態落入的「空洞」抽象狀態', '一定比分群需要更多資料', '不能用在 OOD'], a: 1, e: '空洞狀態讓狀態數變多卻沒有資訊，使簡潔性（SUC）與覆蓋率（COV）變差。Lab 1 的紅色底就是空洞格。', r: [['導讀 Lab 1', 'luna.html#s3']]},
+  {t: 'mc', q: '為什麼分群（KMeans／GMM）通常比網格更精簡？', o: ['因為它使用更多 PCA 成分', '因為它只在具體狀態聚集的地方才建立抽象狀態', '因為它不需要降維', '因為它的轉移機率是固定的'], a: 1, e: '分群的狀態只出現在有資料之處，不會有空洞。', r: [['概念：K-Means', 'concepts.html#kmeans']]},
+  {t: 'mc', q: 'Lab 1 把「每維格數 m」拉大，SUC 會怎樣？', o: ['變小（更精簡）', '變大（更差）', '不變', '先變小再變大'], a: 1, e: '格數變多，抽象狀態數 |S̄| 變大，SUC = |S̄| / |S| 變大，也就是簡潔性變差。這是「精簡 vs 保真」的取捨。', r: [['導讀 Lab 1', 'luna.html#s3']]},
+  {t: 'mc', q: '正常輸入與異常輸入的覆蓋率（COV）預期有什麼關係？', o: ['正常的比較高', '異常的比較高', '兩者一樣', '沒有關係'], a: 1, e: '異常輸入比較常落在「訓練從沒到過」的區域，所以 COV 較高。這個差距正是抽象模型能偵測異常的原因。', r: [['導讀 Lab 1', 'luna.html#s3']]},
+  {t: 'mc', q: 'DTMC 的轉移機率 P̂(s_i → s_j) 怎麼估計？', o: ['用梯度下降訓練', '具體轉移 s_i→s_j 的次數，除以離開 s_i 的總次數', '用 Baum-Welch 演算法', '直接從 LLM 輸出的機率讀取'], a: 1, e: 'DTMC 就是「數出來的比例」。HMM 才需要 Baum-Welch。Lab 2 拉大「Traces seen」可以看到估計值收斂。', r: [['導讀 Lab 2', 'luna.html#s4'], ['概念：馬可夫鏈', 'concepts.html#markov']]},
+  {t: 'mc', q: '穩態分布 π 代表什麼？', o: ['最常發生的單一轉移', '鏈長期下來停留在各狀態的時間比例', '初始狀態的機率', '轉移矩陣的最大特徵值'], a: 1, e: 'π 滿足 πP = π，是「再走一步也不會改變」的分布。LUNA 用它替各狀態加權（例如 SDE）。', r: [['概念：馬可夫鏈', 'concepts.html#markov']]},
+  {t: 'mc', q: '「匯點（sink）」狀態指的是？', o: ['轉移機率最高的狀態', '只剩機率 1 的自迴圈、一旦進入就出不來的狀態（p_ii = 1）', '初始狀態', '沒有任何具體狀態的空洞狀態'], a: 1, e: '匯點多的模型會一直產出同一類回應，所以 SS 指標要數它們。', r: [['概念：馬可夫鏈', 'concepts.html#markov']]},
+  {t: 'mc', q: '論文比較 DTMC 與 HMM，結論是什麼？', o: ['HMM 全面優於 DTMC', '多數指標 DTMC 較好或相當，前 5 名設定全是 DTMC；HMM 是兩層抽象，可能是落後原因', '兩者完全相同', 'DTMC 只適用於 OOD'], a: 1, e: '整理 §4.6：DTMC ≥ HMM（SDE、SEN 例外），作者推測 HMM 的兩層抽象是原因之一。', r: [['概念：HMM', 'concepts.html#hmm']]},
+  {t: 'open', q: '用 Lab 2 示範：為什麼「典型路徑」的分數高、「怪異路徑」的分數低？', ans: '路徑分數是路徑上每一步轉移機率的平均。典型路徑由模型常走的轉移組成（機率高），平均就高；怪異路徑包含訓練時很少出現的轉移（機率低），平均就低，看起來像分布外（OOD）。這就是不需要標籤的 OOD 偵測。'}
+ ]},
+ {id: 3, title: '語意與異常偵測', sub: 'Lab 3、Lab 4', rv: [['導讀 05 Lab 3', 'luna.html#s5'], ['導讀 06 Lab 4', 'luna.html#s6'], ['概念：ROC / AUC', 'concepts.html#roc'], ['概念：分布外', 'concepts.html#ood']], qs: [
+  {t: 'mc', q: '在論文裡，「幻覺」任務的語意綁在哪裡？', o: ['抽象轉移上', '抽象狀態上', '輸入文字上', '模型參數上'], a: 1, e: '幻覺綁在狀態（如 TruthfulQA 的 GPT-judge 真實性）；OOD 與對抗則綁在轉移（轉移機率）。整理 §5.4 的表。', r: [['導讀 Lab 3', 'luna.html#s5']]},
+  {t: 'mc', q: '在 OOD 任務裡，抽象語意 θ̄ 是什麼？', o: ['GPT-judge 給的真實性', '該轉移的轉移機率（機率高＝較像訓練分布）', 'pass@1', '輸出文字的長度'], a: 1, e: 'OOD 與對抗任務的語意就是轉移機率，所以平均轉移機率「就是」語意分數。', r: [['導讀 Lab 3', 'luna.html#s5']]},
+  {t: 'mc', q: '抽象語意 θ̄(s̄) 的定義是？', o: ['抽象狀態中最大的具體語意', '落在該抽象狀態內所有具體語意的平均', '抽象狀態被造訪的次數', '轉移機率的總和'], a: 1, e: 'θ̄(s̄) = (1/|s̄|) Σ θ(s)。平均讓小模型能概括成千上萬筆樣本。', r: [['導讀 Lab 3', 'luna.html#s5']]},
+  {t: 'mc', q: '一條軌跡的語意分數怎麼算、怎麼判？', o: ['取軌跡上 θ̄ 的最小值；高於門檻為異常', '取軌跡上 θ̄ 的平均；低於門檻為異常', '取軌跡上 θ̄ 的總和；高於門檻為異常', '只看最後一個 token 的 θ̄'], a: 1, e: 'score = AVG θ̄(s̄_i)，低於門檻判為異常。', r: [['導讀 Lab 3', 'luna.html#s5']]},
+  {t: 'mc', q: 'Lab 3 把門檻拉高，會發生什麼事？', o: ['被判為異常的軌跡變少', '被判為異常的軌跡變多，包含更多被誤判的正常軌跡', '分數本身改變', '沒有任何變化'], a: 1, e: '規則是「分數低於門檻 ⇒ 異常」，門檻越高，越多軌跡被判為異常：抓到更多異常，也誤判更多正常。', r: [['導讀 Lab 3', 'luna.html#s5']]},
+  {t: 'mc', q: '「錯誤定位」是怎麼做到的？', o: ['看整體分數', '找第一個語意低於門檻的狀態，它對應的 token 就是模型開始出錯的地方', '看最後一個 token', '看被造訪最多次的狀態'], a: 1, e: '這是 LUNA 相對於黑箱分類器的優勢：不只知道「這個答案不好」，還知道「從這裡開始壞掉」。', r: [['導讀 Lab 3', 'luna.html#s5']]},
+  {t: 'mc', q: 'AUC 的意思是？', o: ['偵測正確的樣本比例', '隨機抽一個正常、一個異常樣本，正常樣本分數較高的機率', '誤判率', '最佳門檻的位置'], a: 1, e: '0.5 等於擲硬幣、1.0 是完全分開；AUC 不依賴單一門檻。', r: [['概念：ROC / AUC', 'concepts.html#roc']]},
+  {t: 'mc', q: 'ROC 曲線上的每一個點對應什麼？', o: ['一個樣本', '一個門檻下的 (FPR, TPR)', '一個抽象狀態', '一種超參數設定'], a: 1, e: '掃過所有門檻就畫出整條曲線，AUC 是曲線下面積。Lab 4 的黃點就是目前門檻對應的點。', r: [['導讀 Lab 4', 'luna.html#s6']]},
+  {t: 'mc', q: '10 個異常樣本中，在某個門檻下抓到 8 個，另有 10 個正常樣本中誤判 2 個。TPR 與 FPR 各是多少？', o: ['TPR 0.8、FPR 0.2', 'TPR 0.2、FPR 0.8', 'TPR 0.8、FPR 0.8', 'TPR 0.2、FPR 0.2'], a: 0, e: 'TPR = TP / (TP + FN) = 8/10 = 0.8；FPR = FP / (FP + TN) = 2/10 = 0.2。', r: [['概念：ROC / AUC', 'concepts.html#roc']]},
+  {t: 'mc', q: '論文的 TruthfulQA 範例（"Which is denser, water vapor or air?"）得到什麼結果？', o: ['語意分數 0.04，判為異常，並定位到 "denser"', '語意分數 0.78，判為正常', '無法判斷', '分數 0.5'], a: 0, e: '整理 §7.2：分數 0.04 → 異常，狀態 s̄₁₅₉（詞 "denser"）被定位為異常狀態。OOD 例子則是 0.34 對 0.78。', r: [['導讀 Lab 3', 'luna.html#s5']]},
+  {t: 'open', q: '說明「門檻高低的取捨」，並指出它在 ROC 曲線上對應什麼。', ans: '門檻高：更多軌跡被判為異常，抓到更多真正的異常（TPR 上升），但也會誤判更多正常（FPR 上升）；門檻低則相反。每個門檻對應 ROC 曲線上的一個點 (FPR, TPR)，掃過所有門檻就得到整條曲線；AUC 是曲線下面積，總結了「不挑單一門檻」的整體偵測能力。'}
+ ]},
+ {id: 4, title: '公式、指標與結果', sub: '老師最常問的部分', rv: [['導讀 07 指標', 'luna.html#s7'], ['導讀 08 Lab 5', 'luna.html#s8'], ['導讀 09 結果', 'luna.html#s9'], ['概念：KL 與困惑度', 'concepts.html#kl']], qs: [
+  {t: 'mc', q: 'COV（覆蓋率）量的是？', o: ['抽象狀態數占具體狀態數的比例', '測試時有多少狀態是訓練沒見過的（越小越好）', '輕微擾動後狀態會不會改變', '模型有多少匯點'], a: 1, e: '論文定義是未見過的抽象狀態數 ÷ 抽象狀態總數；網頁 Lab 1 為了好讀改用測試點數當分母。', r: [['導讀 07', 'luna.html#s7']]},
+  {t: 'mc', q: 'SEN（敏感度）量的是？', o: ['抽象狀態數的多寡', '給狀態加上微小擾動後，換到別的抽象狀態的比例（越小越穩）', '測試資料的未見比例', '轉移機率的熵'], a: 1, e: '擾動後「跳到別的抽象狀態」的具體狀態比例，越低表示抽象越穩健。', r: [['導讀 07', 'luna.html#s7']]},
+  {t: 'mc', q: 'SDE（穩態分布熵）的最終指標值是？', o: ['原始熵越大越好', '模型的熵與「穩定界、隨機界中點」的距離（越接近平衡越好）', '穩態分布中最大的機率', '匯點的數量'], a: 1, e: '熵太低＝一直重複、太高＝亂跳；SDE 衡量離這兩個極端「正中間」多遠。穩定界是 p_ii = 0.95，隨機界約 1/n。', r: [['概念：馬可夫鏈', 'concepts.html#markov']]},
+  {t: 'mc', q: 'PERP（困惑度）的最終指標值是？', o: ['困惑度本身', '正常資料與異常資料的困惑度之間的 KL 散度', '困惑度的最大值', '困惑度除以 100'], a: 1, e: '論文：好的狀態困惑度應 < 100，最終值取正常與異常之間的 KL 散度，差異越大越能區分。它也是最廣用的模型層級預測指標。', r: [['概念：KL 與困惑度', 'concepts.html#kl']]},
+  {t: 'mc', q: 'KL 散度 D_KL(P‖Q) 的性質，下列哪個正確？', o: ['對稱：D_KL(P‖Q) = D_KL(Q‖P)', '只有 Q = P 時才是 0，不會是負的，而且不對稱', '可以是負數', '範圍在 0 到 1 之間'], a: 1, e: '概念頁的 KL 與困惑度那一章可以拖動 Q 看兩個方向的值不一樣。', r: [['概念：KL 與困惑度', 'concepts.html#kl']]},
+  {t: 'mc', q: '12 個指標中，哪一個與 ROC AUC 的相關最強且最一致？', o: ['SUC', 'SL', 'PRE（語意精確度，Pearson 0.81–1.00）', 'SS'], a: 2, e: 'PRE 是唯一跨任務一致的指標；PERP 是最廣用的模型層級指標；其他指標跨任務會變號，需要組合使用。', r: [['導讀 Lab 5', 'luna.html#s8']]},
+  {t: 'mc', q: '180 種超參數設定是怎麼來的？', o: ['3 × 60', '27 + 81 + 18 + 54', '10 × 18', '6 × 30'], a: 1, e: 'Grid-DTMC 27、Grid-HMM 81、Cluster-DTMC 18、Cluster-HMM 54（表 III）。', r: [['導讀 08', 'luna.html#s8']]},
+  {t: 'mc', q: '論文最亮眼的 AUC 0.90（HumanEval）是什麼？', o: ['所有設定的平均', '180 種設定中最好的那一個', '所有任務的平均', '理論上限'], a: 1, e: '多數設定的平均 AUC 只有 0.55～0.70，0.83～0.90 是各任務裡「最佳設定」的數字，要誠實說明。', r: [['導讀 09 結果', 'luna.html#s9']]},
+  {t: 'mc', q: 'PCA 成分數增加，對指標有什麼影響？', o: ['全部指標都變好', '困惑度與覆蓋率變好，但敏感度與 SDE 變差', '全部指標都變差', '沒有影響'], a: 1, e: '保留更多特徵會更貼近資料，但也更容易受雜訊影響，需要權衡。', r: [['導讀 09 RQ2', 'luna.html#s9']]},
+  {t: 'mc', q: 'IVT 與 NVT 的差別？', o: ['IVT 看單一步最接近目標值；NVT 要求連續 n 步的差距總和最小', '兩者完全相同', 'IVT 看趨勢；NVT 看熵', 'IVT 用在模型層級；NVT 用在語意層級'], a: 0, e: 'NVT 要求連續 n 步都貼近目標（正常 v = 1、異常 v = 0），單一個 token 的巧合不算。', r: [['導讀 07', 'luna.html#s7']]},
+  {t: 'mc', q: '沒有異常標註資料時，論文建議怎麼挑 180 種設定中的好設定？', o: ['隨機挑', '選與 ROC AUC 相關性「強且一致」的指標，依這些指標替設定排名，取最佳者', '一律選 HMM', '一律選狀態數最多的'], a: 1, e: '這是「實務指引」：幻覺情境建議 PRE、ENT、SUC、PERP。', r: [['導讀 Lab 5', 'luna.html#s8']]},
+  {t: 'mc', q: '論文結果中，前 5 名設定是哪種模型？', o: ['全部 HMM', '全部 DTMC', '各半', 'DTMC 與 GMM'], a: 1, e: '整理 §10 RQ3.1：前 5 名設定全為 DTMC。', r: [['導讀 09', 'luna.html#s9']]},
+  {t: 'open', q: '任選一個指標（例如 SDE、COV、PRE），用一句話說明它量什麼、方向是高好還是低好。', ans: '例：SDE 衡量模型長期行為是死板（一直重複）還是亂跳，取模型熵與「穩定界、隨機界中點」的距離，越小（越接近平衡）越好。COV 衡量測試時未見過的狀態比例，越低越好。PRE 衡量抽象後語意失真多少，與 AUC 相關最強。'}
+ ]},
+ {id: 5, title: '實作、限制、彩排', sub: '誠實面與可能被問的問題', rv: [['導讀 10 實作', 'luna.html#s11'], ['導讀 09 限制卡片', 'luna.html#s9']], qs: [
+  {t: 'mc', q: '你的實作，「合理性」分數是怎麼算的？', o: ['GPT-judge 打分', '回答部分每個 token 的平均轉移機率，再與正常訓練答案的分數比百分位', '輸出文字的長度', '詢問另一個 LLM'], a: 1, e: '和 Lab 2 的路徑分數同一個公式，只是狀態來自真實的 GPT-2 隱藏狀態。低於第 5 百分位 ⇒ 異常。', r: [['導讀 10', 'luna.html#s11']]},
+  {t: 'mc', q: '你的實作，「真實性（幻覺）」分數大約有多準？為什麼？', o: ['AUC 約 0.95，很可靠', 'AUC 約 0.77，中等，但評的是資料集的標準答案、不是模型自己的答案，且 GPT-2 small 很小', 'AUC 約 0.2', '沒有測過'], a: 1, e: '所有 decoder block 串接、PCA 512、KMeans 600 個狀態，約 0.77；只取最後一層的版本約 0.68（測試集 158 題，誤差約 ±0.03）。但評分對象與論文不同（資料集答案 vs 模型自己生成的答案），所以只能當方法示範，不是事實查核器，也不能和論文的 0.67 直接比。', r: [['導讀 10', 'luna.html#s11']]},
+  {t: 'mc', q: '「合理性」分數（正常 vs 亂碼）的留出集 AUC 大約是？', o: ['0.5', '約 0.88', '1.0', '0.2'], a: 1, e: '亂碼文字的轉移很少見，所以這個分數能分開正常與亂碼。', r: [['導讀 10', 'luna.html#s11']]},
+  {t: 'multi', q: '關於網頁資料來源，哪些說法正確？（可複選）', o: ['Lab 1、3、4 是我們自己的 GPT-2 小模型跑出的真實資料（Lab 2 的轉移矩陣仍是模擬）', 'Lab 5 的 9 個任務使用論文作者公開的真實結果', '第 10 節使用你自己訓練的 GPT-2 小模型', '全部資料都來自論文的原始隱藏狀態', 'ADV-A 任務有真實資料'], a: [0, 1, 2], e: '論文沒有公開逐 token 隱藏狀態，所以 Lab 1、3、4 改用自己的 GPT-2 實跑（不是論文的模型）；Lab 2 在頁面內用模擬軌跡建矩陣；ADV-A 在作者的檔案裡沒有資料，仍是模擬。', r: [['導讀 08', 'luna.html#s8']]},
+  {t: 'mc', q: '導讀 01 的「LLM 如何寫字」「如何分析 LLM」圖，應該怎麼說明來源？', o: ['論文的 Figure 1', '我設計的概念圖，不是論文原圖', '作者的簡報', '不需要說明'], a: 1, e: '這些是依整理檔與一般知識畫的示意圖，不要說成論文的圖。', r: [['導讀 01', 'luna.html#s1']]},
+  {t: 'mc', q: '論文自己承認的限制，下列哪個正確？', o: ['可用於所有閉源模型', '只適用可取得隱藏狀態的開源（白箱）LLM；只測 3 個 7B–13B 模型；設定敏感、需要調參', '結果完全不受設定影響', '平均 AUC 都在 0.9 以上'], a: 1, e: '整理最後「論文的限制」：多數 AUC 落在 0.55–0.75，只有少數最佳設定達 0.83–0.90。', r: [['導讀 09', 'luna.html#s9']]},
+  {t: 'mc', q: 'LUNA 與 SAPLMA 的差別？', o: ['LUNA 可以線上逐 token 監控；SAPLMA 要等整個輸出結束後才分類', '兩者相同', 'SAPLMA 是多面向，LUNA 只做真實性', 'LUNA 只能事後分析'], a: 0, e: '整理 §7.3：SAPLMA 用隱藏激活訓練真假分類器；ITI 在推論時介入；論文沒有與它們做數值比較，只有定性討論。', r: [['導讀 01', 'luna.html#s1']]},
+  {t: 'mc', q: '老師問：「你的 Lab 為什麼不是論文的模型？」最好的回答是？', o: ['因為懶得做真實的', '論文沒有公開逐 token 隱藏狀態，重跑 7B 模型在筆電上不實際；Lab 1、3、4 用自己的 GPT-2 小模型實跑同一套流程，Lab 5 用作者公開的真實結果，Lab 2 與 ADV-A 是模擬，頁面都有標示', '因為模擬資料比較準', '不要回答'], a: 1, e: '誠實說明來源並指出標示，比硬說是真的好。', r: [['導讀 08', 'luna.html#s8']]},
+  {t: 'mc', q: 'Lab 5 的 TQA-L，我算出的 Pearson r 是 0.37，論文是 0.63。被問起時最好怎麼說？', o: ['說我的比較準', '如實說與論文不完全一致，可能是作者還篩掉了不顯著的設定，我沒有做這個篩選', '說論文錯了', '不要提'], a: 1, e: '作者的 notebook 會先用 Mann-Whitney 檢定篩掉 p ≥ 0.05 的設定，我沒有做。', r: [['導讀 08', 'luna.html#s8']]},
+  {t: 'open', q: '老師問：「你的實作可靠嗎？」請完整回答。', ans: '合理性（OOD）分數可以用：正常對亂碼的 AUC 約 0.88（亂碼是我自己打亂字詞做的，不是論文的風格轉換資料）。真實性（幻覺）分數中等：AUC 約 0.77，但評的是資料集的標準答案與錯誤答案，不是模型自己生成的答案，且測試集只有 158 題（誤差約 ±0.03），所以不能和論文的 0.67 直接比。這是「同一套流程的縮小版示範」，不是事實查核器：流程與論文一致（decoder block 輸出 → PCA → KMeans → DTMC → 語意 θ̄ → 平均分數），但模型、資料與評分對象都縮小或不同。'}
+ ]}
+];
+
+
+/* ============================ quiz engine ============================ */
+'use strict';
+const $ = s => document.querySelector(s), $$ = s => Array.from(document.querySelectorAll(s));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+function rng(seed){ let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+function shuffled(n, seed, avoidIdentity){ const r = rng(seed); let a; let tries = 0; do { a = Array.from({length: n}, (_, i) => i); for (let i = n - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } tries++; } while (avoidIdentity && a.every((v, i) => v === i) && tries < 20); return a; }
+let ST = {a: {}, o: {}};
+try { ST = JSON.parse(localStorage.getItem('luna-quiz') || '') || ST; } catch (e) {}
+ST.a = ST.a || {}; ST.o = ST.o || {};
+const save = () => { try { localStorage.setItem('luna-quiz', JSON.stringify(ST)); } catch (e) {} };
+const TYPE = {mc: '單選', multi: '複選', order: '排序', open: '自我說明'};
+const qid = (s, i) => s.id + '-' + (i + 1);
+
+function stageStats(s){
+  let auto = 0, ok = 0, done = 0, open = 0, openOk = 0, openDone = 0;
+  s.qs.forEach((q, i) => { const id = qid(s, i);
+    if (q.t === 'open') { open++; if (ST.o[id] && ST.o[id].rate) openDone++; if (ST.o[id] && ST.o[id].rate === 'ok') openOk++; }
+    else { auto++; if (ST.a[id]) { done++; if (ST.a[id].ok) ok++; } } });
+  const pass = auto > 0 && done === auto && ok / auto >= .8 && openDone === open && openOk === open;
+  return {auto, ok, done, open, openOk, openDone, pass, complete: done === auto && openDone === open};
+}
+
+function renderQ(s, q, i){
+  const id = qid(s, i), st = ST.a[id], oq = ST.o[id], seed = hash(id);
+  let body = '', ex = '';
+  const links = (q.r || []).map(r => `<a class="chip-link" href="${r[1]}" target="_blank" rel="noopener">${esc(r[0])} ↗</a>`).join('');
+  if (q.t === 'mc' || q.t === 'multi') {
+    const order = shuffled(q.o.length, seed), multi = q.t === 'multi', picked = st ? (multi ? st.pick : [st.pick]) : [], ans = multi ? q.a : [q.a];
+    body = '<div class="opts">' + order.map(k => { let cls = 'opt';
+      if (st) { if (ans.includes(k)) cls += ' right'; else if (picked.includes(k)) cls += ' wrong'; else cls += ' dim'; if (picked.includes(k)) cls += ' mine'; }
+      return `<button type="button" class="${cls}" data-k="${k}" ${st ? 'disabled' : ''}>${multi ? `<span class="box">${picked.includes(k) ? '☑' : '☐'}</span>` : ''}${esc(q.o[k])}</button>`; }).join('') + '</div>'
+      + (multi && !st ? '<div class="q-act"><button type="button" class="btn q-check">檢查答案</button></div>' : '');
+  } else if (q.t === 'order') {
+    const cur = st ? st.pick : (ST.o[id + '-cur'] || shuffled(q.o.length, seed, true));
+    body = '<ol class="ord">' + cur.map((k, p) => `<li data-k="${k}"><span class="ord-n">${p + 1}</span><span class="ord-t">${esc(q.o[k])}</span>${st ? '' : `<span class="ord-b"><button type="button" class="mini up" ${p === 0 ? 'disabled' : ''} aria-label="上移">↑</button><button type="button" class="mini dn" ${p === cur.length - 1 ? 'disabled' : ''} aria-label="下移">↓</button></span>`}</li>`).join('') + '</ol>'
+      + (st ? '' : '<div class="q-act"><button type="button" class="btn q-check">檢查順序</button></div>');
+    if (st && !st.ok) body += '<p class="q-fix"><b>正確順序：</b><br>' + q.o.map((t, p) => `${p + 1}. ${esc(t)}`).join('<br>') + '</p>';
+  } else {
+    const note = oq && oq.note ? oq.note : '', shown = oq && oq.shown;
+    body = `<textarea class="q-note" rows="4" placeholder="先用自己的話寫（或說）一遍，再看參考答案">${esc(note)}</textarea>`
+      + `<div class="q-act"><button type="button" class="btn q-show">${shown ? '收起參考答案' : '看參考答案'}</button></div>`
+      + (shown ? `<div class="q-ref"><b>參考答案</b><p>${esc(q.ans).replace(/\n/g, '<br>')}</p><div class="q-rate"><span>跟你說的比起來？</span><button type="button" class="btn rate ${oq && oq.rate === 'ok' ? 'on-ok' : ''}" data-r="ok">我講得出來</button><button type="button" class="btn rate ${oq && oq.rate === 'no' ? 'on-no' : ''}" data-r="no">還不熟，要再看</button></div></div>` : '');
+  }
+  if (q.t !== 'open' && st) ex = `<div class="q-ex ${st.ok ? 'is-ok' : 'is-bad'}"><b>${st.ok ? '✔ 答對了' : '✘ 答錯了'}</b><p>${esc(q.e)}</p>${links ? `<div class="chips">${links}</div>` : ''}<div class="q-act"><button type="button" class="btn q-retry">再試一次</button></div></div>`;
+  const state = q.t === 'open' ? (oq && oq.rate ? (oq.rate === 'ok' ? ' ok' : ' bad') : '') : st ? (st.ok ? ' ok' : ' bad') : '';
+  return `<article class="q${state}${q.t === 'open' ? ' wide' : ''}" data-id="${id}" data-i="${i}"><div class="q-h"><span class="q-n">Q${i + 1}</span><span class="q-t">${TYPE[q.t]}</span></div><p class="q-q">${esc(q.q)}</p><div class="q-body">${body}</div>${ex}</article>`;
+}
+
+function renderStage(s){
+  const t = stageStats(s), tag = t.pass ? '<span class="stage-tag pass">過關</span>' : t.complete ? '<span class="stage-tag">已完成，未達標</span>' : '';
+  return `<section id="stage${s.id}" class="sec-wide"><div class="sec-head"><span class="sec-num">${String(s.id).padStart(2, '0')}</span><div><h2>階段 ${s.id}：${esc(s.title)} ${tag}</h2><p class="sec-sub">${esc(s.sub)}</p></div></div>`
+    + `<div class="stage-bar"><div class="stage-sc"><b>${t.ok}</b> / ${t.auto} <span>題答對</span>${t.open ? ` · <b>${t.openOk}</b> / ${t.open} <span>題自評講得出來</span>` : ''}</div><div class="chips">${s.rv.map(r => `<a class="chip-link" href="${r[1]}" target="_blank" rel="noopener">複習：${esc(r[0])} ↗</a>`).join('')}</div></div>`
+    + `<div class="qgrid">${s.qs.map((q, i) => renderQ(s, q, i)).join('')}</div></section>`;
+}
+
+function renderSummary(){
+  let tot = 0, ok = 0, done = 0, passN = 0;
+  const rows = STAGES.map(s => { const t = stageStats(s); tot += t.auto; ok += t.ok; done += t.done; if (t.pass) passN++;
+    return `<a class="sum-row" href="#stage${s.id}"><span class="sum-n">階段 ${s.id}</span><span class="sum-t">${esc(s.title)}</span><span class="sum-bar"><i style="width:${t.auto ? t.done / t.auto * 100 : 0}%"></i></span><span class="sum-s">${t.ok}/${t.auto}${t.open ? ` · ${t.openOk}/${t.open}` : ''}</span><span class="sum-p ${t.pass ? 'pass' : ''}">${t.pass ? '過關' : t.complete ? '未達標' : '進行中'}</span></a>`; }).join('');
+  $('#summary').innerHTML = `<div class="sum-top"><div><p class="eyebrow">總覽</p><p class="sum-big"><b>${ok}</b> / ${tot} <span>題答對 · ${passN} / ${STAGES.length} 個階段過關</span></p></div><button type="button" class="btn" id="reset-all">清除全部紀錄</button></div><div class="sum-rows">${rows}</div>`;
+  $('#reset-all').addEventListener('click', () => { if (confirm('清除所有作答紀錄？')) { ST = {a: {}, o: {}}; save(); renderAll(); } });
+  $$('.toc a').forEach(a => { const m = /^#stage(\d)$/.exec(a.getAttribute('href')); if (!m) return; const t = stageStats(STAGES[+m[1] - 1]); a.classList.toggle('done', t.pass); });
+}
+
+function renderAll(){
+  const y = scrollY; $('#stages').innerHTML = STAGES.map(renderStage).join(''); bindAll(); renderSummary();
+  $$('#stages section').forEach(s => s.classList.add('in', 'reveal')); window.scrollTo(0, y);
+}
+
+function bindAll(){
+  $$('#stages .q').forEach(card => {
+    const [sid, qi] = card.dataset.id.split('-').map(Number), s = STAGES[sid - 1], q = s.qs[qi - 1], id = card.dataset.id;
+    const done = (pick, ok) => { ST.a[id] = {pick, ok}; delete ST.o[id + '-cur']; save(); renderAll(); };
+    if (q.t === 'mc') card.querySelectorAll('.opt:not([disabled])').forEach(b => b.addEventListener('click', () => { const k = +b.dataset.k; done(k, k === q.a); }));
+    if (q.t === 'multi') {
+      card.querySelectorAll('.opt:not([disabled])').forEach(b => b.addEventListener('click', () => { b.classList.toggle('mine'); b.querySelector('.box').textContent = b.classList.contains('mine') ? '☑' : '☐'; }));
+      const c = card.querySelector('.q-check'); if (c) c.addEventListener('click', () => { const pick = [...card.querySelectorAll('.opt.mine')].map(b => +b.dataset.k).sort((a, b) => a - b); if (!pick.length) return; done(pick, JSON.stringify(pick) === JSON.stringify(q.a.slice().sort((a, b) => a - b))); });
+    }
+    if (q.t === 'order') {
+      const cur = () => [...card.querySelectorAll('.ord li')].map(li => +li.dataset.k);
+      card.querySelectorAll('.ord .up, .ord .dn').forEach(b => b.addEventListener('click', () => { const a = cur(), li = b.closest('li'), p = [...li.parentNode.children].indexOf(li), d = b.classList.contains('up') ? -1 : 1;
+        [a[p], a[p + d]] = [a[p + d], a[p]]; ST.o[id + '-cur'] = a; save(); renderAll(); }));
+      const c = card.querySelector('.q-check'); if (c) c.addEventListener('click', () => { const a = cur(); done(a, a.every((v, p) => v === p)); });
+    }
+    const retry = card.querySelector('.q-retry'); if (retry) retry.addEventListener('click', () => { delete ST.a[id]; save(); renderAll(); });
+    if (q.t === 'open') {
+      const ta = card.querySelector('.q-note'); ta.addEventListener('input', () => { ST.o[id] = Object.assign(ST.o[id] || {}, {note: ta.value}); save(); });
+      card.querySelector('.q-show').addEventListener('click', () => { ST.o[id] = Object.assign(ST.o[id] || {}, {note: ta.value, shown: !(ST.o[id] && ST.o[id].shown)}); save(); renderAll(); });
+      card.querySelectorAll('.rate').forEach(b => b.addEventListener('click', () => { ST.o[id] = Object.assign(ST.o[id] || {}, {note: ta.value, rate: b.dataset.r}); save(); renderAll(); }));
+    }
+  });
+}
+renderAll();
+
+/* scroll spy + deep links (#stage3) */
+(function(){
+  const links = $$('.toc a').filter(a => a.getAttribute('href').startsWith('#')), bar = $('.bar'); let cur = null, raf = 0;
+  function spy(){ raf = 0; const secs = links.map(a => document.querySelector(a.getAttribute('href'))), line = bar.offsetHeight + innerHeight * .3; let idx = -1;
+    secs.forEach((s, i) => { if (s && s.getBoundingClientRect().top <= line) idx = i; }); if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) idx = links.length - 1;
+    if (idx === cur) return; cur = idx; links.forEach((a, i) => a.classList.toggle('active', i === idx)); }
+  const req = () => { if (!raf) raf = requestAnimationFrame(spy); }; addEventListener('scroll', req, {passive: true}); addEventListener('resize', req); spy();
+  function jump(){ const id = location.hash.slice(1), el = id && document.getElementById(id); if (!el) return; document.documentElement.style.scrollBehavior = 'auto'; el.scrollIntoView(); document.documentElement.style.scrollBehavior = ''; }
+  addEventListener('hashchange', jump); setTimeout(jump, 60);
+})();
+
+</script>
+</body>
+</html>

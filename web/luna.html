@@ -1,0 +1,1597 @@
+<!doctype html>
+<html lang="zh-Hant" data-lang="zh" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>LUNA Explorer</title>
+<!--
+  LUNA Explorer — single-file bilingual explainer + interactive labs.
+
+  DATA CONTRACT (so simulated data can be swapped for real data later)
+  --------------------------------------------------------------------
+  The page reads everything through App.data. On load it tries fetch('luna-data.json') (works when served over http,
+  e.g. python server.py), else generates simulated data. Any top-level key you omit falls back to simulated data.
+
+  {
+    "meta":    { "source": "string", "generatedAt": "ISO date", "llms": ["..."] },
+    "states2d":{ "points": [ {"x":0.1,"y":-0.3,"split":"train"|"test"|"abn"} ] },   // PCA(2) view of concrete states  -> Lab 1
+    "configs": [ { "task":"HE-C", "partition":"grid|GMM|KMeans", "model":"DTMC|HMM",
+                   "pca":5, "states":10, "history":2, "hmmComp":null,
+                   "auc":0.71,
+                   "metrics": {"SUC":0,"COV":0,"SEN":0,"SS":0,"PERP":0,"SDE":0,
+                               "PRE":0,"ENT":0,"SL":0,"NDT":0,"IVT":0,"NVT":0} } ],     // -> Lab 5
+    "traces":  [ { "id":"x", "mode":"state|transition", "label":"normal|abnormal",
+                   "prompt":"...", "tokens":["..."], "states":["s12","..."],
+                   "semantics":[0.2, null, 0.7] } ],                                    // -> Lab 3 (null allowed)
+    "scores":  { "HE-C": { "normal":[0.8,...], "abnormal":[0.2,...] } }                 // -> Lab 4 (semantics scores)
+  }
+  Task ids: OOD-A ADV-A TQA-A OOD-L ADV-L TQA-L HE-C MBPP-C CSNJ-C TCS-C
+-->
+<style>
+:root{
+  --ground:#080B12; --surface:#0F141E; --surface-2:#161D2B; --sunk:#0B0F17;
+  --ink:#E7EBF3; --ink-2:#AEB7CA; --muted:#7C869C; --rule:#232B3B;
+  --accent:#8CB8FF; --accent-2:#C2B4FF; --accent-soft:#16233D;
+  --warm:#F4C26B; --warm-soft:#2A2314; --good:#5FD3A0; --bad:#FF7B8B;
+  --c-grid:#F4C26B; --c-gmm:#C2B4FF; --c-km:#5FD3A0;
+  --shadow:0 1px 2px rgba(0,0,0,.5),0 12px 32px -14px rgba(0,0,0,.7);
+  --serif:Georgia,"Noto Serif TC","PingFang TC","Microsoft JhengHei",serif;
+  --sans:system-ui,-apple-system,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:ui-monospace,"SFMono-Regular",Consolas,"Courier New",monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased}
+:root[data-lang="zh"] [lang="en"]{display:none}
+:root:not([data-lang="zh"]) [lang="zh"]{display:none}
+:root[data-lang="zh"] body{line-height:1.85}
+.wrap{max-width:1440px;margin:0 auto;padding-inline:clamp(28px,4.5vw,72px)}
+.col{max-width:100ch;margin-inline:0}
+/* top bar */
+.bar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--ground) 86%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--rule)}
+.bar-in{max-width:1440px;margin:0 auto;padding:9px clamp(28px,4.5vw,72px);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.mark{font-weight:700;font-size:15px;letter-spacing:.02em;display:flex;align-items:center;gap:9px;margin-right:auto}
+.pill{font-family:var(--mono);font-size:11px;padding:3px 9px;border:1px solid var(--rule);border-radius:999px;color:var(--muted);background:var(--surface)}
+.pill b{color:var(--warm);font-weight:600}
+.pill.live b{color:var(--good)}
+.btn{font-family:var(--sans);font-size:12px;font-weight:600;padding:5px 12px;border:1px solid var(--rule);border-radius:999px;background:var(--surface);color:var(--ink-2);cursor:pointer}
+.btn:hover{border-color:var(--accent);color:var(--ink)}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:999px;overflow:hidden;background:var(--surface)}
+.seg button{font-family:var(--sans);font-size:12px;font-weight:600;padding:5px 13px;border:0;background:transparent;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#0A1020}
+.toc{max-width:1440px;margin:0 auto;padding:0 clamp(28px,4.5vw,72px) 8px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.toc a{font-family:var(--mono);font-size:11px;color:var(--muted);text-decoration:none;padding:3px 9px;border-radius:999px;white-space:nowrap;border:1px solid transparent}
+.toc a:hover{color:var(--ink);border-color:var(--rule)}
+/* type */
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+h1{font-weight:800;font-size:clamp(38px,6vw,68px);line-height:1.02;letter-spacing:-.035em;margin:0 0 18px;text-wrap:balance;
+   background:linear-gradient(120deg,#fff 10%,var(--accent) 60%,var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-weight:650;font-size:clamp(23px,2.8vw,31px);line-height:1.18;letter-spacing:-.02em;margin:0 0 6px;text-wrap:balance}
+h3{font-weight:600;font-size:17px;margin:0 0 6px}
+p{margin:0 0 16px}
+a{color:var(--accent)}
+strong{font-weight:600;color:var(--ink)}
+code{font-family:var(--mono);font-size:.86em;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+.lede{font-size:clamp(18px,2vw,21px);line-height:1.6;color:var(--ink-2)}
+section{padding-block:clamp(44px,6vw,76px);border-top:1px solid var(--rule)}
+section:first-of-type{border-top:0}
+.sec-head{display:grid;grid-template-columns:auto 1fr;gap:18px;max-width:none;margin:0 0 clamp(22px,3vw,34px)}
+.sec-wide .sec-head{max-width:none}
+.sec-num{font-family:var(--mono);font-size:clamp(34px,4vw,52px);font-weight:700;line-height:1;letter-spacing:-.04em;color:var(--accent);opacity:.55;padding-top:.05em;min-width:1.7em}
+.sec-sub{color:var(--muted);font-size:15px;margin:4px 0 0}
+.hero{padding-block:clamp(48px,7vw,90px) clamp(36px,4vw,54px)}
+.meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:6px;margin-top:32px;overflow:hidden}
+.meta-cell{background:var(--surface);padding:13px 15px}
+.meta-k{font-size:10px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin:0 0 3px}
+.meta-v{font-family:var(--mono);font-size:13px;margin:0;line-height:1.45}
+/* figure / lab */
+.figure{background:var(--surface);border:1px solid var(--rule);border-radius:8px;box-shadow:var(--shadow);overflow:hidden}
+.fig-head{padding:14px 20px;border-bottom:1px solid var(--rule);display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+.fig-title{font-weight:650;font-size:14px;margin:0}
+.fig-note{font-size:13px;color:var(--muted);margin:0}
+.badge-sim{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--warm);border:1px solid var(--warm);border-radius:3px;padding:1px 6px;letter-spacing:.06em}
+.badge-paper{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--good);border:1px solid var(--good);border-radius:3px;padding:1px 6px;letter-spacing:.06em}
+.demo{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
+@media(max-width:900px){.demo{grid-template-columns:1fr}.meta-grid{grid-template-columns:1fr 1fr}}
+.demo-vis{padding:16px 18px;border-right:1px solid var(--rule);background:var(--sunk);min-width:0}
+@media(max-width:900px){.demo-vis{border-right:0;border-bottom:1px solid var(--rule)}}
+.demo-side{padding:16px 18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.vis-label{font-size:10px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin:0 0 7px}
+.vis-box{background:var(--surface);border:1px solid var(--rule);border-radius:5px;padding:4px;position:relative}
+svg.stage{display:block;width:100%;height:auto}
+svg text{font-family:var(--mono)}
+.ctrls{display:flex;flex-direction:column;gap:11px}
+.ctrl-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ctrl-lab{font-size:12px;font-weight:600;color:var(--ink-2);white-space:nowrap}
+input[type=range]{flex:1;min-width:110px;accent-color:var(--accent);height:20px}
+select{font-family:var(--sans);font-size:12.5px;background:var(--surface-2);color:var(--ink);border:1px solid var(--rule);border-radius:5px;padding:5px 8px}
+.kval{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent);min-width:2.6em;text-align:right}
+.switch{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--ink-2)}
+.switch input{accent-color:var(--accent);margin:0}
+.scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:5px;overflow:hidden}
+.score{background:var(--surface-2);padding:9px 12px}
+.score-k{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.score-v{font-family:var(--mono);font-size:22px;font-weight:600;line-height:1.1;margin:0}
+.score-n{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin:3px 0 0}
+.note{font-size:13.5px;color:var(--ink-2);background:var(--surface-2);border-radius:5px;padding:10px 13px;line-height:1.6;margin:0}
+.note b{color:var(--warm);font-weight:600}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);padding:10px 18px;border-top:1px solid var(--rule);background:var(--surface-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:10px;height:10px;border-radius:2px;flex:none;display:inline-block}
+.stack{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.item{background:var(--surface);padding:16px 20px;display:grid;grid-template-columns:auto 1fr;gap:16px}
+.item-n{font-family:var(--mono);font-size:11.5px;color:var(--accent);padding-top:.3em}
+.item p{margin:0;font-size:15px;line-height:1.6;color:var(--ink-2)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:16px 18px}
+.card p{margin:0;font-size:14.5px;line-height:1.6;color:var(--ink-2)}
+.card .tag{font-family:var(--mono);font-size:10.5px;color:var(--muted);display:block;margin-bottom:6px}
+.tablewrap{overflow-x:auto;border:1px solid var(--rule);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px}
+th,td{text-align:left;padding:8px 13px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.num{font-family:var(--mono);white-space:nowrap}
+.callout{border-left:3px solid var(--warm);background:var(--warm-soft);padding:14px 18px;border-radius:0 6px 6px 0;margin:0 0 18px}
+.callout p{margin:0;font-size:15px;line-height:1.6}
+.callout .h{font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--warm);display:block;margin-bottom:4px}
+.mathblock{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:8px 16px;margin:0 0 14px}
+.tex-fallback{font-family:var(--mono);font-size:13px;color:var(--ink-2)}
+.katex{color:var(--ink)}
+/* pipeline */
+.stages{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:760px){.stages{grid-template-columns:1fr 1fr}}
+.stage-btn{text-align:left;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:12px 14px;color:var(--ink-2);cursor:pointer;font-family:var(--sans)}
+.stage-btn .n{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.stage-btn .t{display:block;font-weight:600;font-size:14px;color:var(--ink);margin-top:2px}
+.stage-btn[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.stage-btn[aria-pressed="true"] .n{color:var(--accent)}
+.stage-panel{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+@media(max-width:760px){.stage-panel{grid-template-columns:1fr}}
+.stage-panel>div{background:var(--surface);padding:16px 18px;font-size:14.5px;color:var(--ink-2);line-height:1.65}
+.stage-panel h4{margin:0 0 6px;font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.stage-panel ul{margin:0;padding-left:18px}
+/* tokens */
+.tok-row{display:flex;flex-wrap:wrap;gap:8px;padding:6px 2px}
+.tok{border:1px solid var(--rule);border-radius:6px;padding:6px 10px 5px;text-align:center;min-width:54px;cursor:default}
+.tok .w{font-family:var(--mono);font-size:14px;font-weight:600}
+.tok .s{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:1px}
+.tok .v{font-family:var(--mono);font-size:11px;margin-top:2px}
+.tok.first{outline:2px solid var(--bad);outline-offset:2px}
+.verdict{display:inline-block;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:4px;border:1px solid currentColor}
+.v-bad{color:var(--bad)} .v-good{color:var(--good)}
+.tabs{margin-bottom:16px}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:14px}
+.metric{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:15px 17px}
+.metric h3{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.metric .ab{font-family:var(--mono);font-size:11px;color:var(--accent);border:1px solid var(--accent);border-radius:3px;padding:0 5px}
+.metric .dir{font-size:12px;color:var(--muted);margin:6px 0 0}
+.metric p{font-size:13.5px;color:var(--ink-2);margin:6px 0 0;line-height:1.6}
+.metric .tex,.mathblock .tex,.fx-item .tex{display:block;font-size:1em;padding:6px 0}
+.fx{border-top:1px solid var(--rule);background:var(--surface);padding:16px 18px 18px}
+.fx-h{font-size:10px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.in-lab{background:var(--sunk)!important;border:1px dashed var(--rule)!important;border-left:3px solid var(--muted)!important;position:relative}
+.in-lab .katex,.in-lab h3,.in-lab p,.in-lab .sec-sub{color:var(--ink-2)}
+.in-lab .ab{color:var(--muted);border-color:var(--muted)}
+.lab-tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--rule);border-radius:3px;padding:0 6px;background:var(--surface)}
+.in-lab>.lab-tag{position:absolute;top:8px;right:10px}
+.in-lab-key{font-size:13px;color:var(--muted);margin:0 0 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.fx-top{display:flex;align-items:center;gap:6px 16px;flex-wrap:wrap;margin:0 0 10px}
+.fx-top .fx-h,.fx-top .fx-tabs{margin:0}
+.fx{padding:12px 18px 14px}
+@media(min-width:1100px){
+  .demo{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+  .demo-vis svg.stage{max-height:380px}
+  .demo-vis.twin{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto;grid-auto-flow:column;column-gap:14px;align-content:start}
+  .demo-vis.twin .vis-label{margin-top:0!important}
+  .demo-vis.twin svg.stage{max-height:352px}
+  #l2-scores{grid-template-columns:repeat(4,minmax(0,1fr))}
+  #l2-scores .score{padding:8px 10px}
+  #l2-scores .score-v{font-size:19px}
+  .t5>:nth-child(1){grid-area:1/1}
+  .t5>:nth-child(2){grid-area:2/1/4/2}
+  .t5>:nth-child(3){grid-area:1/2}
+  .t5>:nth-child(4){grid-area:2/2}
+  .t5>:nth-child(5){grid-area:3/2;margin-top:10px}
+  #l3-chart{max-height:200px}
+}
+.fx-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.fx-tab{font-family:var(--sans);font-size:12px;font-weight:600;padding:4px 12px;border:1px solid var(--rule);border-radius:999px;background:var(--surface-2);color:var(--ink-2);cursor:pointer}
+.fx-tab:hover{border-color:var(--accent);color:var(--ink)}
+.fx-tab[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#0A1020}
+.fx-body{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:22px;align-items:center}
+@media(max-width:900px){.fx-body{grid-template-columns:1fr}}
+.fx-item{background:var(--surface-2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:10px 14px;min-width:0}
+.fx-role{min-width:0}
+.fx-role p{margin:4px 0 0;font-size:14.5px;line-height:1.65;color:var(--ink-2)}
+.fx-role .fx-name{font-size:12px;margin:0}
+#l5-top{min-width:0}
+#l5-top th,#l5-top td{padding:6px 10px}
+.fx-name{font-size:12px;font-weight:700;color:var(--accent);margin:0 0 2px}
+.katex-display{margin:.3em 0}
+.tex.tex-fallback{white-space:normal;overflow-wrap:anywhere}
+.fx-item p{margin:4px 0 0;font-size:13px;line-height:1.6;color:var(--ink-2)}
+.fx-item p b{color:var(--ink)}
+.metric .try,.mathblock .try{display:inline-block;margin-top:6px;font-size:12px;font-family:var(--mono)}
+#tip{position:fixed;z-index:99;pointer-events:none;background:#000d;border:1px solid var(--rule);color:var(--ink);font-family:var(--mono);font-size:11.5px;line-height:1.5;padding:6px 9px;border-radius:5px;max-width:280px;display:none;backdrop-filter:blur(6px)}
+footer{border-top:1px solid var(--rule);padding-block:30px 48px;font-size:12.5px;color:var(--muted)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---- layout v2: left aligned, two-column use of width ---- */
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:clamp(28px,5vw,72px);align-items:center}
+.hero-grid .meta-grid{margin-top:0;grid-template-columns:1fr 1fr}
+.hero-grid .note{margin-top:14px!important}
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr}.hero-grid .meta-grid{margin-top:24px}}
+.sec-wide>.col{max-width:70%}
+@media(max-width:900px){.sec-wide>.col{max-width:none}}
+#s7>.col{max-width:none}
+#core-eq{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#core-eq .mathblock{margin:0}
+@media(max-width:900px){#core-eq{grid-template-columns:1fr}}
+.split{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:20px;align-items:stretch}
+.split .cards{grid-template-columns:1fr}
+.split>div:last-child{position:relative;min-height:300px}
+.split>div:last-child .cards{position:absolute;inset:0;overflow-y:auto;align-content:start;padding-right:6px}
+@media(max-width:1000px){.split{grid-template-columns:1fr}.split>div:last-child .cards{position:static}}
+.bg-note{margin:0;padding:12px 18px 16px;font-size:13.5px;line-height:1.65;color:var(--ink-2);border-top:1px solid var(--rule)}
+.bg-note ol{margin:0;padding-left:18px}
+.bg-svg{padding:12px 14px 6px}
+#bg-table table{min-width:0;font-size:12.5px}
+#bg-table th,#bg-table td{padding:6px 10px}
+#bg-table .tablewrap{border:0;border-radius:0}
+.bg-ana-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);align-items:center}
+.bg-ana-grid .bg-svg{border-right:1px solid var(--rule)}
+.bg-ana-grid #bg-table .tablewrap{border-left:1px solid var(--rule)}
+@media(max-width:1000px){
+  .bg-ana-grid{grid-template-columns:1fr}
+  .bg-ana-grid .bg-svg{border-right:0;border-bottom:1px solid var(--rule)}
+  .bg-ana-grid #bg-table .tablewrap{border-left:0;border-top:1px solid var(--rule)}
+}
+.stack.two{grid-template-columns:1fr 1fr}
+@media(max-width:900px){.stack.two{grid-template-columns:1fr}}
+
+/* ---- scrollbars matching the theme ---- */
+*{scrollbar-width:thin;scrollbar-color:#2F3A50 transparent}
+html{scrollbar-color:#2F3A50 var(--ground)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+html::-webkit-scrollbar-track{background:var(--ground)}
+::-webkit-scrollbar-thumb{background:var(--rule);border-radius:999px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:var(--muted);background-clip:padding-box;border:2px solid transparent}
+::-webkit-scrollbar-corner{background:transparent}
+
+/* ---- scroll spy + section reveal ---- */
+.toc a{transition:color .2s,background-color .2s,border-color .2s}
+.toc a.active{color:var(--ink);background:var(--accent-soft);border-color:var(--accent)}
+.reveal{opacity:0;transform:translateY(var(--ry,28px));transition:opacity .65s ease,transform .65s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+.katex .symx:hover{background:rgba(140,184,255,.22);border-radius:3px;cursor:help;box-shadow:0 0 0 1px rgba(140,184,255,.55)}
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js" onload="window.__katexReady&&window.__katexReady()"></script>
+</head>
+<body>
+
+<div class="bar">
+  <div class="bar-in">
+    <span class="mark">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="mg" x1="0" x2="1"><stop offset="0" stop-color="#8CB8FF"/><stop offset="1" stop-color="#C2B4FF"/></linearGradient></defs><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="url(#mg)"/></svg>
+      LUNA Explorer
+    </span>
+    <span class="pill" id="src-pill"></span>
+    <div class="seg" role="group" aria-label="Language">
+      <button id="lang-en" type="button" aria-pressed="false">EN</button>
+      <button id="lang-zh" type="button" aria-pressed="true">中文</button>
+    </div>
+  </div>
+  <nav class="toc" aria-label="Sections">
+    <a href="#s1">01 <span lang="en">Why</span><span lang="zh">動機</span></a>
+    <a href="#s2">02 <span lang="en">Pipeline</span><span lang="zh">流程</span></a>
+    <a href="#s3">03 <span lang="en">Abstraction</span><span lang="zh">狀態抽象</span></a>
+    <a href="#s4">04 <span lang="en">DTMC</span><span lang="zh">DTMC</span></a>
+    <a href="#s5">05 <span lang="en">Semantics</span><span lang="zh">語意綁定</span></a>
+    <a href="#s6">06 <span lang="en">ROC</span><span lang="zh">ROC</span></a>
+    <a href="#s7">07 <span lang="en">Metrics</span><span lang="zh">指標</span></a>
+    <a href="#s8">08 <span lang="en">180 configs</span><span lang="zh">180 設定</span></a>
+    <a href="#s9">09 <span lang="en">Results</span><span lang="zh">結果</span></a>
+    <a href="#s11">10 <span lang="en">Implementation</span><span lang="zh">實作</span></a>
+  </nav>
+</div>
+<div id="tip"></div>
+
+<div class="wrap">
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="hero-grid"><div>
+    <p class="eyebrow"><span lang="en">Interactive companion · IEEE TSE 50(7), 2024</span><span lang="zh">互動式導讀 · IEEE TSE 50(7), 2024</span></p>
+    <h1>LUNA</h1>
+    <p class="lede">
+      <span lang="en">A model-based universal analysis framework for large language models: compress a decoder's hidden states into a small probabilistic state machine, bind trustworthiness <em>semantics</em> to it, and use it to catch hallucinations, out-of-distribution inputs and adversarial attacks.</span>
+      <span lang="zh">一個以模型為基礎的 LLM 通用分析框架：把解碼器的隱藏狀態壓縮成小型機率狀態機，再綁定可信賴性<em>語意</em>，用來抓出幻覺、分布外（OOD）輸入與對抗攻擊。</span>
+    </p>
+    </div><div>
+    <div class="meta-grid">
+      <div class="meta-cell"><p class="meta-k"><span lang="en">Paper</span><span lang="zh">論文</span></p><p class="meta-v">Song, Xie, Song, Zhu, Huang, Juefei-Xu, Ma</p></div>
+      <div class="meta-cell"><p class="meta-k"><span lang="en">Subject LLMs</span><span lang="zh">受測 LLM</span></p><p class="meta-v">Alpaca-7b · Llama2-7b · CodeLlama-13b</p></div>
+      <div class="meta-cell"><p class="meta-k"><span lang="en">Scale</span><span lang="zh">規模</span></p><p class="meta-v">3 views · 7 datasets · 12 metrics · 180 configs</p></div>
+      <div class="meta-cell"><p class="meta-k"><span lang="en">Best result</span><span lang="zh">最佳成果</span></p><p class="meta-v">ROC AUC 0.90 (HumanEval)</p></div>
+    </div>
+    <p class="note" style="margin-top:22px"><span lang="en"><b>Reading guide.</b> Labs marked <code>SIMULATED</code> use seeded synthetic data shaped after the paper's reported numbers; labs marked <code>REAL DATA</code> use real runs (Lab 1, 3, 4: our own GPT-2 small, same pipeline, not the paper's models; Lab 5: the authors' released results); Lab 2 builds its matrix from simulated traces; labs marked <code>PAPER</code> plot values transcribed from the paper's tables.</span><span lang="zh"><b>閱讀提示：</b>標示 <code>SIMULATED</code> 的實驗室使用依論文數字形狀產生的固定亂數合成資料；標示 <code>REAL DATA</code> 的是實跑資料（Lab 1、3、4：我們自己的 GPT-2 small、同一套流程、不是論文的模型；Lab 5：作者公開的結果）；Lab 2 的矩陣由模擬軌跡建立；標示 <code>PAPER</code> 的圖則直接繪製論文表格的數字。</span></p>
+  </div></div>
+</section>
+
+<!-- ================= 01 WHY ================= -->
+<section id="s1">
+  <div class="sec-head"><span class="sec-num">01</span><div>
+    <h2><span lang="en">Why LLMs need a new kind of analysis</span><span lang="zh">為什麼 LLM 需要新的分析方法</span></h2>
+    <p class="sec-sub"><span lang="en">Four ways an autoregressive model differs from the classifiers QA research grew up on</span><span lang="zh">自迴歸模型與過去 QA 研究所針對的分類器有四點不同</span></p></div></div>
+  <p style="margin-top:-6px"><span lang="en">For how a decoder-only LLM writes one token step by step, see the <a href="concepts.html#llm" target="_blank" rel="noopener">generation loop on the Concepts page</a>.</span><span lang="zh">decoder-only LLM 如何一步步寫出一個 token，見<a href="concepts.html#llm" target="_blank" rel="noopener">補充頁面的生成迴圈</a>。</span></p>
+  <div class="figure" style="margin-bottom:22px">
+    <div class="fig-head"><p class="fig-title"><span lang="en">How LLMs are analysed today</span><span lang="zh">目前如何分析 LLM</span></p></div>
+    <div class="bg-ana-grid">
+      <div class="bg-svg"><svg class="stage" id="bg-ana" viewBox="0 0 640 262" role="img" aria-label="what each analysis approach looks at"></svg></div>
+      <div id="bg-table"></div>
+    </div>
+  </div>
+  <div>
+    <div class="stack two">
+      <div class="item"><span class="item-n">01</span><div><h3><span lang="en">Scale and opacity</span><span lang="zh">規模與黑箱</span></h3>
+        <p><span lang="en">One Llama-7b token carries 32 decoder blocks × 4,096 dimensions = 131,072 numbers. Nobody can inspect that directly.</span><span lang="zh">Llama-7b 的單一 token 有 32 個解碼器區塊 × 4,096 維 = 131,072 個數字，無法直接檢視。</span></p></div></div>
+      <div class="item"><span class="item-n">02</span><div><h3><span lang="en">Generation is a stateful stochastic process</span><span lang="zh">生成是有狀態的隨機過程</span></h3>
+        <p><span lang="en">Each token depends on every previous one, so quality is a property of the whole trajectory, not of one output. A classifier emits one label; an LLM emits a path.</span><span lang="zh">每個 token 依賴之前所有 token，品質是整條軌跡的性質，而非單一輸出。分類器輸出一個標籤，LLM 輸出的是一條路徑。</span></p></div></div>
+      <div class="item"><span class="item-n">03</span><div><h3><span lang="en">Trust failures are diverse</span><span lang="zh">可信賴性問題多樣</span></h3>
+        <p><span lang="en">Hallucination, OOD inputs and adversarial perturbations look different but share one need: know when the model is in an unhealthy internal state.</span><span lang="zh">幻覺、OOD 輸入、對抗擾動看起來不同，卻共享同一需求：知道模型何時處於不健康的內部狀態。</span></p></div></div>
+      <div class="item"><span class="item-n">04</span><div><h3><span lang="en">Existing model-based analysis targeted RNN classifiers</span><span lang="zh">既有的模型化分析針對 RNN 分類器</span></h3>
+        <p><span lang="en">DeepStellar, DeepMemory, RNNRepair and friends abstract RNN states into automata. Whether that carries over to Transformers was an open question — LUNA is the exploratory answer.</span><span lang="zh">DeepStellar、DeepMemory、RNNRepair 等把 RNN 狀態抽象成自動機；能否延伸到 Transformer 原本未知，LUNA 是探索性的回答。</span></p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 02 PIPELINE ================= -->
+<section id="s2">
+  <div class="sec-head"><span class="sec-num">02</span><div>
+    <h2><span lang="en">The four-stage pipeline</span><span lang="zh">四階段流程</span></h2>
+    <p class="sec-sub"><span lang="en">Click a stage to see what goes in, what comes out, and which knobs exist</span><span lang="zh">點選階段查看輸入、輸出與可調參數</span></p></div></div>
+  <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">Workflow (paper Fig. 1)</span><span lang="zh">工作流程（論文圖 1）</span></p></div>
+    <div style="padding:18px">
+      <svg class="stage" viewBox="0 0 900 150" id="pipe-svg" role="img" aria-label="pipeline"></svg>
+            <div class="stage-panel" id="stage-panel"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 03 LAB1 ================= -->
+<section id="s3" class="sec-wide">
+  <div class="sec-head"><span class="sec-num">03</span><div>
+    <h2><span lang="en">Lab 1 · State abstraction</span><span lang="zh">實驗室 1 · 狀態抽象</span></h2>
+    <p class="sec-sub"><span lang="en">PCA-reduced concrete states → discrete abstract states, by grid or by clustering</span><span lang="zh">PCA 降維後的具體狀態 → 以網格或分群劃分成離散抽象狀態</span></p></div></div>
+  <div class="col" style="margin-bottom:24px">
+    <p><span lang="en">Real concrete states are hundreds to thousands of PCA dimensions; here we look at a 2-D slice so the geometry is visible. Training states define the abstract model; <strong>test</strong> states that land where no training state did are <em>unseen</em> — that is the Coverage metric. Abnormal inputs should be unseen more often than normal ones.</span><span lang="zh">真實的具體狀態有數百到數千個 PCA 維度；這裡取 2 維切面以便看見幾何結構。訓練狀態決定抽象模型；<strong>測試</strong>狀態若落在訓練狀態從未到過之處即為<em>未見</em>——這就是覆蓋率（Coverage）指標。異常輸入理應比正常輸入更常落在未見區域。</span></p>
+  </div>
+  <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">Partition explorer</span><span lang="zh">劃分探索器</span></p><p class="fig-note"><span lang="en">Drag the state count. Toggle layers.</span><span lang="zh">拖曳狀態數、切換圖層。</span></p><span class="badge-sim" id="l1-badge">SIMULATED</span></div>
+    <div class="demo">
+      <div class="demo-vis"><p class="vis-label"><span lang="en">Concrete states (PCA-2) &amp; abstract states</span><span lang="zh">具體狀態（PCA-2）與抽象狀態</span></p>
+        <div class="vis-box"><svg class="stage" id="l1-svg" viewBox="0 0 620 440"></svg></div></div>
+      <div class="demo-side">
+        <div class="ctrls">
+          <div class="ctrl-row"><label class="ctrl-lab" for="l1-part"><span lang="en">Partition</span><span lang="zh">劃分方法</span></label><select id="l1-part"></select></div>
+          <div class="ctrl-row"><label class="ctrl-lab" for="l1-n" id="l1-n-lab"></label><input type="range" id="l1-n" min="3" max="14" value="6"><span class="kval" id="l1-nv"></span></div>
+          <div class="ctrl-row">
+            <label class="switch"><input type="checkbox" id="l1-train" checked><span lang="en">train</span><span lang="zh">訓練</span></label>
+            <label class="switch"><input type="checkbox" id="l1-test" checked><span lang="en">test·normal</span><span lang="zh">測試·正常</span></label>
+            <label class="switch"><input type="checkbox" id="l1-abn" checked><span lang="en">test·abnormal</span><span lang="zh">測試·異常</span></label>
+          </div>
+        </div>
+        <div class="scores" id="l1-scores"></div>
+        <p class="note" id="l1-note"></p>
+      </div>
+    </div>
+    <div class="legend">
+      <span><svg width="12" height="12"><circle cx="6" cy="6" r="3" fill="#8CB8FF"/></svg><span lang="en">train (colored by abstract state)</span><span lang="zh">訓練（依抽象狀態上色）</span></span>
+      <span><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="none" stroke="#E7EBF3"/></svg><span lang="en">test normal</span><span lang="zh">測試正常</span></span>
+      <span><svg width="12" height="12"><path d="M2 2L10 10M10 2L2 10" stroke="#F4C26B" stroke-width="1.6"/></svg><span lang="en">test abnormal</span><span lang="zh">測試異常</span></span>
+      <span><span class="sw" style="background:var(--bad)"></span><span lang="en">unseen (falls outside every abstract state)</span><span lang="zh">未見（落在所有抽象狀態之外）</span></span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 04 LAB2 ================= -->
+<section id="s4" class="sec-wide">
+  <div class="sec-head"><span class="sec-num">04</span><div>
+    <h2><span lang="en">Lab 2 · Building the DTMC</span><span lang="zh">實驗室 2 · 建構 DTMC</span></h2>
+    <p class="sec-sub"><span lang="en">Count abstract transitions, normalize rows, then read off stationary distribution, entropy and sink states</span><span lang="zh">計數抽象轉移、列正規化，再讀出穩態分布、熵與匯點狀態</span></p></div></div>
+  <div class="col" style="margin-bottom:24px">
+    <p><span lang="en">A DTMC is the tuple <code>(S̄, s̄₀, δ̄, P̄)</code>. Its transition probability is nothing more than <strong>#concrete transitions s̄→s̄′ ÷ #outgoing transitions of s̄</strong>. So the model quality depends directly on how many traces you have seen — drag the trace count and watch the estimate converge to the (hidden) truth. Click states in the graph to score a path: for OOD detection, the mean transition probability <em>is</em> the semantic score.</span><span lang="zh">DTMC 是元組 <code>(S̄, s̄₀, δ̄, P̄)</code>。轉移機率就是 <strong>具體轉移 s̄→s̄′ 的數量 ÷ s̄ 的外向轉移總數</strong>，所以模型品質直接取決於看過多少軌跡——拖曳軌跡數，看估計值收斂到（隱藏的）真實值。在圖上依序點選狀態即可為路徑評分：在 OOD 偵測中，平均轉移機率<em>就是</em>語意分數。</span></p>
+  </div>
+  <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">Transition-model builder</span><span lang="zh">轉移模型建構器</span></p><p class="fig-note"><span lang="en">Click nodes to build a path.</span><span lang="zh">點選節點建立路徑。</span></p><span class="badge-sim">SIMULATED</span></div>
+    <div class="demo">
+      <div class="demo-vis twin">
+        <p class="vis-label"><span lang="en">Abstract state graph (edge width = P̂)</span><span lang="zh">抽象狀態圖（邊寬 = P̂）</span></p>
+        <div class="vis-box"><svg class="stage" id="l2-graph" viewBox="100 6 360 350"></svg></div>
+        <p class="vis-label" style="margin-top:14px"><span lang="en">Estimated transition matrix P̂ (rows = from)</span><span lang="zh">估計轉移矩陣 P̂（列 = 起點）</span></p>
+        <div class="vis-box"><svg class="stage" id="l2-mat" viewBox="0 0 560 300"></svg></div>
+      </div>
+      <div class="demo-side">
+        <div class="ctrls">
+          <div class="ctrl-row"><label class="ctrl-lab" for="l2-n"><span lang="en">States |S̄|</span><span lang="zh">狀態數 |S̄|</span></label><input type="range" id="l2-n" min="4" max="10" value="7"><span class="kval" id="l2-nv"></span></div>
+          <div class="ctrl-row"><label class="ctrl-lab" for="l2-m"><span lang="en">Traces seen</span><span lang="zh">看過軌跡數</span></label><input type="range" id="l2-m" min="5" max="500" value="120"><span class="kval" id="l2-mv"></span></div>
+          <div class="ctrl-row"><label class="ctrl-lab" for="l2-d"><span lang="en">Determinism of true LLM</span><span lang="zh">真實 LLM 的確定性</span></label><input type="range" id="l2-d" min="0" max="100" value="45"><span class="kval" id="l2-dv"></span></div>
+        </div>
+        <div class="scores" id="l2-scores"></div>
+        <div>
+          <p class="vis-label"><span lang="en">Stationary-distribution entropy vs. its bounds</span><span lang="zh">穩態分布熵與其上下界</span></p>
+          <div class="vis-box"><svg class="stage" id="l2-gauge" viewBox="0 0 520 74"></svg></div>
+        </div>
+        <div>
+          <p class="vis-label"><span lang="en">Path scorer</span><span lang="zh">路徑評分</span> <button class="btn" id="l2-clear" type="button" style="margin-left:8px;padding:1px 9px"><span lang="en">clear</span><span lang="zh">清除</span></button>
+            <button class="btn" id="l2-typ" type="button" style="padding:1px 9px"><span lang="en">typical</span><span lang="zh">典型路徑</span></button>
+            <button class="btn" id="l2-odd" type="button" style="padding:1px 9px"><span lang="en">odd</span><span lang="zh">怪異路徑</span></button></p>
+          <p class="note" id="l2-path"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 05 LAB3 ================= -->
+<section id="s5" class="sec-wide">
+  <div class="sec-head"><span class="sec-num">05</span><div>
+    <h2><span lang="en">Lab 3 · Semantics binding &amp; token-level detection</span><span lang="zh">實驗室 3 · 語意綁定與逐 token 偵測</span></h2>
+    <p class="sec-sub"><span lang="en">Every abstract state carries a semantic value; a trace's mean value is its score</span><span lang="zh">每個抽象狀態帶有語意值；軌跡的平均值即為分數</span></p></div></div>
+  <div class="col" style="margin-bottom:24px">
+    <p><span lang="en">Semantics <code>θ</code> says how well the LLM is satisfying a trust property in that state. For hallucination it is the truthfulness of answers that passed through the state (GPT-judge, pass@1, or a GPT-3.5 verdict); for OOD and adversarial inputs it is the <em>transition probability</em>. The abstract semantics <code>θ̄</code> of a state is the mean over its concrete members. A trace's <strong>semantic score</strong> is <code>AVG(θ̄(s̄ᵢ))</code>; below a threshold ⇒ abnormal — and the first low state tells you <em>where</em> the model went wrong.</span><span lang="zh">語意 <code>θ</code> 表示 LLM 在該狀態下對某項可信賴性的滿足程度。幻覺情境是經過該狀態之答案的真實性（GPT-judge、pass@1 或 GPT-3.5 判定）；OOD 與對抗情境則是<em>轉移機率</em>。狀態的抽象語意 <code>θ̄</code> 為其具體成員的平均。軌跡的<strong>語意分數</strong>為 <code>AVG(θ̄(s̄ᵢ))</code>；低於門檻 ⇒ 異常，而第一個低分狀態告訴你模型<em>在哪裡</em>出錯。</span></p>
+  </div>
+  <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">Trace inspector</span><span lang="zh">軌跡檢視器</span></p><p class="fig-note"><span lang="en">Pick an example, move the threshold.</span><span lang="zh">選範例、移動門檻。</span></p><span class="badge-sim" id="l3-badge">SIMULATED</span></div>
+    <div class="demo">
+      <div class="demo-vis">
+        <p class="vis-label"><span lang="en">Prompt &amp; answer tokens → abstract state → semantics θ̄</span><span lang="zh">提示與回答 token → 抽象狀態 → 語意 θ̄</span></p>
+        <div id="l3-prompt" class="note" style="margin-bottom:10px"></div>
+        <div class="vis-box" style="padding:10px"><div class="tok-row" id="l3-toks"></div></div>
+        <p class="vis-label" style="margin-top:14px"><span lang="en">Semantics along the trace</span><span lang="zh">沿軌跡的語意值</span></p>
+        <div class="vis-box"><svg class="stage" id="l3-chart" viewBox="0 0 620 220"></svg></div>
+      </div>
+      <div class="demo-side">
+        <div class="ctrls">
+          <div class="ctrl-row"><label class="ctrl-lab" for="l3-ex"><span lang="en">Example</span><span lang="zh">範例</span></label><select id="l3-ex"></select></div>
+          <div class="ctrl-row"><label class="ctrl-lab" for="l3-th"><span lang="en">Threshold</span><span lang="zh">門檻</span></label><input type="range" id="l3-th" min="0" max="100" value="45"><span class="kval" id="l3-thv"></span></div>
+        </div>
+        <div class="scores" id="l3-scores"></div>
+        <p class="note" id="l3-note"></p>
+        <p class="note" id="l3-pick" style="opacity:.8"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 06 LAB4 ================= -->
+<section id="s6" class="sec-wide">
+  <div class="sec-head"><span class="sec-num">06</span><div>
+    <h2><span lang="en">Lab 4 · From scores to ROC AUC</span><span lang="zh">實驗室 4 · 從分數到 ROC AUC</span></h2>
+    <p class="sec-sub"><span lang="en">The paper's headline metric, reconstructed from its reported mean / median / max</span><span lang="zh">以論文報告的平均／中位／最大值重建其主要指標</span></p></div></div>
+  <div class="col" style="margin-bottom:24px">
+    <p><span lang="en">Detection quality is summarized by ROC AUC: the probability that a random normal sample scores higher than a random abnormal one (0.5 = coin flip). Choose a task and one of its reported AUCs; the lab synthesizes two score populations with exactly that separation (equal-variance Gaussians, <code>AUC = Φ(d′/√2)</code>) so you can see what "0.65" versus "0.90" means in practice.</span><span lang="zh">偵測品質以 ROC AUC 概括：隨機一個正常樣本分數高於隨機一個異常樣本的機率（0.5 = 擲硬幣）。選擇任務與其報告的 AUC，實驗室會合成具有該分離度的兩群分數（等變異數高斯，<code>AUC = Φ(d′/√2)</code>），讓你直觀看到「0.65」與「0.90」的差別。</span></p>
+  </div>
+  <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">Score distributions &amp; ROC</span><span lang="zh">分數分布與 ROC</span></p><p class="fig-note"><span lang="en">AUC targets are from the paper's Table V.</span><span lang="zh">AUC 目標值來自論文表 V。</span></p><span class="badge-sim" id="l4-badge">SIMULATED</span></div>
+    <div class="demo">
+      <div class="demo-vis twin">
+        <p class="vis-label"><span lang="en">Semantic score histogram</span><span lang="zh">語意分數直方圖</span></p>
+        <div class="vis-box"><svg class="stage" id="l4-hist" viewBox="0 0 620 230"></svg></div>
+        <p class="vis-label" style="margin-top:14px"><span lang="en">ROC curve</span><span lang="zh">ROC 曲線</span></p>
+        <div class="vis-box"><svg class="stage" id="l4-roc" viewBox="0 0 620 320"></svg></div>
+      </div>
+      <div class="demo-side">
+        <div class="ctrls">
+          <div class="ctrl-row"><label class="ctrl-lab" for="l4-task"><span lang="en">Task</span><span lang="zh">任務</span></label><select id="l4-task"></select></div>
+          <div class="ctrl-row"><label class="ctrl-lab" for="l4-q"><span lang="en">Config quality</span><span lang="zh">設定品質</span></label><select id="l4-q"></select></div>
+          <div class="ctrl-row" id="l4-custom-row"><label class="ctrl-lab" for="l4-auc">AUC</label><input type="range" id="l4-auc" min="50" max="99" value="70"><span class="kval" id="l4-aucv"></span></div>
+          <div class="ctrl-row"><label class="ctrl-lab" for="l4-th"><span lang="en">Threshold</span><span lang="zh">門檻</span></label><input type="range" id="l4-th" min="0" max="100" value="50"><span class="kval" id="l4-thv"></span></div>
+        </div>
+        <div class="scores" id="l4-scores"></div>
+        <p class="note" id="l4-note"></p>
+      </div>
+    </div>
+    <div class="legend"><span><span class="sw" style="background:var(--good)"></span><span lang="en">normal</span><span lang="zh">正常</span></span><span><span class="sw" style="background:var(--bad)"></span><span lang="en">abnormal</span><span lang="zh">異常</span></span><span><span lang="en">Rule: score &lt; threshold ⇒ flagged abnormal</span><span lang="zh">規則：分數 &lt; 門檻 ⇒ 判為異常</span></span></div>
+  </div>
+</section>
+
+<!-- ================= 07 FORMULAS ================= -->
+<section id="s7">
+  <div class="sec-head"><span class="sec-num">07</span><div>
+    <h2><span lang="en">The mathematics &amp; the 12 metrics</span><span lang="zh">數學與 12 個指標</span></h2>
+    <p class="sec-sub"><span lang="en">Core equations from the paper; metric definitions from its Appendix A (arXiv v2)</span><span lang="zh">核心公式取自論文；指標定義取自附錄 A（arXiv v2）</span></p></div></div>
+  <div class="col">
+    <p class="in-lab-key"><span class="lab-tag">Lab</span><span lang="en">Darker, dashed cards are the formulas you can play with in the labs, with live numbers. Hover any symbol in a formula to see what it means.</span><span lang="zh">較暗的虛線卡片，是可以在實驗室中操作、並帶入即時數字的公式。把滑鼠移到公式裡的任何符號上，可以看它的意思。</span></p>
+    <div id="core-eq"></div>
+  </div>
+  <div style="margin-top:34px">
+    <div class="seg tabs" role="group" aria-label="metric family"><button id="mt-model" type="button" aria-pressed="true"><span lang="en">Abstract-model-wise (6)</span><span lang="zh">抽象模型層級（6）</span></button><button id="mt-sem" type="button" aria-pressed="false"><span lang="en">Semantics-wise (6, new)</span><span lang="zh">語意層級（6，新提出）</span></button></div>
+    <div class="metric-grid" id="metric-grid"></div>
+  </div>
+</section>
+
+<!-- ================= 08 LAB5 ================= -->
+<section id="s8" class="sec-wide">
+  <div class="sec-head"><span class="sec-num">08</span><div>
+    <h2><span lang="en">Lab 5 · The 180-configuration space</span><span lang="zh">實驗室 5 · 180 種設定空間</span></h2>
+    <p class="sec-sub"><span lang="en">Which quality metric predicts detection performance? Explore it per task</span><span lang="zh">哪個品質指標能預測偵測效能？逐任務探索</span></p></div></div>
+  <div class="col" style="margin-bottom:24px">
+    <p><span lang="en">Table III enumerates 180 hyper-parameter settings (27 + 81 + 18 + 54). Each dot below is one setting: x is a quality metric, y is its ROC AUC. If a metric tracks AUC, you can rank settings by that metric <em>without</em> labeled abnormal data — the paper's practitioner recipe. The simulated cloud is generated so its Pearson correlations match the paper's Tables VII/VIII; the Kendall τ and the shape of the cloud are computed live.</span><span lang="zh">表 III 列舉 180 種超參數設定（27 + 81 + 18 + 54）。下圖每個點是一種設定：x 是品質指標、y 是其 ROC AUC。若某指標與 AUC 同步，就能<em>不需</em>異常標註資料、僅憑該指標對設定排序——這是論文給實務者的做法。模擬點雲的 Pearson 相關係數依論文表 VII/VIII 設計；Kendall τ 與點雲形狀則為即時計算。</span></p>
+  </div>
+  <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">Configuration explorer</span><span lang="zh">設定探索器</span></p><p class="fig-note"><span lang="en">Hover for a config; click to pin it.</span><span lang="zh">懸停查看設定；點擊固定。</span></p><span class="badge-sim" id="l5-badge">SIMULATED</span></div>
+    <div class="demo">
+      <div class="demo-vis twin t5">
+        <p class="vis-label"><span lang="en">Metric value vs. ROC AUC</span><span lang="zh">指標值 vs. ROC AUC</span></p>
+        <div class="vis-box"><svg class="stage" id="l5-sc" viewBox="0 0 620 420"></svg></div>
+        <p class="vis-label" style="margin-top:14px"><span lang="en">Mean AUC by construction choice</span><span lang="zh">各建構選擇的平均 AUC</span></p>
+        <div class="vis-box"><svg class="stage" id="l5-bars" viewBox="0 0 620 190"></svg></div>
+        <div><p class="vis-label"><span lang="en">Top 5 visible configs by AUC</span><span lang="zh">可見設定 AUC 前 5 名</span></p><div class="tablewrap"><table id="l5-top"></table></div></div>
+      </div>
+      <div class="demo-side">
+        <div class="ctrls">
+          <div class="ctrl-row"><label class="ctrl-lab" for="l5-task"><span lang="en">Task</span><span lang="zh">任務</span></label><select id="l5-task"></select></div>
+          <div class="ctrl-row"><label class="ctrl-lab" for="l5-metric"><span lang="en">x-axis metric</span><span lang="zh">x 軸指標</span></label><select id="l5-metric"></select></div>
+          <div class="ctrl-row">
+            <label class="switch"><input type="checkbox" id="l5-dtmc" checked>DTMC</label>
+            <label class="switch"><input type="checkbox" id="l5-hmm" checked>HMM</label>
+            <label class="switch"><input type="checkbox" id="l5-grid" checked>Grid</label>
+            <label class="switch"><input type="checkbox" id="l5-gmm" checked>GMM</label>
+            <label class="switch"><input type="checkbox" id="l5-km" checked>KMeans</label>
+          </div>
+        </div>
+        <div class="scores" id="l5-scores"></div>
+        <p class="note" id="l5-pin"></p>
+      </div>
+    </div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--c-grid)"></span>Grid</span><span><span class="sw" style="background:var(--c-gmm)"></span>GMM</span><span><span class="sw" style="background:var(--c-km)"></span>KMeans</span>
+      <span><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#AEB7CA"/></svg>DTMC</span><span><svg width="12" height="12"><path d="M6 1L11 6L6 11L1 6Z" fill="#AEB7CA"/></svg>HMM</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 09 RESULTS ================= -->
+<section id="s9" class="sec-wide">
+  <div class="sec-head"><span class="sec-num">09</span><div>
+    <h2><span lang="en">Results from the paper</span><span lang="zh">論文實驗結果</span></h2>
+    <p class="sec-sub"><span lang="en">Transcribed directly from Tables IV and V — this figure does not depend on simulation</span><span lang="zh">直接轉錄自表 IV 與表 V——此圖不依賴模擬</span></p></div></div>
+  <div class="split">
+  <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">Detection performance across 10 tasks</span><span lang="zh">10 個任務的偵測效能</span></p><p class="fig-note"><span lang="en">Each row aggregates 180 configurations.</span><span lang="zh">每列彙整 180 種設定。</span></p><span class="badge-paper">PAPER</span></div>
+    <div style="padding:16px 20px">
+      <div class="seg tabs"><button id="rs-auc" type="button" aria-pressed="true"><span lang="en">ROC AUC range</span><span lang="zh">ROC AUC 範圍</span></button><button id="rs-sig" type="button" aria-pressed="false"><span lang="en">RQ1 significant proportion</span><span lang="zh">RQ1 顯著比例</span></button></div>
+      <div class="vis-box"><svg class="stage" id="rs-svg" viewBox="0 0 900 400"></svg></div>
+    </div>
+  </div>
+  <div>
+    <div class="cards">
+      <div class="card"><span class="tag">RQ1</span><h3><span lang="en">Can it tell normal from abnormal?</span><span lang="zh">能區分正常與異常嗎？</span></h3><p><span lang="en">Yes. Normal-train and normal-test transition distributions coincide; abnormal ones differ (6 of 7 tasks visibly). 20 %–64 % of all 180 models are individually significant (Mann-Whitney U, p &lt; 0.05).</span><span lang="zh">可以。正常訓練與測試的轉移分布重合，異常則不同（7 個任務中 6 個明顯）。180 個模型中 20%–64% 各自達顯著（Mann-Whitney U，p &lt; 0.05）。</span></p></div>
+      <div class="card"><span class="tag">RQ2</span><h3><span lang="en">What shapes model quality?</span><span lang="zh">什麼影響模型品質？</span></h3><p><span lang="en">More PCA components ⇒ better perplexity &amp; coverage but worse sensitivity &amp; SDE. Clustering ⇒ compact and well-covered; grid ⇒ better distribution/transition fidelity. DTMC ≥ HMM on most metrics.</span><span lang="zh">PCA 成分越多 ⇒ 困惑度與覆蓋率較佳，但敏感度與 SDE 較差。分群 ⇒ 精簡且覆蓋好；網格 ⇒ 分布／轉移保真較佳。多數指標上 DTMC ≥ HMM。</span></p></div>
+      <div class="card"><span class="tag">RQ3</span><h3><span lang="en">Which metrics predict AUC?</span><span lang="zh">哪些指標預測 AUC？</span></h3><p><span lang="en">Semantic preciseness (PRE) correlates strongly everywhere (Pearson 0.81–1.00); perplexity is the broadly useful model-wise metric. Others flip sign across tasks — combine several.</span><span lang="zh">語意精確度（PRE）處處強相關（Pearson 0.81–1.00）；困惑度是最廣用的模型層級指標。其他指標跨任務正負不一——需組合使用。</span></p></div>
+      <div class="card"><span class="tag"><span lang="en">Caveat</span><span lang="zh">限制</span></span><h3><span lang="en">Honest reading</span><span lang="zh">誠實解讀</span></h3><p><span lang="en">Most mean AUCs sit at 0.55–0.70; the 0.83–0.90 headline numbers are best-of-180 configurations. White-box only, three 7–13B models, and results are configuration-sensitive.</span><span lang="zh">多數平均 AUC 落在 0.55–0.70；0.83–0.90 的亮眼數字是 180 種設定中的最佳者。僅限白箱、僅 3 個 7–13B 模型，且結果對設定敏感。</span></p></div>
+    </div>
+  </div></div>
+</section>
+
+
+<!-- ================= 11 LIVE ================= -->
+<section id="s11" class="sec-wide">
+  <div class="sec-head"><span class="sec-num">10</span><div>
+    <h2><span lang="en">Implementation</span><span lang="zh">實作</span></h2>
+    <p class="sec-sub"><span lang="en">We built the LUNA pipeline on a small local GPT-2 — two versions compared, the better one is run on your text below</span><span lang="zh">我們在本機的小型 GPT-2 上實作 LUNA 流程：比較兩個版本，下方用分數較高的那個分析你輸入的文字</span></p></div></div>
+  <div class="col" style="margin-bottom:24px">
+    <p class="note"><span lang="en"><b>Setup.</b> Run <code>python server.py</code> in this folder, then open <code>http://127.0.0.1:8000/</code>. The model is GPT-2 small on CPU, trained on TruthfulQA; which of the two versions below is served is decided on a validation split.</span><span lang="zh"><b>啟動方式：</b>在此資料夾執行 <code>python server.py</code>，再開啟 <code>http://127.0.0.1:8000/</code>。模型是 CPU 上的 GPT-2 small，以 TruthfulQA 訓練；下表兩個版本中，用哪一個是由驗證集分數決定。</span></p>
+    <div id="lv-versions"></div>
+  </div>
+  <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">Trace inspector</span><span lang="zh">軌跡檢視器</span></p><p class="fig-note" id="lv-status"></p><span class="badge-paper" id="lv-badge" style="display:none">LOCAL</span></div>
+    <div class="demo">
+      <div class="demo-vis">
+        <div class="ctrls">
+          <div class="ctrl-row"><label class="ctrl-lab" for="lv-q"><span lang="en">Question (optional)</span><span lang="zh">問題（可留空）</span></label><input type="text" id="lv-q" style="flex:1;min-width:180px;background:var(--surface-2);color:var(--ink);border:1px solid var(--rule);border-radius:5px;padding:6px 9px;font-family:var(--sans)" value="What happens if you crack your knuckles a lot?"></div>
+          <div class="ctrl-row" style="align-items:flex-start"><label class="ctrl-lab" for="lv-a" style="padding-top:6px"><span lang="en">Answer</span><span lang="zh">回答</span></label><textarea id="lv-a" rows="3" style="flex:1;min-width:180px;background:var(--surface-2);color:var(--ink);border:1px solid var(--rule);border-radius:5px;padding:6px 9px;font-family:var(--sans);resize:vertical">If you crack your knuckles a lot, you may develop arthritis.</textarea></div>
+          <div class="ctrl-row">
+            <button class="btn" id="lv-go" type="button" style="background:var(--accent);color:#0A1020"><span lang="en">Analyze</span><span lang="zh">分析</span></button>
+            <button class="btn" id="lv-ex1" type="button"><span lang="en">example: true</span><span lang="zh">範例：正確</span></button>
+            <button class="btn" id="lv-ex2" type="button"><span lang="en">example: false</span><span lang="zh">範例：錯誤</span></button>
+            <button class="btn" id="lv-ex3" type="button"><span lang="en">example: gibberish</span><span lang="zh">範例：亂碼</span></button>
+          </div>
+        </div>
+        <p class="vis-label" style="margin-top:14px"><span lang="en">Tokens → abstract state → P(previous → this)</span><span lang="zh">Token → 抽象狀態 → P(前一狀態 → 此狀態)</span></p>
+        <div class="vis-box" style="padding:10px"><div class="tok-row" id="lv-toks"></div></div>
+      </div>
+      <div class="demo-side">
+        <div class="scores" id="lv-scores"></div>
+        <p class="note" id="lv-note"></p>
+      </div>
+    </div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--good)"></span><span lang="en">common transition</span><span lang="zh">常見轉移</span></span>
+      <span><span class="sw" style="background:var(--warm)"></span><span lang="en">rare</span><span lang="zh">少見</span></span>
+      <span><span class="sw" style="background:var(--bad)"></span><span lang="en">almost never seen in training (red outline = first such token)</span><span lang="zh">訓練中幾乎未見（紅框 = 第一個出現的 token）</span></span>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<footer><div class="wrap">
+  <span lang="en">Companion page for: D. Song et al., “LUNA: A Model-Based Universal Analysis Framework for Large Language Models,” IEEE TSE 50(7):1921–1943, 2024 · arXiv:2310.14211 · code &amp; data: sites.google.com/view/llm-luna. Simulated panels are illustrative only and not results of the paper.</span>
+  <span lang="zh">本頁為下列論文的互動導讀：D. Song 等，“LUNA: A Model-Based Universal Analysis Framework for Large Language Models”，IEEE TSE 50(7):1921–1943，2024 · arXiv:2310.14211 · 程式碼與資料：sites.google.com/view/llm-luna。標示為模擬的面板僅供說明，並非論文結果。</span>
+</div></footer>
+
+<script>
+'use strict';
+/* ============================ core helpers ============================ */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+let lang = 'zh';
+const T = (en, zh) => lang === 'zh' ? zh : en;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const f2 = v => (v == null || isNaN(v)) ? '—' : v.toFixed(2);
+const f3 = v => (v == null || isNaN(v)) ? '—' : v.toFixed(3);
+function rng(seed){ return function(){ seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function gauss(r){ let u = 0; while (!u) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); }
+function hash(str){ let h = 2166136261; for (const c of str) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN;
+const sd = a => { const m = mean(a); return Math.sqrt(mean(a.map(x => (x - m) ** 2))); };
+function erf(x){ const s = Math.sign(x); x = Math.abs(x); const t = 1 / (1 + 0.3275911 * x);
+  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x); return s * y; }
+const Phi = x => 0.5 * (1 + erf(x / Math.SQRT2));
+function invPhi(p){ let lo = -8, hi = 8; for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (Phi(m) < p) lo = m; else hi = m; } return (lo + hi) / 2; }
+function pearson(x, y){ const mx = mean(x), my = mean(y); let a = 0, b = 0, c = 0;
+  for (let i = 0; i < x.length; i++) { a += (x[i] - mx) * (y[i] - my); b += (x[i] - mx) ** 2; c += (y[i] - my) ** 2; } return a / Math.sqrt(b * c); }
+function kendall(x, y){ let c = 0, d = 0, tx = 0, ty = 0; const n = x.length;
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const a = Math.sign(x[i] - x[j]), b = Math.sign(y[i] - y[j]);
+    if (a === 0 && b === 0) continue; if (a === 0) tx++; else if (b === 0) ty++; else if (a === b) c++; else d++; }
+  return (c - d) / Math.sqrt((c + d + tx) * (c + d + ty)); }
+function ticks(lo, hi, n){ const step0 = (hi - lo) / n; const mag = Math.pow(10, Math.floor(Math.log10(step0))); const r = step0 / mag;
+  const step = (r < 1.5 ? 1 : r < 3.5 ? 2 : r < 7.5 ? 5 : 10) * mag; const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10)); return out; }
+const tip = $('#tip');
+function showTip(html, e){ tip.innerHTML = html; tip.style.display = 'block'; const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = clamp(e.clientX + 14, 4, innerWidth - w - 6) + 'px'; tip.style.top = clamp(e.clientY + 14, 4, innerHeight - h - 6) + 'px'; }
+function hideTip(){ tip.style.display = 'none'; }
+function bindTips(svg){ svg.querySelectorAll('[data-tip]').forEach(el => {
+  el.addEventListener('mousemove', e => showTip(el.dataset.tip, e)); el.addEventListener('mouseleave', hideTip); }); }
+function fillSelect(el, opts, keep){ const cur = keep ? el.value : null; el.innerHTML = opts.map(o => `<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('');
+  if (cur && opts.some(o => o[0] === cur)) el.value = cur; }
+const PAL = ['#8CB8FF','#F4C26B','#5FD3A0','#C2B4FF','#FF9E7B','#6FD8E8','#F28BC0','#B5D66B','#E8D27A','#9AA8FF'];
+
+/* ============================ paper data ============================ */
+// Table V (ROC AUC), Table IV (significant proportion), Tables VII/VIII (Pearson, Kendall).
+// sem order: PRE ENT SL NDT IVT NVT ; mod order: SUC COV SEN SS PERP SDE
+const TASKS = [
+ {id:'OOD-A', p:'OOD', llm:'Alpaca-7b', min:.50, mean:.55, med:.53, max:.65, sd:.04, sig:51, pv:'1.02e-15',
+   semR:[.94,.34,.14,-.25,-.25,-.34], semK:[.72,.25,.01,-.10,-.16,-.13], modR:[-.35,-.33,.05,.35,.46,.27], modK:[-.2,-.17,.02,.07,.32,.18]},
+ {id:'ADV-A', p:'ADV', llm:'Alpaca-7b', min:.50, mean:.59, med:.56, max:.83, sd:.09, sig:51, pv:'6.37e-35',
+   semR:[.95,-.59,-.18,.48,-.19,-.75], semK:[.79,-.21,-1.23,.14,.08,-.74], modR:[-.38,-.33,.04,.34,.46,.27], modK:[-.14,-.27,.16,.13,.29,.11]},
+ {id:'TQA-A', p:'HAL', llm:'Alpaca-7b', min:.55, mean:.67, med:.69, max:.71, sd:.04, sig:20, pv:'4.82e-206',
+   semR:[.81,-.07,-.18,-.38,-.03,.51], semK:[.75,.11,-.16,-.37,-.13,.16], modR:[.02,.06,.20,.04,-.08,-.44], modK:[.12,.12,.03,-.02,-.05,-.11]},
+ {id:'OOD-L', p:'OOD', llm:'Llama2-7b', min:.50, mean:.63, med:.64, max:.85, sd:.11, sig:50, pv:'1.75e-10',
+   semR:[.92,.79,.88,-.65,-.57,-.52], semK:[.73,.44,.65,-.52,-.19,-.15], modR:[-.05,-.06,-.09,-.20,.90,-.15], modK:[.06,-.01,-.05,-.05,.58,-.13]},
+ {id:'ADV-L', p:'ADV', llm:'Llama2-7b', min:.50, mean:.62, med:.63, max:.80, sd:.07, sig:51, pv:'1.09e-14',
+   semR:[.98,.47,-.23,-.52,-.16,.60], semK:[.71,.15,-.04,-.12,.17,.17], modR:[-.07,-.28,.07,.64,.90,.56], modK:[.01,-.38,.06,.32,.72,.46]},
+ {id:'TQA-L', p:'HAL', llm:'Llama2-7b', min:.52, mean:.64, med:.64, max:.69, sd:.04, sig:33, pv:'3.32e-18',
+   semR:[1.0,.52,.69,-.30,-.46,-.36], semK:[1.0,.37,.51,-.28,-.23,.03], modR:[.45,.37,.11,.28,.63,.11], modK:[.29,.43,.12,.32,.59,.01]},
+ {id:'HE-C', p:'HAL', llm:'CodeLlama-13b', min:.52, mean:.69, med:.69, max:.90, sd:.04, sig:64, pv:'3.84e-11',
+   semR:[1.0,.77,.63,-.23,-.49,-.47], semK:[1.0,.46,.24,-.21,-.21,-.23], modR:[.30,.33,.06,-.09,.57,-.28], modK:[.22,.29,.01,-.10,.35,-.18]},
+ {id:'MBPP-C', p:'HAL', llm:'CodeLlama-13b', min:.54, mean:.67, med:.67, max:.73, sd:.05, sig:49, pv:'2.33e-4',
+   semR:[.99,.97,.78,-.21,-.35,-.50], semK:[.83,.50,.46,-.24,-.14,-.50], modR:[.48,-.11,.08,-.13,.56,-.07], modK:[.17,-.08,-.02,-.04,.48,-.08]},
+ {id:'CSNJ-C', p:'HAL', llm:'CodeLlama-13b', min:.53, mean:.66, med:.66, max:.70, sd:.03, sig:36, pv:'3.69e-194',
+   semR:[.96,.58,.61,-.22,-.46,-.42], semK:[.74,.41,.30,-.20,-.21,-.08], modR:[.35,-.02,.05,.16,.37,-.17], modK:[.30,-.01,.03,.29,.37,-.15]},
+ {id:'TCS-C', p:'HAL', llm:'CodeLlama-13b', min:.62, mean:.70, med:.72, max:.74, sd:.03, sig:35, pv:'4.72e-41',
+   semR:[.95,.79,.83,-.23,-.46,-.67], semK:[.71,.42,.30,-.27,-.22,-.32], modR:[.47,.42,.17,.30,.61,-.06], modK:[.35,.33,.04,.27,.53,-.18]}
+];
+const TASK_NAME = {'HE-C':'HumanEval','MBPP-C':'MBPP','CSNJ-C':'CodeSearchNet-Java','TCS-C':'TL-CodeSum','TQA-A':'TruthfulQA','TQA-L':'TruthfulQA','OOD-A':'SST-2 OOD','OOD-L':'SST-2 OOD','ADV-A':'AdvGLUE++','ADV-L':'AdvGLUE++'};
+const taskLabel = t => `${TASK_NAME[t.id]} · ${t.llm}`;
+const MODEL_KEYS = ['SUC','COV','SEN','SS','PERP','SDE'], SEM_KEYS = ['PRE','ENT','SL','NDT','IVT','NVT'];
+const ALL_KEYS = MODEL_KEYS.concat(SEM_KEYS);
+const RANGE = {SUC:[0,1],COV:[0,.6],SEN:[0,.5],SS:[0,.4],PERP:[0,3],SDE:[0,1.5],PRE:[0,1],ENT:[0,1],SL:[0,2],NDT:[0,4],IVT:[0,1],NVT:[0,2]};
+
+/* ============================ simulation ============================ */
+function simStates2d(){
+  const r = rng(2024), C = []; for (let i = 0; i < 6; i++) C.push([(r() - .5) * 8, (r() - .5) * 6]);
+  const pts = [], pick = () => C[Math.floor(r() * C.length)];
+  const norm = split => { const c = pick(); return {x: c[0] + gauss(r) * .55, y: c[1] + gauss(r) * .55, split}; };
+  for (let i = 0; i < 520; i++) pts.push(norm('train'));
+  for (let i = 0; i < 220; i++) pts.push(norm('test'));
+  for (let i = 0; i < 130; i++) {
+    if (r() < .35) { const c = pick(); pts.push({x: c[0] + gauss(r) * .8, y: c[1] + gauss(r) * .8, split: 'abn'}); }
+    else { const a = r() * 6.283, d = 2.3 + r() * 2; pts.push({x: Math.cos(a) * d * 1.2 + gauss(r) * .4, y: Math.sin(a) * d * .9 + gauss(r) * .4, split: 'abn'}); }
+  }
+  return {points: pts};
+}
+function simConfigs(){
+  const out = [];
+  TASKS.forEach(t => {
+    const r = rng(hash(t.id)), rows = [];
+    const add = (part, model, pca, st, hist, hmm, cl) => rows.push({task: t.id, partition: part === 'grid' ? 'grid' : cl, model, pca, states: st, history: hist, hmmComp: hmm});
+    [['grid','DTMC'],['grid','HMM'],['cluster','DTMC'],['cluster','HMM']].forEach(([g, m]) => {
+      if (g === 'grid') for (const pca of [3,5,10]) for (const st of [5,10,15]) for (const h of [1,2,3]) (m === 'HMM' ? [100,200,400] : [null]).forEach(hc => add('grid', m, pca, st, h, hc));
+      else for (const pca of [512,1024,2048]) for (const st of [200,400,600]) for (const cl of ['GMM','KMeans']) (m === 'HMM' ? [100,200,400] : [null]).forEach(hc => add('cluster', m, pca, st, null, hc, cl));
+    });
+    const halluc = t.p === 'HAL';
+    const q = rows.map(c => (c.model === 'DTMC' ? .9 : -.6) + (halluc ? (c.partition === 'grid' ? -.1 : .25) : (c.partition === 'grid' ? .4 : c.partition === 'GMM' ? .1 : -.1)) + gauss(r) * .9);
+    const order = q.map((v, i) => [v, i]).sort((a, b) => a[0] - b[0]);
+    const auc = new Array(rows.length), pw = (t.max - t.min) / Math.max(t.mean - t.min, .01) - 1;
+    order.forEach(([, i], rank) => { const u = rank / (rows.length - 1); auc[i] = t.min + (t.max - t.min) * Math.pow(u, Math.max(pw, .3)); });
+    const ma = mean(auc), sa = sd(auc) || 1;
+    rows.forEach((c, i) => {
+      c.auc = +auc[i].toFixed(4); const z = (auc[i] - ma) / sa; c.metrics = {};
+      ALL_KEYS.forEach(k => {
+        const idx = MODEL_KEYS.indexOf(k), rho = clamp(idx >= 0 ? t.modR[idx] : t.semR[SEM_KEYS.indexOf(k)], -.985, .985);
+        const m = rho * z + Math.sqrt(1 - rho * rho) * gauss(r), [lo, hi] = RANGE[k]; c.metrics[k] = +(lo + (hi - lo) * Phi(m)).toFixed(4);
+      });
+    });
+    out.push(...rows);
+  });
+  return out;
+}
+function simTraces(){
+  return [
+   {id:'tqa-bad', mode:'state', label:'abnormal', prompt:'Which is denser, water vapor or air?', tokens:['Water','vapor','is','denser','than','air','.'],
+    states:['s199','s5','s88','s159','s12','s41','s4'], semantics:[.31,.34,.22,.02,.07,.11,.15]},
+   {id:'tqa-good', mode:'state', label:'normal', prompt:'Which is denser, water vapor or air?', tokens:['Air','is','denser','than','water','vapor','.'],
+    states:['s72','s3','s61','s12','s90','s44','s4'], semantics:[.74,.79,.71,.83,.77,.80,.86]},
+   {id:'he-bad', mode:'state', label:'abnormal', prompt:'def add(a, b): """Return the sum of a and b."""', tokens:['return','a','-','b','#','sum'],
+    states:['s310','s27','s402','s55','s9','s233'], semantics:[.71,.66,.09,.13,.24,.28]},
+   {id:'ood-id', mode:'transition', label:'normal', prompt:'SST-2 (in-distribution): a gorgeous, witty, seductive movie.', tokens:['a','gorgeous',',','witty',',','seductive','movie'],
+    states:['s6','s7','s7','s8','s8','s9','s10'], semantics:[null,.86,.79,.81,.74,.77,.82]},
+   {id:'ood-shk', mode:'transition', label:'abnormal', prompt:'SST-2 (Shakespeare style, OOD): a most gorgeous and witty sight, thou dost behold.', tokens:['a','most','gorgeous','and','witty','sight',',','thou','dost','behold'],
+    states:['s6','s31','s7','s52','s8','s77','s13','s88','s91','s10'], semantics:[null,.52,.41,.29,.22,.17,.31,.12,.09,.18]}
+  ];
+}
+function simulate(){
+  return {meta: {source: 'simulated', generatedAt: new Date().toISOString().slice(0, 10), llms: ['Alpaca-7b', 'Llama2-7b', 'CodeLlama-13b']},
+    states2d: simStates2d(), configs: simConfigs(), traces: simTraces(), scores: null};
+}
+const App = {data: null, sim: null, loaded: {}, source: 'simulated'};
+
+/* ============================ data loading ============================ */
+function mergeData(obj, name){
+  const d = Object.assign({}, App.sim);
+  ['meta','states2d','configs','traces','scores'].forEach(k => { if (obj[k]) { d[k] = obj[k]; App.loaded[k] = true; } });
+  if (obj.configs) { App.realCfg = new Set(obj.configs.map(c => c.task)); d.configs = obj.configs.concat(App.sim.configs.filter(c => !App.realCfg.has(c.task))); }   // tasks missing from the real file stay simulated
+  App.data = d; App.source = name; renderAll();
+}
+async function tryFetch(){
+  if (!/^https?:/.test(location.protocol)) return;
+  try { const r = await fetch('luna-data.json', {cache: 'no-store'}); if (r.ok) mergeData(await r.json(), 'luna-data.json'); } catch (e) {}
+}
+function updatePill(){ const parts = [['states2d', 'Lab 1'], ['traces', 'Lab 3'], ['scores', 'Lab 4'], ['configs', 'Lab 5']].filter(x => App.loaded[x[0]]).map(x => x[1]);
+  const p = $('#src-pill'); p.className = 'pill' + (parts.length ? ' live' : '');
+  p.innerHTML = T('data: ', '資料：') + '<b>' + (parts.length ? T('real · ', '真實 · ') + parts.join(', ') : T('simulated', '模擬')) + '</b>'; }
+
+/* ============================ 01 background figures ============================ */
+function renderBackground(){
+  const C = {ink:'#E7EBF3', mute:'#7C869C', rule:'#2F3A50', acc:'#8CB8FF', acc2:'#C2B4FF', warm:'#F4C26B', sf:'#161D2B', soft:'#16233D'};
+  const tx = (x, y, s, o = {}) => `<text x="${x}" y="${y}" text-anchor="${o.a || 'start'}" font-size="${o.fs || 11}" font-weight="${o.w || 400}" fill="${o.c || C.ink}" style="font-family:var(--sans)">${esc(s)}</text>`;
+  const box = (x, y, w, hh, o = {}) => `<rect x="${x}" y="${y}" width="${w}" height="${hh}" rx="${o.r || 6}" fill="${o.fill || C.sf}" stroke="${o.stroke || C.rule}" stroke-width="${o.sw || 1}"${o.dash ? ' stroke-dasharray="4 3"' : ''}/>`;
+  const defs = `<defs><marker id="bgar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7C869C"/></marker><marker id="bgar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#C2B4FF"/></marker></defs>`;
+  const ar = (x1, y1, x2, y2) => `<path d="M${x1} ${y1} L${x2} ${y2}" stroke="${C.mute}" stroke-width="1.4" marker-end="url(#bgar)"/>`;
+  /* --- what each approach looks at --- */
+  let a = defs; const lanes = [
+    {t: T('Black-box testing', '黑箱測試／評測'), u: T('e.g. HELM · sees the output text only', '如 HELM · 只看輸出文字'), res: T('answer right / wrong?', '答案對／錯？')},
+    {t: T('Probing the activations', '探測隱藏激活'), u: T('e.g. SAPLMA, ITI · one aspect', '如 SAPLMA、ITI · 單一面向'), res: T('one activation → true / false', '單一激活 → 真／假')},
+    {t: 'LUNA', u: T('the whole path of states', '整條狀態軌跡'), res: T('DTMC path → score + where', 'DTMC 路徑 → 分數 + 定位')}];
+  lanes.forEach((L, i) => { const y = 8 + i * 84, cy = y + 34;
+    a += box(2, y, 636, 76, {fill: i === 2 ? C.soft : '#0F141E', stroke: i === 2 ? C.acc : C.rule}) + tx(14, y + 24, L.t, {w: 700, c: i === 2 ? C.acc : C.ink, fs: 12}) + tx(14, y + 42, L.u, {fs: 10, c: C.mute});
+    for (let k = 0; k < 5; k++) { const x = 212 + k * 52; const hidden = i === 0;
+      a += box(x, cy - 12, 44, 24, {r: 5, fill: hidden ? 'none' : C.sf, stroke: hidden ? C.rule : C.acc, dash: hidden}) + tx(x + 22, cy + 4, 'w' + '₁₂₃₄₅'[k], {a: 'middle', c: hidden ? C.mute : C.ink});
+      if (i === 1 && k === 4) a += `<circle cx="${x + 22}" cy="${cy + 26}" r="5" fill="${C.warm}"/>`;
+      if (i === 1 && k < 4) a += `<circle cx="${x + 22}" cy="${cy + 26}" r="3" fill="${C.rule}"/>`;
+      if (i === 2) { a += tx(x + 22, cy + 28, 's' + [3, 7, 2, 7, 5][k], {a: 'middle', fs: 10, c: C.acc2}); if (k < 4) a += `<path d="M${x + 45} ${cy} H${x + 51}" stroke="${C.acc2}" marker-end="url(#bgar2)"/>`; } }
+    if (i === 0) a += box(206, cy - 18, 264, 36, {r: 8, fill: 'none', stroke: C.warm, dash: true, sw: 1.4}) + tx(338, cy + 32, T('looks only here', '只看這裡'), {a: 'middle', fs: 9.5, c: C.warm});
+    a += ar(474, cy, 496, cy) + box(498, cy - 17, 134, 34, {r: 6, fill: C.sf}) + tx(565, cy + 4, L.res, {a: 'middle', fs: i === 1 ? 9 : 9.5});
+  });
+  $('#bg-ana').innerHTML = a;
+  const rows = [
+    [T('Benchmarks, black-box (HELM)', '基準評測、黑箱（HELM）'), T('Final text: 30 LMs × 42 scenarios × 7 metrics', '最終輸出文字：30 個 LM × 42 情境 × 7 指標'), T('Shows that a model fails, not where inside it', '只知道模型失敗，不知道內部哪裡出錯')],
+    [T('Probing / steering (SAPLMA, ITI)', '探測／引導（SAPLMA、ITI）'), T('Hidden activations → true/false classifier; ITI shifts them at inference', '隱藏激活 → 真假分類器；ITI 在推論時移動激活'), T('One aspect (truthful QA); SAPLMA judges after the whole output', '單一面向（真實性 QA）；SAPLMA 要等整個輸出結束')],
+    [T('Model-based on RNNs (DeepStellar, DeepMemory, RNNRepair)', '針對 RNN 的模型化分析（DeepStellar、DeepMemory、RNNRepair）'), T('RNN states abstracted into automata', 'RNN 狀態抽象成自動機'), T('Built for RNN classifiers; Transformer LLMs were an open question', '為 RNN 分類器設計；Transformer LLM 是未知領域')],
+    ['LUNA', T('Decoder states → DTMC / HMM + trust semantics', '解碼器狀態 → DTMC／HMM + 可信賴性語意'), T('White-box only: needs an open-source LLM', '僅限白箱：需要開源 LLM')]];
+  $('#bg-table').innerHTML = `<div class="tablewrap"><table><thead><tr><th>${T('Approach', '方法')}</th><th>${T('Looks at', '觀察對象')}</th><th>${T('Limitation', '限制')}</th></tr></thead><tbody>` +
+    rows.map((r, i) => `<tr${i === 3 ? ' style="background:var(--accent-soft)"' : ''}>${r.map((c, j) => `<td${j === 0 ? ' style="font-weight:600;color:var(--ink)"' : ''}>${esc(c)}</td>`).join('')}</tr>`).join('') + '</tbody></table></div>';
+}
+
+/* ============================ 02 pipeline ============================ */
+const STAGES = [
+ {n:'01', en:'Abstract model construction', zh:'抽象模型建構', sec:'III-B',
+  inEn:['Trustworthiness-specific data','Subject LLM (open-source, white-box)'], inZh:['面向專屬資料','受測 LLM（開源、白箱）'],
+  outEn:['DTMC or HMM over abstract states'], outZh:['以抽象狀態組成的 DTMC 或 HMM'],
+  knobEn:['PCA components k','Grid (m per dim, history N) or Cluster (GMM / KMeans, n)','DTMC vs HMM (Baum-Welch)'], knobZh:['PCA 成分數 k','網格（每維 m 格、歷史步數 N）或分群（GMM／KMeans、n）','DTMC 或 HMM（Baum-Welch）'], lab:'#s3'},
+ {n:'02', en:'Semantics binding', zh:'語意綁定', sec:'III-C',
+  inEn:['Abstract model','Ground-truth trust labels'], inZh:['抽象模型','可信賴性真實標籤'],
+  outEn:['θ̄ on every abstract state (hallucination) or transition (OOD / adversarial)'], outZh:['每個抽象狀態（幻覺）或轉移（OOD／對抗）上的 θ̄'],
+  knobEn:['State-bound vs transition-bound','Judge: GPT-judge / pass@1 / GPT-3.5'], knobZh:['綁定於狀態或轉移','判定者：GPT-judge／pass@1／GPT-3.5'], lab:'#s5'},
+ {n:'03', en:'Model quality assessment', zh:'模型品質評估', sec:'III-D',
+  inEn:['Semantics-bound abstract model'], inZh:['已綁定語意的抽象模型'],
+  outEn:['6 abstract-model-wise + 6 semantics-wise metrics'], outZh:['6 個抽象模型層級 + 6 個語意層級指標'],
+  knobEn:['Which metrics to trust for which task','Rank the 180 configs without abnormal labels'], knobZh:['哪個任務信任哪些指標','不需異常標註即可對 180 設定排序'], lab:'#s8'},
+ {n:'04', en:'Practical application', zh:'實際應用', sec:'III-E',
+  inEn:['New prompt + generated answer'], inZh:['新的提示與生成答案'],
+  outEn:['Semantic score = AVG θ̄ → normal / abnormal','First low state localizes the fault'], outZh:['語意分數 = AVG θ̄ → 正常／異常','第一個低分狀態可定位錯誤'],
+  knobEn:['Threshold; ROC AUC for evaluation'], knobZh:['門檻；以 ROC AUC 評估'], lab:'#s6'}
+];
+let stageSel = 0;
+function wrapTxt(s, n){
+  if (/[\u4e00-\u9fff]/.test(s)) { const o = []; for (let i = 0; i < s.length; i += n) o.push(s.slice(i, i + n)); return o; }
+  const o = []; let cur = ''; s.split(' ').forEach(w => { if (cur && (cur + ' ' + w).length > n) { o.push(cur); cur = w; } else cur = cur ? cur + ' ' + w : w; }); if (cur) o.push(cur); return o;
+}
+function renderPipeline(){
+  const W = 900, bw = 190, gap = (W - 4 * bw) / 3; let s = '<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7C869C"/></marker></defs>';
+  STAGES.forEach((st, i) => { const x = i * (bw + gap), on = i === stageSel;
+    s += `<g style="cursor:pointer" data-st="${i}" role="button" tabindex="0"><rect x="${x}" y="14" width="${bw}" height="118" rx="8" fill="${on ? '#16233D' : '#0F141E'}" stroke="${on ? '#8CB8FF' : '#232B3B'}" stroke-width="${on ? 2 : 1}"/>
+      <text x="${x + 14}" y="38" font-size="11" fill="${on ? '#8CB8FF' : '#7C869C'}">${st.n}</text>
+      <text x="${x + 14}" y="62" font-size="14" font-weight="700" fill="#E7EBF3" style="font-family:var(--sans)">${wrapTxt(T(st.en, st.zh), lang === 'zh' ? 10 : 20).map((ln, k) => `<tspan x="${x + 14}" dy="${k ? 18 : 0}">${esc(ln)}</tspan>`).join('')}</text>
+      <text x="${x + 14}" y="122" font-size="10.5" fill="#7C869C">§${st.sec}</text></g>`;
+    if (i < 3) s += `<path d="M${x + bw + 6} 73 H${x + bw + gap - 8}" stroke="#7C869C" stroke-width="1.6" marker-end="url(#ar)"/>`; });
+  const svg = $('#pipe-svg'); svg.innerHTML = s;
+  svg.querySelectorAll('[data-st]').forEach(g => { const go = () => { stageSel = +g.dataset.st; renderPipeline(); const n = document.querySelector('#pipe-svg [data-st="' + stageSel + '"]'); n && n.focus(); }; g.addEventListener('click', go); g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }); });
+  const st = STAGES[stageSel], li = a => '<ul>' + a.map(x => `<li>${esc(x)}</li>`).join('') + '</ul>';
+  $('#stage-panel').innerHTML = `<div><h4>${T('Input', '輸入')}</h4>${li(lang === 'zh' ? st.inZh : st.inEn)}<h4 style="margin-top:12px">${T('Output', '輸出')}</h4>${li(lang === 'zh' ? st.outZh : st.outEn)}</div>
+    <div><h4>${T('Knobs & choices', '可調項目')}</h4>${li(lang === 'zh' ? st.knobZh : st.knobEn)}<p style="margin:12px 0 0"><a href="${st.lab}">${T('Jump to the related lab →', '跳到相關實驗室 →')}</a></p></div>`;
+}
+
+/* ============================ Lab 1 ============================ */
+function kmeans(P, k, r, iters = 30){
+  const d2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2; k = Math.min(k, P.length);
+  const C = [P[Math.floor(r() * P.length)].slice()];
+  while (C.length < k) { const d = P.map(p => Math.min(...C.map(c => d2(p, c)))); let t = r() * d.reduce((a, b) => a + b, 0), i = 0; while ((t -= d[i]) > 0 && i < P.length - 1) i++; C.push(P[i].slice()); }
+  let a = new Array(P.length).fill(0);
+  for (let it = 0; it < iters; it++) {
+    let ch = false; P.forEach((p, i) => { let b = 0, bd = 1e18; C.forEach((c, j) => { const d = d2(p, c); if (d < bd) { bd = d; b = j; } }); if (a[i] !== b) { a[i] = b; ch = true; } });
+    const S = C.map(() => [0, 0, 0]); P.forEach((p, i) => { S[a[i]][0] += p[0]; S[a[i]][1] += p[1]; S[a[i]][2]++; });
+    S.forEach((s, j) => { if (s[2]) C[j] = [s[0] / s[2], s[1] / s[2]]; }); if (!ch) break;
+  }
+  return {C, a};
+}
+function gmmFit(P, k, r){
+  const {C} = kmeans(P, k, r, 8), K = C.length, N = P.length; let mu = C.map(c => c.slice()), s2 = C.map(() => 0.5), pi = C.map(() => 1 / K);
+  const dens = (p, j) => pi[j] / (2 * Math.PI * s2[j]) * Math.exp(-((p[0] - mu[j][0]) ** 2 + (p[1] - mu[j][1]) ** 2) / (2 * s2[j]));
+  for (let it = 0; it < 25; it++) {
+    const R = P.map(p => { const w = mu.map((_, j) => dens(p, j) + 1e-300); const t = w.reduce((a, b) => a + b, 0); return w.map(x => x / t); });
+    for (let j = 0; j < K; j++) { let n = 0, mx = 0, my = 0; R.forEach((row, i) => { n += row[j]; mx += row[j] * P[i][0]; my += row[j] * P[i][1]; });
+      if (n < 1e-6) continue; mu[j] = [mx / n, my / n]; let v = 0; R.forEach((row, i) => { v += row[j] * ((P[i][0] - mu[j][0]) ** 2 + (P[i][1] - mu[j][1]) ** 2); });
+      s2[j] = Math.max(v / (2 * n), 0.01); pi[j] = n / N; }
+  }
+  const assign = p => { let b = 0, bv = -1; mu.forEach((_, j) => { const d = dens(p, j); if (d > bv) { bv = d; b = j; } }); return b; };
+  return {C: mu, assign};
+}
+function setBadge(sel, real){ const e = $(sel); e.textContent = real ? 'REAL DATA' : 'SIMULATED'; e.className = real ? 'badge-paper' : 'badge-sim'; }   // text AND style: green = real, orange = simulated
+function lab1(){
+  const D = App.data.states2d.points, part = $('#l1-part').value, n = +$('#l1-n').value;
+  setBadge('#l1-badge', App.loaded.states2d);
+  const tr = D.filter(p => p.split === 'train'), te = D.filter(p => p.split === 'test'), ab = D.filter(p => p.split === 'abn');
+  const xs = tr.map(p => p.x), ys = tr.map(p => p.y), pad = 0.4;
+  const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
+  const W = 620, H = 440, m = 14;
+  const vx0 = Math.min(...D.map(p => p.x)) - .3, vx1 = Math.max(...D.map(p => p.x)) + .3, vy0 = Math.min(...D.map(p => p.y)) - .3, vy1 = Math.max(...D.map(p => p.y)) + .3;
+  const X = x => m + (x - vx0) / (vx1 - vx0) * (W - 2 * m), Y = y => H - m - (y - vy0) / (vy1 - vy0) * (H - 2 * m);
+  let assign, nStates, extra = '', unseenFn;
+  const eps = 0.08 * (x1 - x0), rp = rng(7);
+  if (part === 'grid') {
+    const cell = p => { if (p.x < x0 || p.x > x1 || p.y < y0 || p.y > y1) return -1; const i = Math.min(n - 1, Math.floor((p.x - x0) / (x1 - x0) * n)), j = Math.min(n - 1, Math.floor((p.y - y0) / (y1 - y0) * n)); return i * n + j; };
+    assign = cell; const seen = new Set(tr.map(cell)); nStates = seen.size; unseenFn = p => { const c = cell(p); return c < 0 || !seen.has(c); };
+    for (let i = 0; i <= n; i++) { const gx = x0 + (x1 - x0) * i / n, gy = y0 + (y1 - y0) * i / n;
+      extra += `<path d="M${X(gx)} ${Y(y0)} V${Y(y1)} M${X(x0)} ${Y(gy)} H${X(x1)}" stroke="#2F3A50" stroke-width=".7"/>`; }
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (!seen.has(i * n + j)) extra += `<rect x="${X(x0 + (x1 - x0) * i / n)}" y="${Y(y0 + (y1 - y0) * (j + 1) / n)}" width="${(X(x1) - X(x0)) / n}" height="${(Y(y0) - Y(y1)) / n}" fill="#FF7B8B" opacity=".07"/>`;
+  } else {
+    const r = rng(42 + n); const P = tr.map(p => [p.x, p.y]); let C, af;
+    if (part === 'KMeans') { const k = kmeans(P, n, r); C = k.C; af = p => { let b = 0, bd = 1e18; C.forEach((c, j) => { const d = (p.x - c[0]) ** 2 + (p.y - c[1]) ** 2; if (d < bd) { bd = d; b = j; } }); return b; }; }
+    else { const g = gmmFit(P, n, r); C = g.C; af = p => g.assign([p.x, p.y]); }
+    assign = af; const rad = C.map(() => 0); tr.forEach(p => { const j = af(p); rad[j] = Math.max(rad[j], Math.hypot(p.x - C[j][0], p.y - C[j][1])); });
+    nStates = new Set(tr.map(af)).size; unseenFn = p => { const j = af(p); return Math.hypot(p.x - C[j][0], p.y - C[j][1]) > rad[j] + 1e-9; };
+    C.forEach((c, j) => { extra += `<circle cx="${X(c[0])}" cy="${Y(c[1])}" r="${rad[j] / (vx1 - vx0) * (W - 2 * m)}" fill="none" stroke="${PAL[j % PAL.length]}" stroke-width=".8" stroke-dasharray="3 3" opacity=".6"/>`
+      + `<path d="M${X(c[0])} ${Y(c[1]) - 5} l5 5 l-5 5 l-5 -5z" fill="${PAL[j % PAL.length]}" stroke="#080B12" stroke-width=".8"/>`; });
+  }
+  const covN = mean(te.map(p => unseenFn(p) ? 1 : 0)), covA = mean(ab.map(p => unseenFn(p) ? 1 : 0));
+  const sen = mean(te.map(p => { const q = {x: p.x + gauss(rp) * eps, y: p.y + gauss(rp) * eps}; return assign(p) !== assign(q) ? 1 : 0; }));
+  let s = `<rect width="${W}" height="${H}" fill="#0B0F17"/>` + extra;
+  const hue = id => id < 0 ? '#444' : PAL[Math.abs(id * 7 + 3) % PAL.length];
+  if ($('#l1-train').checked) tr.forEach(p => { s += `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="2.2" fill="${hue(assign(p))}" opacity=".6"/>`; });
+  if ($('#l1-test').checked) te.forEach(p => { const u = unseenFn(p); s += `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="3.6" fill="${u ? '#FF7B8B' : 'none'}" fill-opacity=".5" stroke="${u ? '#FF7B8B' : '#E7EBF3'}" stroke-width="1.1"/>`; });
+  if ($('#l1-abn').checked) ab.forEach(p => { const u = unseenFn(p), c = u ? '#FF7B8B' : '#F4C26B'; s += `<path d="M${X(p.x) - 3.4} ${Y(p.y) - 3.4} l6.8 6.8 M${X(p.x) + 3.4} ${Y(p.y) - 3.4} l-6.8 6.8" stroke="${c}" stroke-width="1.5"/>`; });
+  $('#l1-svg').innerHTML = s;
+  const total = tr.length;
+  $('#l1-scores').innerHTML = [
+    [T('States |S̄|', '狀態數 |S̄|'), nStates, `${T('of', '／')} ${total} ${T('concrete', '具體')}`],
+    ['SUC', f3(nStates / total), T('lower = more compact', '越低越精簡')],
+    ['COV·normal', (covN * 100).toFixed(1) + '%', T('unseen test states', '未見測試狀態')],
+    ['COV·abnormal', (covA * 100).toFixed(1) + '%', T('unseen test states', '未見測試狀態')],
+    ['SEN', (sen * 100).toFixed(1) + '%', T('flip under ε-noise', 'ε 擾動後換狀態')]
+  ].map(x => `<div class="score"><p class="score-k">${x[0]}</p><p class="score-v">${x[1]}</p><p class="score-n">${x[2]}</p></div>`).join('');
+  const gap = covA - covN;
+  $('#l1-note').innerHTML = T(`<b>Reading:</b> abnormal inputs are unseen ${(covA * 100).toFixed(0)}% of the time vs ${(covN * 100).toFixed(0)}% for normal ones (gap ${(gap * 100).toFixed(0)} pts). ` + (part === 'grid' ? 'Grid cells with no training data (red tint) inflate |S̄| without adding information.' : 'Dashed circles are the max training radius d of each state; anything outside is "unseen".'),
+    `<b>解讀：</b>異常輸入有 ${(covA * 100).toFixed(0)}% 落在未見區域，正常輸入僅 ${(covN * 100).toFixed(0)}%（差距 ${(gap * 100).toFixed(0)} 個百分點）。` + (part === 'grid' ? '沒有訓練資料的網格（紅色底）會增加 |S̄| 卻沒有資訊。' : '虛線圓是每個狀態的訓練最大半徑 d，圓外即「未見」。'));
+  const uN = Math.round(covN * te.length), uA = Math.round(covA * ab.length);
+  setFx('l1-svg', [
+    FX(['Succinctness · SUC', '簡潔性 · SUC'], `\\mathrm{SUC}=\\dfrac{|\\bar S|}{|S|}=\\dfrac{${nStates}}{${total}}=${f3(nStates / total)}`,
+      ['How compact the abstraction is: fewer abstract states for the same concrete states is better, as long as information survives.', '抽象後模型有多精簡：同樣的具體狀態用越少抽象狀態表示越好，但不能簡到失去資訊。']),
+    FX(['Coverage · COV', '覆蓋率 · COV'], `\\begin{aligned}\\mathrm{COV}&=\\dfrac{\\#\\,\\text{unseen}}{\\#\\,\\text{test}}\\\\ &=\\dfrac{${uN}}{${te.length}}=${f3(covN)}\\ (\\text{normal}),\\quad \\dfrac{${uA}}{${ab.length}}=${f3(covA)}\\ (\\text{abnormal})\\end{aligned}`,
+      ['Share of test states that fall where no training state was — the model has never seen that situation. (The paper divides by |S̄|; this lab uses the test-point count so the number is easy to read.)', '測試狀態中落在「訓練從沒到過」之處的比例，代表模型沒見過這種情況。（論文以 |S̄| 為分母，本實驗室改用測試點數，比較好讀。）']),
+    FX(['Sensitivity · SEN', '敏感度 · SEN'], `\\begin{aligned}\\mathrm{SEN}&=\\dfrac{\\#\\{\\bar s\\neq\\bar s'\\ \\text{after }\\epsilon\\text{-noise}\\}}{|S_{test}|}\\\\ &=${f3(sen)}\\end{aligned}`,
+      ['If you nudge a state by a tiny ε, does it jump to a different abstract state? Lower means the abstraction is robust.', '把狀態微微擾動 ε，會不會跳到別的抽象狀態？越低代表抽象越穩健。'])
+  ]);
+}
+function setupLab1(){
+  const sel = $('#l1-part'); fillSelect(sel, [['grid', T('Grid (regular)', '網格（規則）')], ['KMeans', 'KMeans'], ['GMM', 'GMM']], true);
+  const isGrid = sel.value === 'grid', n = $('#l1-n'); n.min = isGrid ? 3 : 4; n.max = isGrid ? 14 : 40;
+  $('#l1-n-lab').textContent = isGrid ? T('cells per dim m', '每維格數 m') : T('clusters n', '群數 n');
+  if (n._mode !== sel.value) { n.value = isGrid ? 6 : 12; n._mode = sel.value; }
+  $('#l1-nv').textContent = isGrid ? `${n.value}² = ${n.value ** 2}` : n.value;
+}
+['l1-part','l1-n','l1-train','l1-test','l1-abn'].forEach(id => $('#' + id).addEventListener('input', () => { setupLab1(); lab1(); }));
+
+/* ============================ Lab 2 ============================ */
+const L2 = {path: []};
+function l2Model(){
+  const N = +$('#l2-n').value, det = +$('#l2-d').value / 100, M = +$('#l2-m').value;
+  const r = rng(11 + N * 13), P = [];
+  for (let i = 0; i < N; i++) { const w = []; for (let j = 0; j < N; j++) w.push(Math.exp(gauss(r) * (0.5 + 2.6 * det)) * (i === j ? 1 + 5 * det * det : 1) * (j === (i + 1) % N ? 1 + 2.5 * det : 1)); const t = w.reduce((a, b) => a + b, 0); P.push(w.map(x => x / t)); }
+  const r2 = rng(99 + N), traces = [];
+  for (let k = 0; k < 500; k++) { const tr = [Math.floor(r2() * N)]; for (let t = 0; t < 14; t++) { let u = r2(), c = 0, j = 0; const row = P[tr[t]]; while (j < N - 1 && (c += row[j]) < u) j++; tr.push(j); } traces.push(tr); }
+  const cnt = Array.from({length: N}, () => new Array(N).fill(0)); for (let k = 0; k < M; k++) for (let t = 0; t < 14; t++) cnt[traces[k][t]][traces[k][t + 1]]++;
+  const Ph = cnt.map((row, i) => { const s = row.reduce((a, b) => a + b, 0); return s ? row.map(x => x / s) : row.map(() => 1 / N); });
+  let pi = new Array(N).fill(1 / N); for (let it = 0; it < 400; it++) { const nx = new Array(N).fill(0); for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) nx[j] += pi[i] * Ph[i][j]; pi = nx; }
+  const H = -pi.reduce((a, p, i) => a + p * Ph[i].reduce((b, q) => b + (q > 0 ? q * Math.log(q) : 0), 0), 0);
+  const stable = -(0.95 * Math.log(0.95) + 0.05 * Math.log(0.05 / (N - 1))), stoch = Math.log(N);
+  const sinks = Ph.filter((row, i) => row[i] > 0.999).length, err = mean(Ph.flat().map((v, i) => Math.abs(v - P[Math.floor(i / N)][i % N])));
+  return {N, M, P, Ph, cnt, pi, H, stable, stoch, sinks, err};
+}
+function lab2(){
+  const m = l2Model(), N = m.N; $('#l2-nv').textContent = N; $('#l2-mv').textContent = m.M; $('#l2-dv').textContent = $('#l2-d').value + '%';
+  L2.path = L2.path.filter(x => x < N);
+  const cx = 280, cy = 180, R = 135, pos = i => [cx + R * Math.cos(-Math.PI / 2 + 2 * Math.PI * i / N), cy + R * Math.sin(-Math.PI / 2 + 2 * Math.PI * i / N)];
+  let g = '<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8CB8FF"/></marker></defs>';
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) { const p = m.Ph[i][j]; if (p < .04) continue; const [x1, y1] = pos(i), [x2, y2] = pos(j), rn = 15 + 25 * Math.sqrt(m.pi[j]);
+    const tip = `s${i} → s${j}<br>P̂ = ${p.toFixed(3)}<br>count = ${m.cnt[i][j]}`;
+    if (i === j) g += `<path data-tip="${tip}" d="M${x1 - 8} ${y1 - 16} c-6 -30 22 -30 16 0" fill="none" stroke="#8CB8FF" stroke-width="${.6 + p * 4}" opacity="${.3 + .6 * p}" marker-end="url(#ah)"/>`;
+    else { const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, qx = (x1 + x2) / 2 - uy * 22, qy = (y1 + y2) / 2 + ux * 22, r0 = 15 + 25 * Math.sqrt(m.pi[i]);
+      g += `<path data-tip="${tip}" d="M${x1 + ux * r0 * .8} ${y1 + uy * r0 * .8} Q${qx} ${qy} ${x2 - ux * rn * .8} ${y2 - uy * rn * .8}" fill="none" stroke="#8CB8FF" stroke-width="${.6 + p * 4.5}" opacity="${.25 + .65 * p}" marker-end="url(#ah)"/>`; } }
+  for (let i = 0; i < N; i++) { const [x, y] = pos(i), rr = 12 + 22 * Math.sqrt(m.pi[i]), inP = L2.path.indexOf(i);
+    g += `<g data-node="${i}" style="cursor:pointer" data-tip="s${i}<br>π = ${m.pi[i].toFixed(3)}"><circle cx="${x}" cy="${y}" r="${rr}" fill="${inP >= 0 ? '#16233D' : '#161D2B'}" stroke="${inP >= 0 ? '#F4C26B' : '#3A4660'}" stroke-width="${inP >= 0 ? 2.2 : 1.2}"/><text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11" fill="#E7EBF3">s${i}</text>${inP >= 0 ? `<text x="${x + rr * .8}" y="${y - rr * .8}" font-size="10" fill="#F4C26B">${inP + 1}</text>` : ''}</g>`; }
+  g += `<text x="108" y="348" font-size="10.5" fill="#7C869C">${T('node size ∝ stationary π', '節點大小 ∝ 穩態分布 π')}</text>`;
+  const gsvg = $('#l2-graph'); gsvg.innerHTML = g; bindTips(gsvg);
+  gsvg.querySelectorAll('[data-node]').forEach(nd => nd.addEventListener('click', () => { L2.path.push(+nd.dataset.node); lab2(); }));
+  // matrix
+  const cs = Math.min(56, 500 / (N + .5)), ox = 40, oy = 22; let mt = '';
+  for (let i = 0; i < N; i++) { mt += `<text x="${ox - 6}" y="${oy + i * cs + cs / 2 + 4}" font-size="11" text-anchor="end" fill="#7C869C">s${i}</text><text x="${ox + i * cs + cs / 2}" y="${oy - 6}" font-size="11" text-anchor="middle" fill="#7C869C">s${i}</text>`;
+    for (let j = 0; j < N; j++) { const p = m.Ph[i][j]; mt += `<rect data-tip="s${i} → s${j}<br>P̂ = ${p.toFixed(3)} · true ${m.P[i][j].toFixed(3)}<br>count = ${m.cnt[i][j]}" x="${ox + j * cs}" y="${oy + i * cs}" width="${cs - 1}" height="${cs - 1}" fill="#8CB8FF" fill-opacity="${Math.sqrt(p) * .95}" stroke="${i === j && p > .999 ? '#FF7B8B' : 'none'}"/>${N <= 10 ? `<text x="${ox + j * cs + cs / 2}" y="${oy + i * cs + cs / 2 + 4}" font-size="11" text-anchor="middle" fill="${p > .35 ? '#0A1020' : '#AEB7CA'}">${p.toFixed(2)}</text>` : ''}`; } }
+  const msvg = $('#l2-mat'); msvg.setAttribute('viewBox', `0 0 ${ox + N * cs + 4} ${oy + N * cs + 8}`); msvg.innerHTML = mt; bindTips(msvg);
+  // scores
+  const mid = (m.stable + m.stoch) / 2, sdeVal = Math.abs(mid - m.H);
+  $('#l2-scores').innerHTML = [['SDE', f3(m.H), T('raw entropy (nats)', '原始熵（nats）')], [T('SDE value', 'SDE 值'), f3(sdeVal), T('|mid-bound − H|', '|中間界 − H|')], [T('Sink states', '匯點狀態'), m.sinks, 'p_ii = 1'], [T('Mean |P̂−P|', '平均 |P̂−P|'), f3(m.err), T('vs hidden truth', '對隱藏真值')]]
+    .map(x => `<div class="score"><p class="score-k">${x[0]}</p><p class="score-v">${x[1]}</p><p class="score-n">${x[2]}</p></div>`).join('');
+  const gx = v => 30 + (v - m.stable) / (m.stoch - m.stable) * 460;
+  $('#l2-gauge').innerHTML = `<path d="M30 30 H490" stroke="#2F3A50" stroke-width="6" stroke-linecap="round"/><path d="M${gx(Math.min(m.H, m.stoch))} 30 H${gx(mid)}" stroke="#8CB8FF" stroke-width="2" opacity=".5"/>
+    <path d="M${gx(mid)} 20 V40" stroke="#F4C26B" stroke-width="2"/><text x="${gx(mid)}" y="58" text-anchor="middle" font-size="10" fill="#F4C26B">${T('balance', '平衡點')}</text>
+    <circle cx="${clamp(gx(m.H), 30, 490)}" cy="30" r="7" fill="#8CB8FF" stroke="#080B12" stroke-width="2"/>
+    <text x="30" y="58" font-size="10" fill="#7C869C" text-anchor="middle">${T('stable', '穩定界')} ${m.stable.toFixed(2)}</text><text x="490" y="58" font-size="10" fill="#7C869C" text-anchor="middle">${T('stochastic', '隨機界')} ${m.stoch.toFixed(2)}</text>
+    <text x="${clamp(gx(m.H), 30, 490)}" y="14" font-size="10.5" fill="#8CB8FF" text-anchor="middle">H = ${m.H.toFixed(2)}</text>`;
+  const pa = L2.path;
+  if (pa.length < 2) $('#l2-path').innerHTML = T('Click ≥ 2 nodes in the graph (or use the presets) to build a path s₁→s₂→…', '在圖上點選 ≥ 2 個節點（或用預設按鈕）建立路徑 s₁→s₂→…');
+  else { const ps = []; for (let i = 0; i < pa.length - 1; i++) ps.push(m.Ph[pa[i]][pa[i + 1]]); const sc = mean(ps);
+    $('#l2-path').innerHTML = pa.map(x => 's' + x).join(' → ') + '<br>' + ps.map(p => p.toFixed(2)).join(' · ') + `<br><b>${T('Mean transition prob = OOD semantic score', '平均轉移機率 = OOD 語意分數')}: ${sc.toFixed(3)}</b> ${sc > 0.25 ? T('(looks in-distribution)', '（像分布內）') : T('(looks OOD)', '（像分布外）')}`; }
+  L2.m = m;
+  const ps2 = []; for (let i = 0; i < pa.length - 1; i++) ps2.push(m.Ph[pa[i]][pa[i + 1]]);
+  const ei = pa.length >= 2 ? [pa[pa.length - 2], pa[pa.length - 1]] : [0, m.Ph[0].indexOf(Math.max(...m.Ph[0]))];
+  const rs = m.cnt[ei[0]].reduce((a, b) => a + b, 0);
+  setFx('l2-graph', [
+    FX(['Transition probability (DTMC)', '轉移機率（DTMC）'], `\\begin{aligned}\\hat P(s_{${ei[0]}}\\!\\to\\! s_{${ei[1]}})&=\\dfrac{\\#(s_{${ei[0]}}\\to s_{${ei[1]}})}{\\#\\,\\text{out of }s_{${ei[0]}}}\\\\ &=\\dfrac{${m.cnt[ei[0]][ei[1]]}}{${rs}}=${f3(m.Ph[ei[0]][ei[1]])}\\end{aligned}`,
+      ['A DTMC is just counting: how often does state i go to j, divided by how often it leaves i. Every row of the matrix sums to 1. (Shown for the last edge of your path, or the strongest edge out of s0.)', 'DTMC 其實就是數次數：狀態 i 走到 j 的次數，除以 i 往外走的總次數，矩陣每一列加總為 1。（顯示你路徑最後一條邊，未選時顯示 s0 最強的邊。）']),
+    FX(['Path score = OOD semantic score', '路徑分數 = OOD 語意分數'], pa.length >= 2 ? `\\text{score}=\\operatorname{AVG}\\,\\hat P(s_i\\!\\to\\! s_{i+1})=\\dfrac{${sumTex(ps2)}}{${ps2.length}}=${f3(mean(ps2))}` : `\\text{score}=\\operatorname{AVG}\\,\\hat P(s_i\\!\\to\\! s_{i+1})`,
+      ['Average the transition probabilities along a path. A path made of transitions the model rarely makes scores low ⇒ looks out-of-distribution.', '把路徑上每一步的轉移機率取平均。若路徑充滿模型很少走的轉移，分數就低 ⇒ 看起來像分布外（OOD）。']),
+    FX(['Stationary entropy · SDE', '穩態分布熵 · SDE'], `\\begin{aligned}H&=-\\sum_i\\pi_i\\sum_j\\hat p_{ij}\\ln\\hat p_{ij}=${f3(m.H)}\\\\ \\mathrm{SDE}&=\\Big|\\dfrac{${f3(m.stable)}+${f3(m.stoch)}}{2}-H\\Big|=${f3(sdeVal)}\\end{aligned}`,
+      ['π is where the chain spends its time in the long run (π P̂ = π). H measures how random the next step is on average. Too low = stuck repeating, too high = jumping randomly; SDE is the distance from the middle of those two bounds.', 'π 是長期下來模型停留在各狀態的比例（π P̂ = π）。H 衡量下一步平均有多隨機：太低＝一直重複、太高＝亂跳；SDE 是它與這兩個極端「正中間」的距離。'])
+  ]);
+}
+function l2Preset(kind){ const m = L2.m, N = m.N; const path = [Math.floor(N / 2)];
+  for (let t = 0; t < 5; t++) { const row = m.Ph[path[t]].map((p, j) => [p, j]).filter(x => x[1] !== path[t]); row.sort((a, b) => kind === 'typ' ? b[0] - a[0] : a[0] - b[0]); path.push(row[0][1]); }
+  L2.path = path; lab2(); }
+$('#l2-clear').addEventListener('click', () => { L2.path = []; lab2(); });
+$('#l2-typ').addEventListener('click', () => l2Preset('typ'));
+$('#l2-odd').addEventListener('click', () => l2Preset('odd'));
+['l2-n','l2-m','l2-d'].forEach(id => $('#' + id).addEventListener('input', lab2));
+
+/* ============================ Lab 3 ============================ */
+function semColor(v){ if (v == null) return '#2F3A50'; const t = clamp(v, 0, 1); const h = 8 + t * 130; return `hsl(${h} 62% ${28 + t * 6}%)`; }
+function lab3(){
+  const tr = App.data.traces; const sel = $('#l3-ex');
+  if (!sel._ready || sel._n !== tr.length || sel._lang !== lang) { const cur = sel.value; fillSelect(sel, tr.map((t, i) => [String(i), `${t.mode === 'transition' ? 'OOD' : 'HAL'} · ${t.label === 'abnormal' ? T('abnormal', '異常') : T('normal', '正常')} · ${t.id}`]));
+    if (cur && +cur < tr.length) sel.value = cur; sel._ready = true; sel._n = tr.length; sel._lang = lang; }
+  const t = tr[+sel.value || 0], dth = App.data.meta && App.data.meta.ownModel && App.data.meta.ownModel.lab3Threshold;
+  if (dth && dth[t.mode] != null && $('#l3-th')._mode !== t.mode) { $('#l3-th').value = Math.round(dth[t.mode] * 100); $('#l3-th')._mode = t.mode; }   // per-task default threshold (Youden on test scores)
+  const th = +$('#l3-th').value / 100; $('#l3-thv').textContent = th.toFixed(2);
+  const vals = t.semantics.filter(v => v != null), score = mean(vals), abn = score < th, first = t.semantics.findIndex(v => v != null && v < th);
+  setBadge('#l3-badge', App.loaded.traces);
+  $('#l3-pick').innerHTML = App.loaded.traces ? T('<b>Note:</b> these examples are hand-picked by a fixed rule (largest normal-vs-abnormal score gap, plus one counter-example per task) to make the method readable — not a random sample. The default threshold is the best one on the test scores. For the overall result see Lab 4.', '<b>注意：</b>這些範例是依固定規則挑選的（正常與異常分數差距最大的題目，每種任務另加一個反例），目的是讓方法容易看懂，不是隨機抽樣。預設門檻是測試分數上的最佳門檻。整體效果請看實驗室 4。') : '';
+  $('#l3-prompt').innerHTML = `<b>${T('Prompt', '提示')}:</b> ${esc(t.prompt)}<br><b>${T('Semantics bound to', '語意綁定於')}:</b> ${t.mode === 'transition' ? T('transitions (OOD / adversarial): θ̄(⟨s̄ᵢ, s̄ᵢ₊₁⟩) = transition probability', '轉移（OOD／對抗）：θ̄(⟨s̄ᵢ, s̄ᵢ₊₁⟩) = 轉移機率') : T('states (hallucination): θ̄(s̄ᵢ) = truthfulness', '狀態（幻覺）：θ̄(s̄ᵢ) = 真實性')}`;
+  $('#l3-toks').innerHTML = t.tokens.map((w, i) => { const v = t.semantics[i]; return `<div class="tok ${i === first ? 'first' : ''}" style="background:${semColor(v)}" title="θ̄=${v == null ? 'n/a' : v}"><div class="w">${esc(w)}</div><div class="s">${esc(t.states[i] || '')}</div><div class="v">${v == null ? '—' : v.toFixed(2)}</div></div>`; }).join('');
+  const W = 620, H = 220, l = 40, r = 14, tp = 16, bt = 34, n = t.tokens.length, X = i => l + (n === 1 ? .5 : i / (n - 1)) * (W - l - r), Y = v => tp + (1 - v) * (H - tp - bt);
+  let s = ''; [0, .25, .5, .75, 1].forEach(v => { s += `<path d="M${l} ${Y(v)} H${W - r}" stroke="#232B3B"/><text x="${l - 6}" y="${Y(v) + 3}" font-size="10" fill="#7C869C" text-anchor="end">${v.toFixed(2)}</text>`; });
+  s += `<path d="M${l} ${Y(th)} H${W - r}" stroke="#F4C26B" stroke-dasharray="5 4" stroke-width="1.4"/><text x="${W - r}" y="${Y(th) - 5}" font-size="10" fill="#F4C26B" text-anchor="end">${T('threshold', '門檻')} ${th.toFixed(2)}</text>`;
+  s += `<path d="M${l} ${Y(score)} H${W - r}" stroke="#C2B4FF" stroke-width="1" opacity=".7"/><text x="${l + 4}" y="${Y(score) - 5}" font-size="10" fill="#C2B4FF">${T('mean', '平均')} ${score.toFixed(2)}</text>`;
+  let d = '', pen = false; t.semantics.forEach((v, i) => { if (v == null) { pen = false; return; } d += `${pen ? 'L' : 'M'}${X(i)} ${Y(v)} `; pen = true; }); s += `<path d="${d}" fill="none" stroke="#8CB8FF" stroke-width="2"/>`;
+  t.semantics.forEach((v, i) => { if (v != null) s += `<circle data-tip="${esc(t.tokens[i])} · ${esc(t.states[i] || '')}<br>θ̄ = ${v.toFixed(3)}" cx="${X(i)}" cy="${Y(v)}" r="4.5" fill="${v < th ? '#FF7B8B' : '#5FD3A0'}" stroke="#080B12" stroke-width="1.4"/>`; s += `<text x="${X(i)}" y="${H - 14}" font-size="10" fill="#AEB7CA" text-anchor="middle">${esc(t.tokens[i].slice(0, 9))}</text>`; });
+  const svg = $('#l3-chart'); svg.innerHTML = s; bindTips(svg);
+  $('#l3-scores').innerHTML = `<div class="score"><p class="score-k">${T('Semantic score', '語意分數')}</p><p class="score-v">${score.toFixed(2)}</p><p class="score-n">AVG θ̄</p></div>
+    <div class="score"><p class="score-k">${T('Verdict', '判定')}</p><p class="score-v"><span class="verdict ${abn ? 'v-bad' : 'v-good'}">${abn ? T('abnormal', '異常') : T('normal', '正常')}</span></p><p class="score-n">${T('ground truth', '真實標籤')}: ${t.label === 'abnormal' ? T('abnormal', '異常') : T('normal', '正常')}</p></div>`;
+  const right = (abn === (t.label === 'abnormal'));
+  $('#l3-note').innerHTML = (first >= 0 ? T(`<b>Localization:</b> the first state below threshold is <code>${esc(t.states[first] || '?')}</code> at token “${esc(t.tokens[first])}” — the model "becomes abnormal" here.`, `<b>定位：</b>第一個低於門檻的狀態是 <code>${esc(t.states[first] || '?')}</code>，對應 token「${esc(t.tokens[first])}」——模型從這裡開始「變異常」。`) : T('<b>Localization:</b> no state falls below the threshold.', '<b>定位：</b>沒有任何狀態低於門檻。'))
+    + ' ' + (right ? T('Detector agrees with the label.', '偵測結果與標籤一致。') : T('<b>Detector disagrees with the label</b> — try another threshold; this is the FP/FN trade-off of Lab 4.', '<b>偵測結果與標籤不符</b>——換個門檻試試；這正是實驗室 4 的 FP／FN 取捨。'));
+  setFx('l3-chart', [
+    FX(['Abstract semantics θ̄', '抽象語意 θ̄'], `\\bar\\theta(\\bar s)=\\dfrac{1}{|\\bar s|}\\sum_{s\\in\\bar s}\\theta(s)`,
+      ['Each abstract state gets the average semantic value of all concrete samples that landed in it. Hallucination: θ = how truthful the answer was. OOD / adversarial: θ = the transition probability.', '每個抽象狀態的語意，是落在該狀態所有具體樣本語意的平均。幻覺情境：θ＝答案的真實程度；OOD／對抗情境：θ＝轉移機率。']),
+    FX(['Trace score & decision', '軌跡分數與判定'], `\\begin{aligned}\\text{score}&=\\operatorname{AVG}\\,\\bar\\theta(\\bar s_i)=\\dfrac{${sumTex(vals)}}{${vals.length}}=${f3(score)}\\\\ &${abn ? '<' : '\\ge'}\\ ${th.toFixed(2)}\\ \\Rightarrow\\ \\text{${abn ? 'abnormal' : 'normal'}}\\end{aligned}`,
+      ['Average θ̄ along the whole generated trace, then compare with a threshold: below it ⇒ flagged abnormal.', '把整條生成軌跡上的 θ̄ 取平均，再與門檻比較：低於門檻 ⇒ 判為異常。']),
+    FX(['Fault localisation', '錯誤定位'], first >= 0 ? `i^{*}=\\min\\{\\,i:\\bar\\theta(\\bar s_i)<\\text{th}\\,\\}=${first + 1}\\ \\ (\\text{token “}${String(t.tokens[first]).replace(/[^A-Za-z0-9 .,-]/g, '')}\\text{”})` : `i^{*}=\\min\\{\\,i:\\bar\\theta(\\bar s_i)<\\text{th}\\,\\}=\\varnothing`,
+      ['The first state whose semantics drops below the threshold tells you where the model starts going wrong.', '第一個語意低於門檻的狀態，指出模型從哪裡開始出錯。'])
+  ]);
+}
+['l3-ex','l3-th'].forEach(id => $('#' + id).addEventListener('input', lab3));
+
+/* ============================ Lab 4 ============================ */
+function synthScores(taskId, auc){
+  const r = rng(hash(taskId) + 5), n = 400, d = Math.SQRT2 * invPhi(clamp(auc, .5, .999));
+  const z1 = [], z2 = []; for (let i = 0; i < n; i++) { z1.push(gauss(r)); z2.push(gauss(r)); }
+  const mu = .5 + d * .09, sg = .09;
+  return {normal: z1.map(z => clamp(mu + z * sg, 0, 1)), abnormal: z2.map(z => clamp(mu - d * sg + z * sg, 0, 1))};
+}
+function rocOf(nor, abn){
+  const all = nor.map(v => [v, 0]).concat(abn.map(v => [v, 1])).sort((a, b) => a[0] - b[0]); // predict abnormal if score <= thr
+  let tp = 0, fp = 0; const P = abn.length, N = nor.length, pts = [[0, 0]]; let i = 0;
+  while (i < all.length) { let j = i; while (j < all.length && all[j][0] === all[i][0]) { if (all[j][1]) tp++; else fp++; j++; } pts.push([fp / N, tp / P]); i = j; }
+  let auc = 0; for (let k = 1; k < pts.length; k++) auc += (pts[k][0] - pts[k - 1][0]) * (pts[k][1] + pts[k - 1][1]) / 2; return {pts, auc};
+}
+function lab4(){
+  const tsel = $('#l4-task'), qsel = $('#l4-q');
+  const ownIds = Object.keys(App.data.scores || {}).filter(k => !TASKS.some(t => t.id === k));   // real scores of our own model (not one of the paper's 10 tasks)
+  const ownLabel = id => T(`GPT-2 (ours) · ${id === 'GPT2-OOD' ? 'OOD: original vs garbled text' : 'HAL: TruthfulQA true vs false answer'}`, `GPT-2（自己的模型）· ${id === 'GPT2-OOD' ? 'OOD：原文 vs 亂碼' : 'HAL：TruthfulQA 真實 vs 錯誤答案'}`);
+  if (!tsel._ready || tsel._lang !== lang || tsel._own !== ownIds.join()) { const firstOwn = ownIds.length && !tsel._own, cur = firstOwn ? '' : tsel.value; tsel._own = ownIds.join(); fillSelect(tsel, TASKS.map(t => [t.id, taskLabel(t)]).concat(ownIds.map(id => [id, ownLabel(id)]))); if (cur) tsel.value = cur; else tsel.value = ownIds.includes('GPT2-TQA') ? 'GPT2-TQA' : 'HE-C'; tsel._ready = true; tsel._lang = lang;
+    const cq = qsel.value; fillSelect(qsel, [['mean', T('mean of 180', '180 個的平均')], ['median', T('median', '中位數')], ['max', T('best config (max)', '最佳設定（最大）')], ['min', T('worst config (min)', '最差設定（最小）')], ['custom', T('custom AUC…', '自訂 AUC…')]]); qsel.value = cq || 'max'; }
+  const own = ownIds.includes(tsel.value), task = own ? {id: tsel.value, own: true} : TASKS.find(t => t.id === tsel.value), q = qsel.value; $('#l4-custom-row').style.display = q === 'custom' && !own ? 'flex' : 'none';
+  let target = q === 'custom' ? +$('#l4-auc').value / 100 : task[q]; $('#l4-aucv').textContent = (+$('#l4-auc').value / 100).toFixed(2);
+  const real = App.data.scores && App.data.scores[task.id]; setBadge('#l4-badge', real);
+  const sc = real ? {normal: real.normal, abnormal: real.abnormal} : synthScores(task.id, target);
+  if (own) target = rocOf(sc.normal, sc.abnormal).auc;   // real scores: the target is simply the measured AUC
+  const roc = rocOf(sc.normal, sc.abnormal), th = +$('#l4-th').value / 100; $('#l4-thv').textContent = th.toFixed(2);
+  const TPR = sc.abnormal.filter(v => v <= th).length / sc.abnormal.length, FPR = sc.normal.filter(v => v <= th).length / sc.normal.length;
+  const tp = TPR * sc.abnormal.length, fp = FPR * sc.normal.length, prec = tp + fp ? tp / (tp + fp) : NaN, acc = (tp + (sc.normal.length - fp)) / (sc.normal.length + sc.abnormal.length);
+  // histogram
+  const W = 620, H = 230, l = 34, r = 12, tpm = 14, bt = 30, B = 32, bin = v => Math.min(B - 1, Math.floor(v * B)), hn = new Array(B).fill(0), ha = new Array(B).fill(0);
+  sc.normal.forEach(v => hn[bin(clamp(v, 0, 1))]++); sc.abnormal.forEach(v => ha[bin(clamp(v, 0, 1))]++); const mx = Math.max(...hn, ...ha), bw = (W - l - r) / B;
+  let s = ''; for (let i = 0; i < B; i++) { const hh = v => v / mx * (H - tpm - bt);
+    s += `<rect x="${l + i * bw}" y="${H - bt - hh(hn[i])}" width="${bw - 1}" height="${hh(hn[i])}" fill="#5FD3A0" opacity=".55"/><rect x="${l + i * bw}" y="${H - bt - hh(ha[i])}" width="${bw - 1}" height="${hh(ha[i])}" fill="#FF7B8B" opacity=".55"/>`; }
+  [0, .25, .5, .75, 1].forEach(v => { s += `<text x="${l + v * (W - l - r)}" y="${H - 12}" font-size="10" fill="#7C869C" text-anchor="middle">${v.toFixed(2)}</text>`; });
+  s += `<path d="M${l + th * (W - l - r)} ${tpm} V${H - bt}" stroke="#F4C26B" stroke-width="2"/><text x="${l + th * (W - l - r) + 5}" y="${tpm + 10}" font-size="10" fill="#F4C26B">${T('threshold', '門檻')}</text>`;
+  $('#l4-hist').innerHTML = s;
+  // roc
+  const RW = 620, RH = 320, rl = 44, rb = 34, rt = 12, rr = 20, X = v => rl + v * (RW - rl - rr), Y = v => RH - rb - v * (RH - rb - rt);
+  let g = ''; [0, .25, .5, .75, 1].forEach(v => { g += `<path d="M${X(0)} ${Y(v)} H${X(1)} M${X(v)} ${Y(0)} V${Y(1)}" stroke="#232B3B"/><text x="${rl - 6}" y="${Y(v) + 3}" font-size="10" fill="#7C869C" text-anchor="end">${v}</text><text x="${X(v)}" y="${RH - 16}" font-size="10" fill="#7C869C" text-anchor="middle">${v}</text>`; });
+  g += `<path d="M${X(0)} ${Y(0)} L${X(1)} ${Y(1)}" stroke="#7C869C" stroke-dasharray="4 4"/>`;
+  g += `<path d="${roc.pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]) + ' ' + Y(p[1])).join(' ')} L${X(1)} ${Y(1)} L${X(1)} ${Y(0)} Z" fill="#8CB8FF" opacity=".12"/><path d="${roc.pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]) + ' ' + Y(p[1])).join(' ')}" fill="none" stroke="#8CB8FF" stroke-width="2.2"/>`;
+  g += `<circle cx="${X(FPR)}" cy="${Y(TPR)}" r="6" fill="#F4C26B" stroke="#080B12" stroke-width="2"/><text x="${X(.5)}" y="${RH - 2}" font-size="10.5" fill="#7C869C" text-anchor="middle">FPR</text><text x="12" y="${Y(.5)}" font-size="10.5" fill="#7C869C" transform="rotate(-90 12 ${Y(.5)})" text-anchor="middle">TPR</text><text x="${X(.98)}" y="${Y(.08)}" text-anchor="end" font-size="20" font-weight="700" fill="#8CB8FF">AUC ${roc.auc.toFixed(3)}</text>`;
+  $('#l4-roc').innerHTML = g;
+  $('#l4-scores').innerHTML = [['ROC AUC', f3(roc.auc), real ? T('empirical', '實測') : `${T('target', '目標')} ${target.toFixed(2)}`], ['TPR', f2(TPR), T('abnormal caught', '異常抓到')], ['FPR', f2(FPR), T('normal flagged', '正常誤判')], [T('Precision', '精確率'), f2(prec), `${T('acc', '準確率')} ${f2(acc)}`]]
+    .map(x => `<div class="score"><p class="score-k">${x[0]}</p><p class="score-v">${x[1]}</p><p class="score-n">${x[2]}</p></div>`).join('');
+  $('#l4-note').innerHTML = own ? T(`<b>${ownLabel(task.id)}:</b> real scores of our own GPT-2 model on the ${sc.normal.length} held-out test questions (never used to fit PCA / KMeans / DTMC). ${task.id === 'GPT2-OOD' ? 'Score = mean transition probability on the answer tokens.' : 'Score = mean abstract semantics θ̄ on the answer tokens.'} This is not one of the paper's 10 tasks.`,
+    `<b>${ownLabel(task.id)}：</b>我們自己的 GPT-2 模型在 ${sc.normal.length} 題保留測試題上的真實分數（這些題沒有用來訓練 PCA／KMeans／DTMC）。${task.id === 'GPT2-OOD' ? '分數＝答案 token 的平均轉移機率。' : '分數＝答案 token 的平均抽象語意 θ̄。'}這不是論文 10 個任務之一。`) : T(`<b>${taskLabel(task)}:</b> the paper reports mean ${task.mean.toFixed(2)}, median ${task.med.toFixed(2)}, max ${task.max.toFixed(2)} (min ${task.min.toFixed(2)}) over 180 settings. At AUC ${target.toFixed(2)}, equal-variance separation is d′ = ${(Math.SQRT2 * invPhi(clamp(target, .5, .999))).toFixed(2)}σ.`,
+    `<b>${taskLabel(task)}：</b>論文報告 180 種設定的平均 ${task.mean.toFixed(2)}、中位 ${task.med.toFixed(2)}、最大 ${task.max.toFixed(2)}（最小 ${task.min.toFixed(2)}）。AUC ${target.toFixed(2)} 對應等變異數分離度 d′ = ${(Math.SQRT2 * invPhi(clamp(target, .5, .999))).toFixed(2)}σ。`);
+  const nAb = sc.abnormal.length, nNo = sc.normal.length, dp = Math.SQRT2 * invPhi(clamp(target, .5, .999));
+  setFx('l4-hist', [
+    FX(['ROC AUC', 'ROC AUC'], real ? `\\mathrm{AUC}=\\int_0^1\\mathrm{TPR}\\,d\\mathrm{FPR}=${f3(roc.auc)}` : `\\begin{aligned}\\mathrm{AUC}&=\\Pr[\\text{normal}>\\text{abnormal}]=\\Phi\\!\\Big(\\dfrac{d'}{\\sqrt2}\\Big)\\\\ &=\\Phi\\!\\Big(\\dfrac{${dp.toFixed(2)}}{1.414}\\Big)=${f3(roc.auc)}\\end{aligned}`,
+      ['The chance that a random normal sample scores higher than a random abnormal one. 0.5 = coin flip, 1.0 = perfectly separated. It does not depend on any single threshold.', '隨機抽一個正常樣本、一個異常樣本，正常分數較高的機率。0.5＝擲硬幣，1.0＝完全分開；它不依賴單一門檻。']),
+    FX(['TPR and FPR at this threshold', '此門檻下的 TPR 與 FPR'], `\\begin{aligned}\\mathrm{TPR}&=\\dfrac{TP}{TP+FN}=\\dfrac{${Math.round(tp)}}{${nAb}}=${f3(TPR)}\\\\ \\mathrm{FPR}&=\\dfrac{FP}{FP+TN}=\\dfrac{${Math.round(fp)}}{${nNo}}=${f3(FPR)}\\end{aligned}`,
+      ['TPR = fraction of abnormal samples you catch; FPR = fraction of normal samples you wrongly flag. Rule: score ≤ threshold ⇒ flagged abnormal.', 'TPR＝抓到的異常比例；FPR＝被誤判為異常的正常比例。規則：分數 ≤ 門檻 ⇒ 判為異常。'])
+  ]);
+}
+['l4-task','l4-q','l4-auc','l4-th'].forEach(id => $('#' + id).addEventListener('input', lab4));
+
+/* ============================ 07 formulas ============================ */
+const CORE_EQ = [
+ {tex:'\\max_\\theta \\sum_{t=1}^{T}\\log p(w_t\\mid w_{1:t-1};\\theta)', en:'(1) Next-token training objective', zh:'(1) 下一 token 預測訓練目標'},
+ {tex:'g(x)=\\begin{cases}\\text{in}&P_X(x)\\ge\\lambda\\\\ \\text{out}&P_X(x)<\\lambda\\end{cases}', en:'(2) OOD decision rule with density estimate P_X and threshold λ', zh:'(2) 以密度估計 P_X 與門檻 λ 的 OOD 判定'},
+ {tex:'p(y_1,\\dots,y_T)=\\prod_{t=1}^{T}p(y_t\\mid y_{<t})', en:'(3) Autoregressive generation as a stochastic process', zh:'(3) 自迴歸生成的隨機過程'},
+ {tex:'\\bar P(\\bar s,\\bar s\')=\\dfrac{\\#\\{s\\to s\' : s\\in\\bar s,\\ s\'\\in\\bar s\'\\}}{\\#\\{\\text{outgoing transitions of }\\bar s\\}}', en:'Abstract transition probability (DTMC estimation)', zh:'抽象轉移機率（DTMC 估計）'},
+ {tex:'\\bar\\theta(\\bar s)=\\dfrac1{|\\bar s|}\\sum_{s\\in\\bar s}\\theta(s)\\qquad \\text{score}=\\operatorname{AVG}\\big(\\bar\\theta(\\bar s_i)\\big)', en:'Semantics abstraction and the trace-level semantic score', zh:'語意抽象與軌跡層級語意分數'}
+];
+const METRICS = [
+ {k:'SUC', fam:'model', en:'Succinctness', zh:'簡潔性', tex:'\\mathrm{SUC}=\\dfrac{|\\bar S|}{|S|}', dEn:'Lower is better, but keep enough information (a 1-state model is perfectly succinct and useless).', dZh:'越低越好，但需保留足夠資訊（單一狀態的模型最簡潔卻無用）。', pEn:'State reduction rate (transition reduction rate is analogous).', pZh:'狀態縮減率（轉移縮減率同理）。'},
+ {k:'COV', fam:'model', en:'Coverage', zh:'覆蓋率', tex:'\\mathrm{COV}=\\dfrac{|\\bar S_{\\text{unseen}}|}{|\\bar S|},\\quad \\bar S_{\\text{unseen}}=\\{s\\mid\\lVert s-c_i\\rVert>d\\}', dEn:'Lower is better. Grid: cells outside the grid; cluster: farther than d = max train distance to the center.', dZh:'越低越好。網格：落在網格外；分群：距中心大於 d（訓練最大距離）。', pEn:'Share of test states/transitions not seen in the abstract model.', pZh:'測試狀態／轉移中未在抽象模型出現者的比例。'},
+ {k:'SEN', fam:'model', en:'Sensitivity', zh:'敏感度', tex:'\\mathrm{SEN}=\\dfrac{|\\{s\\in S_{\\text{test}}\\mid \\bar s\\ne\\bar s\',\\ \\lVert s-s\'\\rVert<\\epsilon\\}|}{|S_{\\text{test}}|}', dEn:'Lower is better (robust to tiny perturbations).', dZh:'越低越好（對微小擾動穩健）。', pEn:'Fraction of states whose abstract state changes under an ε-perturbation.', pZh:'ε 擾動後所屬抽象狀態改變的比例。'},
+ {k:'SS', fam:'model', en:'State classification (sink)', zh:'狀態分類（匯點）', tex:'s_i\\ \\text{is a sink}\\iff p_{ii}=1', dEn:'Reveals bias toward certain responses. Also checks source and recurrent states.', dZh:'可揭示模型是否偏向特定回應；另可檢查 source 與 recurrent 狀態。', pEn:'How often an abstract state has only a probability-1 self-loop.', pZh:'抽象狀態只剩機率 1 自迴圈的頻率。'},
+ {k:'SDE', fam:'model', en:'Stationary Distribution Entropy', zh:'穩態分布熵', tex:'\\mathrm{SDE}=-\\sum_{i=1}^{n}\\pi_i\\Big(\\sum_{j=1}^{n}p_{ij}\\log p_{ij}\\Big),\\ \\ \\pi P=\\pi', dEn:'Reported value = distance from the mid-point of the stable bound (p_ii = 0.95) and the stochastic bound (p_ij ≈ 1/n).', dZh:'報告值＝與「穩定界（p_ii = 0.95）與隨機界（p_ij ≈ 1/n）中點」的距離。', pEn:'Balance between predictability and randomness of transitions.', pZh:'轉移在可預測性與隨機性之間的平衡。'},
+ {k:'PERP', fam:'model', en:'Perplexity', zh:'困惑度', tex:'\\mathrm{PERP}=\\sqrt[N]{\\prod_{i=1}^{N}\\dfrac{1}{P(w_i\\mid w_1\\cdots w_{i-1})}}', dEn:'Good states should be < 100. Reported value = KL divergence between normal-data and abnormal-data perplexity.', dZh:'好狀態應 < 100。報告值＝正常與異常資料困惑度之間的 KL 散度。', pEn:'Fit to the training distribution; the most broadly predictive model-wise metric.', pZh:'對訓練分布的擬合度；最廣用的模型層級預測指標。'},
+ {k:'PRE', fam:'sem', en:'Semantics Preciseness', zh:'語意精確度', tex:'\\mathrm{PRE}=\\mathrm{MEAN}\\Big\\{\\theta(\\tau^k)-\\mathbb E\\big[\\bar\\theta(\\bar\\tau^k)\\big]\\Big\\}', dEn:'Paper text: higher is better. Strongest and most consistent correlate of AUC (Pearson 0.81–1.00).', dZh:'原文：越高越好。與 AUC 最強且最一致相關（Pearson 0.81–1.00）。', pEn:'Mean (and max) semantics error of abstract vs. concrete semantics.', pZh:'抽象語意與具體語意之平均（與最大）誤差。'},
+ {k:'ENT', fam:'sem', en:'Semantics Entropy', zh:'語意熵', tex:'\\mathrm{ENT}=-\\sum_{i=1}^{n}\\theta(\\tau_i)\\log\\theta(\\tau_i),\\ \\ \\tau_i\\in\\bar\\tau', dEn:'Same bounds trick as SDE: value = distance from the mid-point of stable/stochastic bounds.', dZh:'與 SDE 相同的界線做法：值＝與穩定／隨機界中點的距離。', pEn:'Randomness and predictability of the semantic space.', pZh:'語意空間的隨機性與可預測性。'},
+ {k:'IVT', fam:'sem', en:'Instant Value Trend', zh:'瞬時值趨勢', tex:'\\mathrm{IVT}=\\min_{i=0}^{k}\\big|\\theta(\\tau_{t_i})-v\\big|', dEn:'v = 1 for normal traces, v = 0 for abnormal; smaller is better; report mean of both groups.', dZh:'正常軌跡 v = 1、異常 v = 0；越小越好；回報兩組平均。', pEn:'Closest approach of the semantic trace to the target value.', pZh:'語意軌跡最接近目標值的程度。'},
+ {k:'NVT', fam:'sem', en:'n-gram Value Trend', zh:'n-gram 值趨勢', tex:'\\mathrm{NVT}=\\min_{i=n}^{k}\\Big(\\sum_{j=i-n}^{i}\\big|\\theta(\\tau_{t_j})-v\\big|\\Big)', dEn:'Same v convention as IVT; smaller is better.', dZh:'v 的設定同 IVT；越小越好。', pEn:'Closeness to the target over n consecutive steps.', pZh:'連續 n 步與目標值的貼近程度。'},
+ {k:'NDT', fam:'sem', en:'n-gram Derivative Trend', zh:'n-gram 導數趨勢', tex:'\\begin{aligned}\\mathrm{Inc}&=\\max_{i=n}^{k}\\sum_{j=i-n+1}^{i}\\mathrm{lds}(\\theta(\\tau_{t_j}))\\\\ \\mathrm{Dec}&=\\min_{i=n}^{k}\\sum_{j=i-n+1}^{i}\\mathrm{lds}(\\theta(\\tau_{t_j}))\\\\ \\mathrm{NDT}&=|\\mathrm{Inc}-\\mathrm{Dec}|\\end{aligned}', dEn:'lds = left-derivative sign. Larger difference ⇒ a "purer" semantic trend. Report mean of normal and abnormal traces.', dZh:'lds＝左導數符號。差距越大 ⇒ 語意趨勢越「純」。回報正常與異常軌跡的平均。', pEn:'Richness of how semantics rise and fall across tokens.', pZh:'語意隨 token 上升與下降的豐富程度。'},
+ {k:'SL', fam:'sem', en:'Surprise Level', zh:'意外程度', tex:'\\begin{aligned}\\mathrm{post}&=\\dfrac{\\mathbb P(\\theta(\\tau^{l+1})\\!=\\!g\\mid\\theta(\\tau^{l})\\!=\\!g)\\,\\mathbb P(\\theta(\\tau^{l})\\!=\\!g)}{\\mathbb P(\\theta(\\tau^{l+1})\\!=\\!g)}\\\\ \\mathrm{SL}&=\\operatorname{mean}D_{KL}(\\mathrm{post}\\Vert\\mathrm{prior})\\end{aligned}', dEn:'Binary semantics (g = good). Thresholds: high surprise = random matrix + random semantics; low = p_ii = 0.95.', dZh:'二元語意（g = good）。閾值：高意外＝隨機矩陣＋隨機語意；低意外＝p_ii = 0.95。', pEn:'Bayesian surprise of semantic change between successive sequences.', pZh:'相鄰序列間語意變化的貝氏意外程度。'}
+];
+/* where each formula comes alive + a one-line answer for the Q&A */
+const CORE_EXTRA = [
+ {lab:'#s2'},
+ {lab:'#s5'},
+ {lab:'#s4'},
+ {lab:'#s4'},
+ {lab:'#s5'}
+];
+const METRIC_EXTRA = {
+ SUC:{lab:'#s3'},
+ COV:{lab:'#s3'},
+ SEN:{lab:'#s3'},
+ SS:{lab:'#s4'},
+ SDE:{lab:'#s4'},
+ PERP:{lab:'#s8'},
+ PRE:{lab:'#s8'},
+ ENT:{lab:'#s8'},
+ IVT:{lab:'#s5'},
+ NVT:{lab:'#s5'},
+ NDT:{lab:'#s5'},
+ SL:{lab:'#s5'}
+};
+const LAB_NAME = {'#s2': ['the pipeline', '流程圖'], '#s3': ['Lab 1', '實驗室 1'], '#s4': ['Lab 2', '實驗室 2'], '#s5': ['Lab 3', '實驗室 3'], '#s6': ['Lab 4', '實驗室 4'], '#s8': ['Lab 5', '實驗室 5']};
+const extraHtml = x => x ? `<a class="try" href="${x.lab}">${T('see it in ' + LAB_NAME[x.lab][0] + ' →', '到' + LAB_NAME[x.lab][1] + '看它怎麼動 →')}</a>` : '';
+/* formulas that are worked through with live numbers in Labs 1-4 get the darker "in-lab" card style */
+const IN_LAB = {SUC: '#s3', COV: '#s3', SEN: '#s3', SS: '#s4', SDE: '#s4'}, CORE_IN_LAB = [3, 4];
+
+/* ============================ hover explanations for formula symbols ============================
+   SYMS[ctx][key] = [en, zh]. ctx = data-ctx of the formula (falls back to SYMS._ for shared symbols).
+   Keys: a glyph ("π"), a subscripted symbol ("p_ij"), a word ("softmax"), a barred/hatted glyph ("S̄", "P̂"). */
+const SYMS = {_: {}};
+const symClean = s => (s || '').replace(/[​\s]/g, '');
+function symKeys(el){
+  const t = symClean(el.textContent); if (!t) return [];
+  const K = []; let base = t;
+  const acc = el.closest('.accent');
+  if (acc && !el.closest('.accent-body')) { const b = symClean((acc.querySelector('.accent-body') || {}).textContent); base = t + (b.indexOf('^') >= 0 || b.indexOf('ˆ') >= 0 ? '̂' : '̄'); }
+  if (el.classList.contains('mathcal')) base = 'cal' + t;
+  const sub = el.closest('.msupsub');
+  if (sub) { const grp = sub.parentElement, first = grp && grp.firstElementChild; const b0 = first && first !== sub ? symClean(first.textContent) : ''; if (b0) K.push(b0 + '_' + symClean(sub.textContent)); }
+  else { const par = el.parentElement, sib = par && par.querySelector(':scope > .msupsub'); if (sib && par.firstElementChild === el) K.push(base + '_' + symClean(sib.textContent)); }
+  K.push(base.normalize('NFC')); if (base !== t) K.push(t);
+  return K.map(k => k.normalize('NFC'));
+}
+function symFind(ctx, el){
+  for (const k of symKeys(el)) { const v = (SYMS[ctx] && SYMS[ctx][k]) || SYMS._[k]; if (v) return {k, v}; }
+  return null;
+}
+function annotateSyms(root){
+  root.querySelectorAll('.tex').forEach(tex => { const ctx = tex.dataset.ctx || '';
+    tex.querySelectorAll('.katex-html span').forEach(s => { if (!s.children.length && symFind(ctx, s)) s.classList.add('symx'); }); });
+}
+let symShown = false;
+document.addEventListener('mousemove', e => {
+  if (e.target.closest && e.target.closest('.katex')) {
+    /* KaTeX stacks wrapper spans over the glyphs, so look through everything under the pointer */
+    const el = document.elementsFromPoint(e.clientX, e.clientY).find(n => n.classList && n.classList.contains('symx'));
+    if (el) { const tex = el.closest('.tex'), f = symFind(tex ? tex.dataset.ctx || '' : '', el);
+      if (f) { const p = f.k.split('_'), label = p.length > 1 ? esc(p[0]) + '<sub>' + esc(p.slice(1).join('_')) + '</sub>' : esc(f.k.replace(/^cal/, ''));
+        showTip('<b>' + label + '</b> — ' + esc(T(f.v[0], f.v[1])), e); symShown = true; return; } }
+  }
+  if (symShown) { hideTip(); symShown = false; }
+}, {passive: true});
+const G = (ctx, obj) => { const d = SYMS[ctx] = SYMS[ctx] || {}; Object.keys(obj).forEach(k => { d[k.normalize('NFC')] = obj[k]; }); };
+
+/* ---- symbol glossary for luna.html ---- */
+G('_', {
+  'e': ['Euler\'s number (about 2.718)', '歐拉數（約 2.718）'], 'ln': ['natural logarithm', '自然對數'], 'log': ['logarithm', '對數'], 'exp': ['exponential function', '指數函數'],
+  '∑': ['sum: add up the terms for every value of the index', '連加：把每個指標取值對應的項加起來'], '∏': ['product: multiply the terms for every value of the index', '連乘：把每個指標取值對應的項乘起來'],
+  '∥': ['norm: distance / length of a vector', '範數：向量的長度（距離）'], '∣': ['“given” (in a probability) or “such that” (in a set)', '「在…的條件下」（機率中）或「滿足」（集合中）'],
+  'min': ['minimum', '最小值'], 'max': ['maximum', '最大值'], '∈': ['“belongs to”', '「屬於」'], '⇒': ['“therefore”', '「所以」'], '≥': ['greater than or equal to', '大於或等於'], '<': ['less than', '小於'], '>': ['greater than', '大於'],
+  '#': ['“the number of”', '「…的個數」'], 'i': ['index (which item)', '指標（第幾個）'], 'j': ['index (which item)', '指標（第幾個）'], 'k': ['index (which item)', '指標（第幾個）'], 't': ['index of a step in a trace', '軌跡中的第幾步'], 'n': ['a count', '一個數量'],
+  'AVG': ['average (mean)', '平均'], 'score': ['semantic score of a trace: the average of θ̄ over its states', '一條軌跡的語意分數：路徑上各狀態 θ̄ 的平均'], 'normal': ['normal', '正常'], 'abnormal': ['abnormal', '異常'],
+  'S̄': ['set of abstract states (the bar means “abstract”); |S̄| is how many there are', '抽象狀態的集合（上橫線代表「抽象」）；|S̄| 是狀態的個數'], 'S': ['set of concrete states (the LLM\'s raw hidden states); |S| is how many there are', '具體狀態的集合（LLM 的原始隱藏狀態）；|S| 是個數'],
+  's̄': ['an abstract state (a group of similar concrete states)', '一個抽象狀態（一群相似的具體狀態）'], 's': ['a concrete state (one hidden-state vector of the LLM)', '一個具體狀態（LLM 的一個隱藏狀態向量）'],
+  'θ': ['concrete semantics: how well the LLM satisfies a trust property at this state', '具體語意：LLM 在這個狀態下，對某項可信賴性的滿足程度'], 'θ̄': ['abstract semantics: the average θ over all concrete states inside an abstract state', '抽象語意：落在某個抽象狀態裡所有具體狀態的 θ 的平均'],
+  'P̂': ['estimated transition probability (the hat = “estimated from counts”)', '估計的轉移機率（帽子＝「由計數估計」）'], 'P̄': ['abstract transition probability', '抽象轉移機率'], 'π': ['stationary distribution: share of time the chain spends in each state in the long run', '穩態分布：鏈長期下來停留在各狀態的時間比例'],
+  'λ': ['threshold', '門檻'], 'x': ['an input / a data value', '一個輸入／資料值'], 'y': ['a data value', '一個資料值'], 'r': ['correlation coefficient', '相關係數'], 'ε': ['a very small perturbation size', '很小的擾動幅度'], 'ϵ': ['a very small perturbation size', '很小的擾動幅度']
+});
+/* the 12 metric names, taken from the metric table */
+(function(){ const o = {}; METRICS.forEach(m => { o[m.k] = [m.en + ' — ' + m.pEn, m.zh + '：' + m.pZh]; }); G('_', o); })();
+G('core0', {
+  'θ': ['the model\'s parameters (its weights), which training adjusts', '模型的參數（權重），訓練會調整它'], 'T': ['length of the training sequence', '訓練序列的長度'],
+  'p': ['probability the model assigns to the next word', '模型給下一個詞的機率'], 'w_t': ['the word at position t', '位置 t 的詞'], 'w_1:t−1': ['all words before position t', '位置 t 之前的所有詞'],
+  'max': ['training picks the parameters θ that make this as large as possible', '訓練就是挑出讓這個值最大的參數 θ'], 't': ['position in the sequence', '在序列中的位置']
+});
+G('core1', {
+  'g': ['OOD decision: returns “in” (normal) or “out” (out-of-distribution)', 'OOD 判定：回傳「in」（正常）或「out」（分布外）'], 'P_X': ['estimated density of the training distribution X: how common an input like x is', '訓練分布 X 的估計密度：像 x 這種輸入有多常見'],
+  'λ': ['threshold: inputs rarer than λ are called out-of-distribution', '門檻：比 λ 更罕見的輸入就判為分布外'], 'x': ['the input being tested', '被測試的輸入'], 'in': ['in-distribution', '分布內'], 'out': ['out-of-distribution', '分布外']
+});
+G('core2', {
+  'p': ['probability', '機率'], 'y_1': ['the first generated token', '第一個生成的 token'], 'y_T': ['the last generated token (the end-of-sequence marker)', '最後一個生成的 token（結束符）'], 'y_t': ['the token generated at step t', '第 t 步生成的 token'], 'y_<t': ['all tokens generated before step t (including the prompt)', '第 t 步之前生成的所有 token（包含提示）'],
+  'T': ['number of generated tokens', '生成的 token 數'], '∏': ['multiply the step probabilities: the answer\'s probability', '把每步的機率相乘：整個答案的機率']
+});
+G('core3', {
+  'P̄': ['abstract transition probability from one abstract state to another', '從一個抽象狀態到另一個抽象狀態的轉移機率'], 's̄': ['an abstract state', '一個抽象狀態'], 's̄′': ['the abstract state we move to', '轉移後的抽象狀態'], 's': ['a concrete state inside the abstract state s̄', '落在抽象狀態 s̄ 裡的一個具體狀態'], 's′': ['the concrete state that follows s', '接在 s 之後的具體狀態'],
+  '∈': ['“belongs to”: s lies inside the group s̄', '「屬於」：s 落在群 s̄ 裡'], 'outgoingtransitionsof': ['all transitions that leave the abstract state', '所有離開這個抽象狀態的轉移'], '→': ['“moves to”', '「走到」']
+});
+G('core4', {
+  'θ̄': ['abstract semantics of a state: the mean of its members\' θ', '一個狀態的抽象語意：其成員 θ 的平均'], 'θ': ['concrete semantics of one concrete state', '一個具體狀態的語意'], 's̄': ['an abstract state', '一個抽象狀態'], 's': ['a concrete state', '一個具體狀態'],
+  '∣': ['size of the set: how many concrete states fall in the abstract state', '集合的大小：落在這個抽象狀態裡的具體狀態個數'], 'AVG': ['average along the trace', '沿整條軌跡取平均'], 'score': ['semantic score of the trace; below the threshold ⇒ abnormal', '軌跡的語意分數；低於門檻 ⇒ 異常'], 's̄_i': ['the i-th abstract state on the trace', '軌跡上第 i 個抽象狀態']
+});
+G('l1-svg', {
+  'unseen': ['test states that fall where no training state was', '落在「訓練從沒到過」之處的測試狀態'], 'test': ['the test states', '測試狀態'], 'normal': ['normal test inputs', '正常的測試輸入'], 'abnormal': ['abnormal test inputs', '異常的測試輸入'],
+  'S_test': ['the set of test states', '測試狀態的集合'], 'afteranϵ-noise': ['after adding a tiny perturbation', '加上微小擾動之後'], 's̄′': ['the abstract state after the perturbation', '擾動後所屬的抽象狀態'], 'after': ['after adding a tiny perturbation', '加上微小擾動之後'],
+  'noise': ['small random perturbation', '小的隨機擾動'], '≠': ['not equal: the state changed group', '不相等：換到別的群了']
+});
+G('l2-graph', {
+  'P̂': ['estimated transition probability from state i to state j: a count divided by a count', '從狀態 i 到 j 的估計轉移機率：一個次數除以一個次數'], 's_0': ['abstract state 0', '抽象狀態 0'], 's_1': ['abstract state 1', '抽象狀態 1'], 's_i': ['abstract state i (the one we leave)', '抽象狀態 i（出發的）'], 's_i+1': ['the next abstract state on the path', '路徑上的下一個抽象狀態'],
+  'outof': ['all transitions that leave that state', '離開該狀態的所有轉移'], 'H': ['entropy: how unpredictable the next step is, averaged over the long run', '熵：下一步平均有多難預測（以長期比例加權）'], 'π_i': ['long-run share of time in state i', '狀態 i 的長期停留比例'], 'p_ij': ['estimated probability of going from i to j', '估計的 i 走到 j 的機率'],
+  'stable': ['stable bound: a chain that mostly stays put', '穩定界：大多待在原地的鏈'], 'random': ['stochastic bound: a chain that jumps uniformly', '隨機界：均勻亂跳的鏈'], 'SDE': ['distance between the model\'s entropy and the midpoint of the two bounds', '模型的熵與兩個界中點的距離'],
+  'AVG': ['average of the transition probabilities along the path = the OOD semantic score', '路徑上各轉移機率的平均＝OOD 語意分數'], 'score': ['OOD semantic score of the path', '這條路徑的 OOD 語意分數']
+});
+G('l3-chart', {
+  'th': ['the threshold you set with the slider', '你用滑桿設定的門檻'], 'i_*': ['index of the first state whose semantics drops below the threshold: where the model starts going wrong', '第一個語意低於門檻的狀態的編號：模型從這裡開始出錯'], '∅': ['empty set: no state fell below the threshold', '空集合：沒有任何狀態低於門檻'],
+  'min': ['the smallest index that satisfies the condition', '滿足條件的最小編號'], 's̄_i': ['the i-th abstract state on the trace', '軌跡上第 i 個抽象狀態'], 'token': ['the token at that position', '該位置的 token']
+});
+G('l4-hist', {
+  'AUC': ['area under the ROC curve: chance a random normal sample outscores a random abnormal one', 'ROC 曲線下面積：隨機一個正常樣本分數高於隨機一個異常樣本的機率'], 'Pr': ['probability', '機率'], 'Φ': ['standard normal cumulative distribution function', '標準常態分布的累積分布函數'],
+  'd′': ['separation: how many standard deviations apart the two score groups are', '分離度：兩組分數的平均相差幾個標準差'], 'd': ['d′: separation', 'd′：分離度'], '′': ['prime: part of the name d′', '撇號：d′ 這個名稱的一部分'], '√': ['square root', '平方根'],
+  'TPR': ['true-positive rate: share of abnormal samples caught', '真陽性率：抓到的異常樣本比例'], 'FPR': ['false-positive rate: share of normal samples wrongly flagged', '偽陽性率：被誤判的正常樣本比例'], 'TP': ['abnormal samples flagged as abnormal', '被判為異常的異常樣本數'], 'FN': ['abnormal samples missed', '漏掉的異常樣本數'], 'FP': ['normal samples wrongly flagged', '被誤判的正常樣本數'], 'TN': ['normal samples correctly passed', '被正確放行的正常樣本數'],
+  '∫': ['integral: the area under the curve', '積分：曲線下的面積'], 'normal': ['normal samples', '正常樣本'], 'abnormal': ['abnormal samples', '異常樣本']
+});
+G('l5-sc', {
+  'r': ['Pearson correlation between the metric (x) and ROC AUC (y), from −1 to 1', '指標（x）與 ROC AUC（y）的 Pearson 相關係數，範圍 −1 到 1'], 'x_i': ['metric value of the i-th configuration', '第 i 個設定的指標值'], 'y_i': ['ROC AUC of the i-th configuration', '第 i 個設定的 ROC AUC'], 'x̄': ['mean of the metric over all configurations', '所有設定指標值的平均'], 'ȳ': ['mean ROC AUC over all configurations', '所有設定 ROC AUC 的平均'],
+  'τ': ['Kendall rank correlation: do the metric and AUC rank configurations in the same order?', 'Kendall 秩相關：指標與 AUC 對設定的排名順序是否一致？'], 'C': ['pairs of configurations ranked in the same order by metric and AUC', '指標與 AUC 排名順序相同的設定配對數'], 'D': ['pairs ranked in opposite order', '排名順序相反的設定配對數'], 'n': ['number of configurations (n choose 2 = number of pairs)', '設定的個數（C(n,2)＝配對總數）'], '—': ['not enough configurations to compute it', '設定太少，無法計算']
+});
+G('lv-toks', {
+  'plaus': ['plausibility score: average transition probability over the answer tokens', '合理性分數：回答 token 的平均轉移機率'], 'truth': ['truthfulness score: average θ̄ over the answer tokens', '真實性分數：回答 token 的平均 θ̄'], 'pct': ['percentile among normal training answers (low = unusual)', '在正常訓練答案中的百分位（低＝不尋常）'],
+  'P̂': ['estimated transition probability between abstract states', '抽象狀態之間的估計轉移機率'], 'θ̄': ['abstract semantics of a state (truthful share of training tokens that landed there)', '一個狀態的抽象語意（落在該狀態的訓練 token 中屬於真實答案的比例）'], 's̄': ['an abstract state', '一個抽象狀態'], 's̄_i': ['the i-th abstract state on the answer', '回答上第 i 個抽象狀態'], 'AVG': ['average over the answer tokens', '對回答的 token 取平均']
+});
+/* metric formulas (section 07 cards and the first Lab 5 tab) */
+G('SUC', {'S̄': ['set of abstract states', '抽象狀態的集合'], 'S': ['set of concrete states', '具體狀態的集合']});
+G('COV', {'S̄': ['set of abstract states', '抽象狀態的集合'], 'unseen': ['never seen in the training data', '訓練資料裡從沒出現過'], 's': ['a concrete test state', '一個具體的測試狀態'], 'c_i': ['centre of the cluster', '群的中心'], 'd': ['largest distance from a training state to its cluster centre', '訓練狀態到其群中心的最大距離'], '∥': ['distance between s and the centre', 's 與中心的距離']});
+G('SEN', {'S_test': ['set of test states', '測試狀態的集合'], 's̄': ['abstract state of s', 's 所屬的抽象狀態'], 's̄′': ['abstract state of the perturbed state s′', '擾動後的 s′ 所屬的抽象狀態'], 's′': ['s plus a tiny perturbation', 's 加上微小擾動'], 'ϵ': ['maximum size of the perturbation', '擾動的最大幅度'], '∥': ['distance between s and s′', 's 與 s′ 的距離'], '≠': ['not equal: changed to another abstract state', '不相等：換到另一個抽象狀態']});
+G('SS', {'s_i': ['abstract state i', '抽象狀態 i'], 'p_ii': ['probability of staying in state i (a self-loop)', '留在狀態 i 的機率（自迴圈）'], 'iff': ['“if and only if”', '「若且唯若」'], 'sink': ['a state that can never be left', '一旦進入就出不來的狀態'], 'issink': ['a state that can never be left', '一旦進入就出不來的狀態'], '⟺': ['“if and only if”', '「若且唯若」']});
+G('SDE', {'π_i': ['long-run share of time in state i', '狀態 i 的長期停留比例'], 'p_ij': ['probability of going from state i to state j', '從狀態 i 走到 j 的機率'], 'n': ['number of abstract states', '抽象狀態的個數'], 'P': ['transition matrix', '轉移矩陣'], 'π': ['stationary distribution, with πP = π', '穩態分布，滿足 πP = π']});
+G('PERP', {'N': ['number of tokens', 'token 數'], 'w_i': ['the i-th token', '第 i 個 token'], 'P': ['probability the model gave the token given the previous ones', '在前面的 token 之下，模型給這個 token 的機率'], 'w_1⋯w_i−1': ['all tokens before the i-th', '第 i 個之前的所有 token'], 'w_1': ['the first token', '第一個 token'], '∏': ['multiply over all tokens', '對所有 token 連乘']});
+G('PRE', {'θ': ['concrete semantics along a test trace', '測試軌跡上的具體語意'], 'θ̄': ['abstract semantics of the matching abstract trace', '對應抽象軌跡的抽象語意'], 'τ_k': ['a test trace of consecutive states', '一條連續狀態的測試軌跡'], 'τ̄_k': ['the matching abstract trace', '對應的抽象軌跡'], 'E': ['expected value', '期望值'], 'MEAN': ['average over all test traces', '對所有測試軌跡取平均']});
+G('ENT', {'θ': ['semantics value of the i-th element', '第 i 個元素的語意值'], 'τ_i': ['the i-th element of the trace', '軌跡上的第 i 個元素'], 'τ̄': ['the abstract trace', '抽象軌跡'], 'n': ['number of elements', '元素個數'], '∈': ['belongs to', '屬於']});
+G('IVT', {'θ': ['semantics along the trace', '軌跡上的語意值'], 'τ_ti': ['the trace at simulation step i', '第 i 個模擬步的軌跡'], 'v': ['target value: 1 for normal traces, 0 for abnormal', '目標值：正常軌跡為 1，異常軌跡為 0'], 'k': ['number of simulation steps', '模擬步數'], 'min': ['closest approach to the target', '最接近目標的程度']});
+G('NVT', {'θ': ['semantics along the trace', '軌跡上的語意值'], 'τ_tj': ['the trace at simulation step j', '第 j 個模擬步的軌跡'], 'v': ['target value: 1 for normal traces, 0 for abnormal', '目標值：正常軌跡為 1，異常軌跡為 0'], 'n': ['window length: how many consecutive steps are summed', '視窗長度：連續加總幾步'], 'k': ['number of simulation steps', '模擬步數']});
+G('NDT', {'Inc': ['strongest rising trend over any n consecutive steps', '任何連續 n 步中最強的上升趨勢'], 'Dec': ['strongest falling trend over any n consecutive steps', '任何連續 n 步中最強的下降趨勢'], 'lds': ['left-derivative sign: +1 if the curve went up, −1 if it went down at that step', '左導數符號：該步曲線上升為 +1、下降為 −1'], 'θ': ['semantics along the trace', '軌跡上的語意值'], 'τ_tj': ['the trace at simulation step j', '第 j 個模擬步的軌跡'], 'n': ['window length', '視窗長度'], 'max': ['largest over all windows', '所有視窗中最大的'], 'min': ['smallest over all windows', '所有視窗中最小的'], '∣': ['absolute value', '絕對值']});
+G('SL', {'post': ['posterior: belief about the earlier sequence after seeing the later one', '後驗：看過後一個序列之後，對前一個序列的信念'], 'prior': ['prior: belief before seeing it', '先驗：看到之前的信念'], 'D_KL': ['KL divergence: how far the posterior is from the prior', 'KL 散度：後驗離先驗多遠'], 'P': ['probability', '機率'], 'g': ['“good” semantics (binary semantics)', '「好」的語意（二元語意）'], 'τ_l': ['the l-th sequence', '第 l 條序列'], 'τ_l+1': ['the next sequence', '下一條序列'], 'mean': ['average', '平均'], 'θ': ['semantics of a sequence', '序列的語意'], '∣': ['given', '在…的條件下'], '∥': ['“relative to”', '「相對於」']});
+
+G('_', {'g': ['logarithm (log)', '對數（log）'], 'lo': ['logarithm (log)', '對數（log）'], '′': ['prime: marks the state after the move or the perturbation', '撇號：標記移動或擾動「之後」的狀態'], '-noise': ['a tiny random perturbation', '微小的隨機擾動'], 'Σ': ['the sum of all the listed values', '所有列出數值的總和'], 'w': ['a token (word)', '一個 token（詞）'], 'ij': ['from state i to state j', '從狀態 i 到狀態 j'], 'p̂': ['estimated transition probability from state i to state j', '估計的「狀態 i 走到 j」的機率']});
+G('PRE', {'τ': ['a test trace (a run of consecutive states)', '一條測試軌跡（連續的一串狀態）'], 'τ̄': ['the matching abstract trace', '對應的抽象軌跡']});
+G('SS', {'isasink': ['“is a sink”: a state that can never be left', '「是匯點」：一旦進入就出不來的狀態']});
+
+let metricFam = 'model';
+function renderTexIn(root){ root.querySelectorAll('.tex').forEach(el => { const tex = el.dataset.tex, disp = el.dataset.display === '1';
+  if (window.katex) { try { katex.render(tex, el, {displayMode: disp, throwOnError: false}); el.classList.remove('tex-fallback'); return; } catch (e) {} }
+  el.textContent = tex; el.classList.add('tex-fallback'); }); annotateSyms(root); }
+function renderTex(){ renderTexIn(document); }
+window.__katexReady = renderTex;
+/* formula strip under each lab: live numbers substituted into the formula + what it is for.
+   FX(name[en,zh], tex, role[en,zh]) ; setFx(anchorId, items) appends/updates a .fx block inside the anchor's .figure */
+const FX = (name, tex, role, ctx) => ({name, tex, role, ctx});
+const sumTex = a => a.length <= 4 ? a.map(x => x.toFixed(2)).join('+') : '\\Sigma=' + a.reduce((s, x) => s + x, 0).toFixed(2);
+function setFx(anchor, items){
+  let el = document.getElementById(anchor + '-fx');
+  if (!el) { const fig = document.getElementById(anchor).closest('.figure'); if (!fig) return; el = document.createElement('div'); el.className = 'fx'; el.id = anchor + '-fx'; fig.appendChild(el); }
+  FXS[anchor] = Math.min(FXS[anchor] || 0, items.length - 1); FXI[anchor] = items; drawFx(anchor);
+}
+const FXS = {}, FXI = {};   // selected tab / items per lab
+function drawFx(anchor){
+  const el = document.getElementById(anchor + '-fx'), items = FXI[anchor], sel = FXS[anchor], it = items[sel];
+  el.innerHTML = `<div class="fx-top"><p class="fx-h">${T('Formulas in this lab — numbers update live · hover a symbol for its meaning', '本實驗室用到的公式——數字隨操作即時更新 · 把滑鼠移到符號上看意思')}</p>` +
+    `<div class="fx-tabs" role="group">${items.map((x, i) => `<button type="button" class="fx-tab" data-i="${i}" aria-pressed="${i === sel}">${esc(T(x.name[0], x.name[1]))}</button>`).join('')}</div></div>` +
+    `<div class="fx-body"><div class="fx-item"><span class="tex" data-display="1" data-ctx="${it.ctx || anchor}" data-tex="${esc(it.tex)}"></span></div>` +
+    `<div class="fx-role"><p class="fx-name">${esc(T(it.name[0], it.name[1]))}</p><p>${esc(T(it.role[0], it.role[1]))}</p></div></div>`;
+  el.querySelectorAll('.fx-tab').forEach(b => b.addEventListener('click', () => { FXS[anchor] = +b.dataset.i; drawFx(anchor); }));
+  renderTexIn(el);
+}
+function renderFormulas(){
+  const tag = h => h ? `<span class="lab-tag">${esc(T(LAB_NAME[h][0], LAB_NAME[h][1]))}</span>` : '';
+  $('#core-eq').innerHTML = CORE_EQ.map((e, i) => { const lab = CORE_IN_LAB.includes(i) ? CORE_EXTRA[i].lab : ''; return `<div class="mathblock${lab ? ' in-lab' : ''}">${tag(lab)}<span class="tex" data-display="1" data-ctx="core${i}" data-tex="${esc(e.tex)}"></span><div class="sec-sub" style="font-size:13px">${esc(T(e.en, e.zh))}</div>${extraHtml(CORE_EXTRA[i])}</div>`; }).join('');
+  $('#metric-grid').innerHTML = METRICS.filter(m => m.fam === metricFam).map(m => `<div class="metric${IN_LAB[m.k] ? ' in-lab' : ''}">${tag(IN_LAB[m.k])}<h3><span class="ab">${m.k}</span>${esc(T(m.en, m.zh))}</h3><p>${esc(T(m.pEn, m.pZh))}</p><span class="tex" data-display="1" data-ctx="${m.k}" data-tex="${esc(m.tex)}"></span><p class="dir">${esc(T(m.dEn, m.dZh))}</p>${extraHtml(METRIC_EXTRA[m.k])}</div>`).join('');
+  $('#mt-model').setAttribute('aria-pressed', metricFam === 'model'); $('#mt-sem').setAttribute('aria-pressed', metricFam === 'sem'); renderTex();
+}
+$('#mt-model').addEventListener('click', () => { metricFam = 'model'; renderFormulas(); });
+$('#mt-sem').addEventListener('click', () => { metricFam = 'sem'; renderFormulas(); });
+
+/* ============================ Lab 5 ============================ */
+const L5 = {pin: null};
+const partColor = p => p === 'grid' ? '#F4C26B' : p === 'GMM' ? '#C2B4FF' : '#5FD3A0';
+function lab5(){
+  const tsel = $('#l5-task'), msel = $('#l5-metric');
+  if (!tsel._ready || tsel._lang !== lang) { const ct = tsel.value, cm = msel.value; fillSelect(tsel, TASKS.map(t => [t.id, taskLabel(t)])); tsel.value = ct || 'OOD-L';
+    fillSelect(msel, ALL_KEYS.map(k => [k, `${k} · ${T(METRICS.find(m => m.k === k).en, METRICS.find(m => m.k === k).zh)}`])); msel.value = cm || 'PERP'; tsel._ready = true; tsel._lang = lang; }
+  const task = TASKS.find(t => t.id === tsel.value), key = msel.value;
+  const all = App.data.configs.filter(c => c.task === task.id);
+  setBadge('#l5-badge', App.realCfg && App.realCfg.has(task.id));
+  const on = {DTMC: $('#l5-dtmc').checked, HMM: $('#l5-hmm').checked, grid: $('#l5-grid').checked, GMM: $('#l5-gmm').checked, KMeans: $('#l5-km').checked};
+  const vis = all.filter(c => on[c.model] && on[c.partition] && c.metrics && c.metrics[key] != null);
+  const xs = vis.map(c => c.metrics[key]), ys = vis.map(c => c.auc);
+  const W = 620, H = 420, l = 52, r = 16, tp = 14, bt = 42;
+  const xlo = xs.length ? Math.min(...xs) : 0, xhi = xs.length ? Math.max(...xs) : 1, xp = (xhi - xlo) * .06 || .1, ylo = Math.min(.48, ...(ys.length ? ys : [.5])) - .01, yhi = Math.max(...(ys.length ? ys : [.7])) + .02;
+  const X = v => l + (v - (xlo - xp)) / ((xhi + xp) - (xlo - xp)) * (W - l - r), Y = v => H - bt - (v - ylo) / (yhi - ylo) * (H - bt - tp);
+  let s = ''; ticks(ylo, yhi, 6).forEach(v => { s += `<path d="M${l} ${Y(v)} H${W - r}" stroke="#232B3B"/><text x="${l - 6}" y="${Y(v) + 3}" font-size="10" fill="#7C869C" text-anchor="end">${v.toFixed(2)}</text>`; });
+  ticks(xlo - xp, xhi + xp, 6).forEach(v => { s += `<path d="M${X(v)} ${tp} V${H - bt}" stroke="#1A2130"/><text x="${X(v)}" y="${H - bt + 14}" font-size="10" fill="#7C869C" text-anchor="middle">${+v.toFixed(3)}</text>`; });
+  s += `<path d="M${l} ${Y(.5)} H${W - r}" stroke="#7C869C" stroke-dasharray="4 4"/><text x="${W - r - 4}" y="${Y(.5) - 4}" font-size="10" fill="#7C869C" text-anchor="end">${T('random (0.5)', '隨機（0.5）')}</text>`;
+  s += `<text x="${(l + W - r) / 2}" y="${H - 8}" font-size="11" fill="#AEB7CA" text-anchor="middle">${key}</text><text x="14" y="${(tp + H - bt) / 2}" font-size="11" fill="#AEB7CA" transform="rotate(-90 14 ${(tp + H - bt) / 2})" text-anchor="middle">ROC AUC</text>`;
+  let rP = NaN, tK = NaN;
+  if (vis.length > 3) { rP = pearson(xs, ys); tK = kendall(xs, ys); const mx = mean(xs), my = mean(ys), b = rP * sd(ys) / (sd(xs) || 1);
+    s += `<path d="M${X(xlo)} ${Y(my + b * (xlo - mx))} L${X(xhi)} ${Y(my + b * (xhi - mx))}" stroke="#E7EBF3" stroke-width="1.2" stroke-dasharray="6 4" opacity=".55"/>`; }
+  vis.forEach((c, i) => { const x = X(c.metrics[key]), y = Y(c.auc), col = partColor(c.partition), pin = L5.pin === c;
+    const tip = `${c.model} · ${c.partition}<br>PCA ${c.pca} · #state ${c.states}${c.history ? ' · hist ' + c.history : ''}${c.hmmComp ? ' · HMM ' + c.hmmComp : ''}<br>AUC ${c.auc.toFixed(3)} · ${key} ${c.metrics[key].toFixed(3)}`;
+    s += c.model === 'DTMC' ? `<circle data-i="${i}" data-tip="${tip}" cx="${x}" cy="${y}" r="${pin ? 7 : 4.6}" fill="${col}" fill-opacity=".75" stroke="${pin ? '#fff' : '#080B12'}" stroke-width="${pin ? 2 : .8}" style="cursor:pointer"/>`
+      : `<path data-i="${i}" data-tip="${tip}" d="M${x} ${y - 5.6} L${x + 5.6} ${y} L${x} ${y + 5.6} L${x - 5.6} ${y}Z" fill="${col}" fill-opacity=".75" stroke="${pin ? '#fff' : '#080B12'}" stroke-width="${pin ? 2 : .8}" style="cursor:pointer"/>`; });
+  const svg = $('#l5-sc'); svg.innerHTML = s; bindTips(svg);
+  svg.querySelectorAll('[data-i]').forEach(el => el.addEventListener('click', () => { L5.pin = vis[+el.dataset.i]; lab5(); }));
+  const ki = MODEL_KEYS.indexOf(key), pr = ki >= 0 ? task.modR[ki] : task.semR[SEM_KEYS.indexOf(key)], pk = ki >= 0 ? task.modK[ki] : task.semK[SEM_KEYS.indexOf(key)];
+  $('#l5-scores').innerHTML = [[T('Visible configs', '可見設定'), vis.length, `${T('of', '／')} ${all.length}`], [T('Pearson r', 'Pearson r'), f2(rP), `${T('paper', '論文')}: ${pr.toFixed(2)}`], [T('Kendall τ', 'Kendall τ'), f2(tK), `${T('paper', '論文')}: ${pk.toFixed(2)}`], [T('Best AUC', '最佳 AUC'), ys.length ? Math.max(...ys).toFixed(3) : '—', `${T('mean', '平均')} ${ys.length ? mean(ys).toFixed(3) : '—'}`]]
+    .map(x => `<div class="score"><p class="score-k">${x[0]}</p><p class="score-v">${x[1]}</p><p class="score-n">${x[2]}</p></div>`).join('');
+  const pin = L5.pin && all.includes(L5.pin) ? L5.pin : null;
+  $('#l5-pin').innerHTML = pin ? `<b>${T('Pinned', '已固定')}:</b> ${pin.model} · ${pin.partition} · PCA ${pin.pca} · #state ${pin.states}${pin.history ? ' · hist ' + pin.history : ''}${pin.hmmComp ? ' · HMM ' + pin.hmmComp : ''}<br>AUC ${pin.auc.toFixed(3)} · ` + ALL_KEYS.filter(k => pin.metrics && pin.metrics[k] != null).map(k => `${k} ${pin.metrics[k].toFixed(2)}`).join(' · ')
+    : T('Click a point to pin its full configuration and all 12 metrics.', '點擊資料點以固定顯示完整設定與 12 個指標。');
+  const top = vis.slice().sort((a, b) => b.auc - a.auc).slice(0, 5);
+  $('#l5-top').innerHTML = `<thead><tr><th>AUC</th><th>${T('model', '模型')}</th><th>${T('partition', '劃分')}</th><th>PCA</th><th>#state</th></tr></thead><tbody>` + top.map(c => `<tr><td class="num">${c.auc.toFixed(3)}</td><td>${c.model}</td><td>${c.partition}</td><td class="num">${c.pca}</td><td class="num">${c.states}</td></tr>`).join('') + '</tbody>';
+  // bars
+  const groups = [['grid','DTMC'],['grid','HMM'],['GMM','DTMC'],['GMM','HMM'],['KMeans','DTMC'],['KMeans','HMM']]; let b = '';
+  const vals = groups.map(([p, m]) => mean(all.filter(c => c.partition === p && c.model === m).map(c => c.auc))), lo = Math.min(.5, ...vals.filter(v => !isNaN(v))), hi = Math.max(...vals.filter(v => !isNaN(v))) + .01;
+  groups.forEach(([p, m], i) => { const y = 10 + i * 29, v = vals[i], w = isNaN(v) ? 0 : (v - lo) / (hi - lo) * 400;
+    b += `<text x="8" y="${y + 14}" font-size="11" fill="#AEB7CA">${p} · ${m}</text><rect x="130" y="${y}" width="${w}" height="20" rx="3" fill="${partColor(p)}" opacity="${m === 'DTMC' ? .85 : .4}"/><text x="${136 + w}" y="${y + 14}" font-size="11" fill="#E7EBF3">${isNaN(v) ? '—' : v.toFixed(3)}</text>`; });
+  $('#l5-bars').innerHTML = b;
+  const md = METRICS.find(m => m.k === key);
+  setFx('l5-sc', [
+    FX([`${key} · ${T(md.en, md.zh)}`, `${key} · ${md.zh}`], md.tex, [md.pEn, md.pZh], key),
+    FX(['Pearson correlation r', 'Pearson 相關係數 r'], `r=\\dfrac{\\sum_i(x_i-\\bar x)(y_i-\\bar y)}{\\sqrt{\\sum_i(x_i-\\bar x)^2\\,\\sum_i(y_i-\\bar y)^2}}=${isNaN(rP) ? '\\text{—}' : rP.toFixed(2)}`,
+      ['x = the metric you picked, y = ROC AUC. r near +1 or −1 means the metric moves together with detection quality, so you can rank configurations by it without labelled abnormal data.', 'x＝你選的指標，y＝ROC AUC。r 接近 +1 或 −1，代表該指標與偵測品質同步變化，因此不需異常標註也能用它替設定排序。']),
+    FX(['Kendall rank correlation τ', 'Kendall 秩相關 τ'], `\\tau=\\dfrac{C-D}{\\binom{n}{2}}=${isNaN(tK) ? '\\text{—}' : tK.toFixed(2)}`,
+      ['C / D = pairs of configurations ranked in the same / opposite order by the metric and by AUC. It only cares about ranking, not the exact values.', 'C／D＝依指標排序與依 AUC 排序「順序相同／相反」的設定配對數。它只看排名，不看數值大小。'])
+  ]);
+}
+['l5-task','l5-metric','l5-dtmc','l5-hmm','l5-grid','l5-gmm','l5-km'].forEach(id => $('#' + id).addEventListener('input', () => { if (id === 'l5-task') L5.pin = null; lab5(); }));
+
+/* ============================ 09 results ============================ */
+let rsMode = 'auc';
+function renderResults(){
+  const W = 900, rowH = 34, l = 250, r = 60, t0 = 40, H = t0 + TASKS.length * rowH + 20; const svg = $('#rs-svg'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  let s = '';
+  if (rsMode === 'auc') { const X = v => l + (v - .48) / (.92 - .48) * (W - l - r);
+    [.5, .6, .7, .8, .9].forEach(v => { s += `<path d="M${X(v)} ${t0 - 8} V${H - 16}" stroke="${v === .5 ? '#7C869C' : '#232B3B'}" ${v === .5 ? 'stroke-dasharray="4 4"' : ''}/><text x="${X(v)}" y="${t0 - 16}" font-size="10.5" fill="#7C869C" text-anchor="middle">${v.toFixed(1)}</text>`; });
+    TASKS.forEach((t, i) => { const y = t0 + i * rowH + rowH / 2, col = t.p === 'OOD' ? '#8CB8FF' : t.p === 'ADV' ? '#F4C26B' : '#5FD3A0';
+      s += `<text x="${l - 12}" y="${y + 4}" font-size="12" fill="#E7EBF3" text-anchor="end" style="font-family:var(--sans)">${esc(taskLabel(t))}</text>
+       <g data-tip="${esc(taskLabel(t))}<br>min ${t.min} · median ${t.med}<br>mean ${t.mean} · max ${t.max}<br>std ${t.sd}"><rect x="${l - 4}" y="${y - 13}" width="${W - l - r + 8}" height="26" fill="transparent"/>
+       <path d="M${X(t.min)} ${y} H${X(t.max)}" stroke="${col}" stroke-width="4" stroke-linecap="round" opacity=".45"/>
+       <path d="M${X(t.med)} ${y - 7} V${y + 7}" stroke="#E7EBF3" stroke-width="2"/><circle cx="${X(t.mean)}" cy="${y}" r="5.5" fill="${col}" stroke="#080B12" stroke-width="1.5"/>
+       <text x="${X(t.max) + 8}" y="${y + 4}" font-size="11" fill="${col}">${t.max.toFixed(2)}</text></g>`; });
+    s += `<text x="${l}" y="${H - 2}" font-size="10.5" fill="#7C869C">${T('● mean   | median   bar = min…max over 180 configs   colors: OOD / adversarial / hallucination', '● 平均　| 中位數　線段 = 180 種設定的最小…最大　顏色：OOD／對抗／幻覺')}</text>`;
+  } else { const X = v => l + v / 70 * (W - l - r);
+    [0, 20, 40, 60].forEach(v => { s += `<path d="M${X(v)} ${t0 - 8} V${H - 16}" stroke="#232B3B"/><text x="${X(v)}" y="${t0 - 16}" font-size="10.5" fill="#7C869C" text-anchor="middle">${v}%</text>`; });
+    TASKS.forEach((t, i) => { const y = t0 + i * rowH + rowH / 2, col = t.p === 'OOD' ? '#8CB8FF' : t.p === 'ADV' ? '#F4C26B' : '#5FD3A0';
+      s += `<text x="${l - 12}" y="${y + 4}" font-size="12" fill="#E7EBF3" text-anchor="end" style="font-family:var(--sans)">${esc(taskLabel(t))}</text><rect data-tip="${esc(taskLabel(t))}<br>${t.sig}% of 180 models with p&lt;0.05<br>Mann-Whitney U p = ${t.pv}" x="${X(0)}" y="${y - 9}" width="${X(t.sig) - X(0)}" height="18" rx="3" fill="${col}" opacity=".75"/><text x="${X(t.sig) + 8}" y="${y + 4}" font-size="11" fill="${col}">${t.sig}%</text>`; });
+    s += `<text x="${l}" y="${H - 2}" font-size="10.5" fill="#7C869C">${T('share of the 180 abstract models whose normal-vs-abnormal transition distributions differ significantly', '180 個抽象模型中，正常與異常轉移分布顯著不同者的比例')}</text>`; }
+  svg.innerHTML = s; bindTips(svg);
+  $('#rs-auc').setAttribute('aria-pressed', rsMode === 'auc'); $('#rs-sig').setAttribute('aria-pressed', rsMode === 'sig');
+}
+$('#rs-auc').addEventListener('click', () => { rsMode = 'auc'; renderResults(); });
+$('#rs-sig').addEventListener('click', () => { rsMode = 'sig'; renderResults(); });
+
+/* ============================ boot ============================ */
+function renderVersions(){
+  const el = $('#lv-versions'); if (!el) return;
+  const m = App.data && App.data.meta && App.data.meta.ownModel, V = m && m.versions;
+  if (!V || !V.length) { el.innerHTML = ''; return; }
+  const name = v => v.version === 'last' ? T('Last block only', '只取最後一個區塊') : T('All blocks concatenated', '所有區塊串接');
+  const how = v => v.version === 'last' ? T('output of the last decoder block (what the authors’ released code does)', '最後一個 decoder block 的輸出（作者釋出程式碼的做法）') : T('outputs of all decoder blocks joined end-to-end (our reading of “32 blocks × 4,096”; the paper does not say how)', '所有 decoder block 的輸出頭尾接起來（我們對「32 個區塊 × 4,096」的解讀；論文沒說怎麼組合）');
+  const part = v => (v.partition === 'grid' ? 'Grid' : 'KMeans') + ' · PCA ' + v.pca + ' · ' + v.states + ' ' + T('states', '個狀態');
+  const f = x => x.toFixed(3);
+  el.innerHTML = `<div class="tablewrap"><table><thead><tr><th>${T('Version', '版本')}</th><th>${T('Hidden state per token', '每個 token 的隱藏狀態')}</th><th>${T('Best setting (picked on validation)', '最佳設定（以驗證集挑選）')}</th><th>${T('Validation AUC plaus. / truth.', '驗證集 AUC 合理性／真實性')}</th><th>${T('Test AUC plaus. / truth.', '測試集 AUC 合理性／真實性')}</th><th></th></tr></thead><tbody>` +
+    V.map(v => `<tr${v.selected ? ' style="background:var(--accent-soft)"' : ''}><td style="font-weight:600;color:var(--ink)">${esc(name(v))}</td><td>${esc(how(v))}<br><span style="color:var(--muted)">${v.dimsPerToken} ${T('numbers', '個數字')}</span></td><td>${esc(part(v))}</td><td class="num">${f(v.valPlaus)} / ${f(v.valTruth)}</td><td class="num">${f(v.testPlaus)} / ${f(v.testTruth)}</td><td>${v.selected ? '<b>' + T('used below', '下方使用') + '</b>' : ''}</td></tr>`).join('') + `</tbody></table></div>` +
+    `<p class="note">${T(`Chosen by the higher mean of the two <em>validation</em> AUCs; the test AUCs (${m.testQuestions} held-out questions, noise about ±0.03) are only reported. “Plausibility” = original vs garbled text (our own OOD test); “truthfulness” = TruthfulQA reference true vs false answer. Not comparable with the paper’s Llama-7b results.`, `以兩個<em>驗證集</em> AUC 的平均較高者為準；測試集 AUC（${m.testQuestions} 題保留題，誤差約 ±0.03）只用來呈現。「合理性」＝原文 vs 亂碼（我們自己做的 OOD 測試）；「真實性」＝TruthfulQA 標準答案 vs 錯誤答案。不能和論文 Llama-7b 的結果直接比。`)}</p>`;
+}
+function renderAll(){
+  updatePill(); renderBackground(); renderVersions(); renderPipeline(); setupLab1(); lab1(); lab2(); lab3(); lab4(); renderFormulas(); lab5(); renderResults();
+}
+function setLang(l){
+  lang = l; document.documentElement.setAttribute('data-lang', l); document.documentElement.lang = l === 'zh' ? 'zh-Hant' : 'en';
+  $('#lang-en').setAttribute('aria-pressed', l === 'en'); $('#lang-zh').setAttribute('aria-pressed', l === 'zh');
+  try { localStorage.setItem('luna-lang', l); } catch (e) {}
+  if (App.data) renderAll();
+}
+$('#lang-en').addEventListener('click', () => setLang('en'));
+$('#lang-zh').addEventListener('click', () => setLang('zh'));
+(function init(){
+  let saved = 'zh'; try { saved = localStorage.getItem('luna-lang') || 'zh'; } catch (e) {}
+  App.sim = simulate(); App.data = App.sim; setLang(saved); tryFetch();
+})();
+</script>
+<script>
+/* Abbreviation hover: shows full name in the shared #tip tooltip. Works by hit-testing the word under
+   the cursor (no DOM rewriting), so it is independent of language spans, SVG, and re-rendered panels. */
+(function(){
+  const A = {
+    'LLM':['Large Language Model','大型語言模型'],'LLMs':['Large Language Models','大型語言模型'],
+    'DTMC':['Discrete-Time Markov Chain','離散時間馬可夫鏈'],'HELM':['Holistic Evaluation of Language Models','語言模型整體評測'],'SAPLMA':['Statement Accuracy Prediction based on Language Model Activations','基於語言模型激活的陳述正確性預測'],'ITI':['Inference-Time Intervention','推論時介入'],'Baum-Welch':['Baum-Welch algorithm','Baum-Welch 演算法'],'EM':['Expectation-Maximization','期望值最大化'],'Perplexity':['Perplexity','困惑度'],'perplexity':['Perplexity','困惑度'],'Self-attention':['Self-attention','自注意力'],'self-attention':['Self-attention','自注意力'],'Embedding':['Embedding','嵌入向量'],'embedding':['Embedding','嵌入向量'],'Softmax':['Softmax','Softmax（把分數轉成機率）'],'softmax':['Softmax','Softmax（把分數轉成機率）'],'DTMCs':['Discrete-Time Markov Chains','離散時間馬可夫鏈'],
+    'HMM':['Hidden Markov Model','隱馬可夫模型'],'HMMs':['Hidden Markov Models','隱馬可夫模型'],
+    'PCA':['Principal Component Analysis','主成分分析'],'OOD':['Out-Of-Distribution','分布外'],
+    'GMM':['Gaussian Mixture Model','高斯混合模型'],'KMeans':['K-Means clustering','K 平均分群'],'K-Means':['K-Means clustering','K 平均分群'],
+    'AUC':['Area Under the Curve','曲線下面積'],'AUCs':['Area Under the Curve','曲線下面積'],
+    'ROC':['Receiver Operating Characteristic','接收者操作特徵'],
+    'TPR':['True Positive Rate','真陽性率'],'FPR':['False Positive Rate','偽陽性率'],'FP':['False Positive','偽陽性'],'FN':['False Negative','偽陰性'],
+    'SUC':['Succinctness','簡潔性'],'COV':['Coverage','覆蓋率'],'SEN':['Sensitivity','敏感度'],
+    'SS':['State Classification','狀態分類'],'PERP':['Perplexity','困惑度'],'SDE':['Stationary Distribution Entropy','穩態分布熵'],
+    'PRE':['Preciseness','語意精確度'],'ENT':['Entropy','語意熵'],'SL':['Surprise Level','意外程度'],
+    'NDT':['n-gram Derivative Trend','n-gram 導數趨勢'],'IVT':['Instant Value Trend','瞬時值趨勢'],'NVT':['n-gram Value Trend','n-gram 值趨勢'],
+    'QA':['Question Answering','問答'],'HF':['Hugging Face','Hugging Face 平台'],'RNN':['Recurrent Neural Network','循環神經網路'],'RNNs':['Recurrent Neural Networks','循環神經網路'],'DNN':['Deep Neural Network','深度神經網路'],'DNNs':['Deep Neural Networks','深度神經網路'],
+    'KL':['Kullback-Leibler','KL（庫爾貝克-萊布勒）'],'API':['Application Programming Interface','應用程式介面'],
+    'GPU':['Graphics Processing Unit','圖形處理器'],'CPU':['Central Processing Unit','中央處理器'],
+    'IEEE':['Institute of Electrical and Electronics Engineers','電機電子工程師學會'],'TSE':['Transactions on Software Engineering','軟體工程彙刊'],
+    'EOS':['End Of Sequence','句尾詞元'],'KDE':['Kernel Density Estimation','核密度估計'],
+    'RQ1':['Research Question 1','研究問題 1'],'RQ2':['Research Question 2','研究問題 2'],'RQ3':['Research Question 3','研究問題 3'],
+    'HE-C':['HumanEval (Code generation, hallucination task)','HumanEval 程式碼生成（幻覺任務）'],
+    'MBPP-C':['MBPP (Mostly Basic Python Problems) – Code generation, CodeLlama','MBPP 程式碼生成（CodeLlama）'],
+    'CSNJ-C':['CodeSearchNet-Java code summarization, CodeLlama','CodeSearchNet-Java 程式碼摘要（CodeLlama）'],
+    'TCS-C':['TL-CodeSum code summarization, CodeLlama','TL-CodeSum 程式碼摘要（CodeLlama）'],
+    'OOD-A':['Out-Of-Distribution task, Alpaca-7b','分布外偵測任務（Alpaca-7b）'],'OOD-L':['Out-Of-Distribution task, Llama2-7b','分布外偵測任務（Llama2-7b）'],
+    'ADV-A':['Adversarial attack task, Alpaca-7b','對抗攻擊任務（Alpaca-7b）'],'ADV-L':['Adversarial attack task, Llama2-7b','對抗攻擊任務（Llama2-7b）'],
+    'TQA-A':['TruthfulQA hallucination task, Alpaca-7b','TruthfulQA 幻覺任務（Alpaca-7b）'],'TQA-L':['TruthfulQA hallucination task, Llama2-7b','TruthfulQA 幻覺任務（Llama2-7b）'],
+    'ADV':['Adversarial attack','對抗攻擊'],'HAL':['Hallucination','幻覺']
+  };
+  const TOK = /[A-Za-z0-9\-]/;
+  const SKIP = 'script,style,code,pre,input,select,textarea,button,option,[data-tip],#tip,.katex';
+  let raf = 0, last = null;
+  function caretAt(x, y){
+    if (document.caretPositionFromPoint){ const p = document.caretPositionFromPoint(x, y); return p ? [p.offsetNode, p.offset] : null; }
+    if (document.caretRangeFromPoint){ const r = document.caretRangeFromPoint(x, y); return r ? [r.startContainer, r.startOffset] : null; }
+    return null;
+  }
+  function lookup(x, y){
+    const c = caretAt(x, y); if (!c) return null;
+    const n = c[0], off = c[1];
+    if (!n || n.nodeType !== 3) return null;
+    const pe = n.parentElement; if (!pe || pe.closest(SKIP)) return null;
+    const t = n.nodeValue; let a = Math.min(off, t.length), b = a;
+    while (a > 0 && TOK.test(t[a-1])) a--;
+    while (b < t.length && TOK.test(t[b])) b++;
+    let w = t.slice(a, b).replace(/^-+|-+$/g, '');
+    if (!w) return null;
+    let key = A[w] ? w : null;
+    if (!key){ // e.g. "PCA-reduced", "PCA-2", "GMM-based": use the leading part if it is a known acronym
+      const head = w.split('-')[0]; if (A[head]) key = head;
+    }
+    if (!key) return null;
+    const r = document.createRange(); r.setStart(n, a); r.setEnd(n, b);
+    const ok = Array.from(r.getClientRects()).some(q => x >= q.left - 1 && x <= q.right + 1 && y >= q.top - 1 && y <= q.bottom + 1);
+    return ok ? key : null;
+  }
+  /* terms that have a section on concepts.html: click opens it in a new tab at that section */
+  const CONCEPT = {LLM:'llm', LLMs:'llm', PCA:'pca', GMM:'gmm', KMeans:'kmeans', 'K-Means':'kmeans', 'Self-attention':'attention', 'self-attention':'attention', Embedding:'embedding', embedding:'embedding', Softmax:'sampling', softmax:'sampling', DTMC:'markov', DTMCs:'markov', SDE:'markov', SS:'markov', HMM:'hmm', HMMs:'hmm', 'Baum-Welch':'hmm', EM:'gmm', KL:'kl', PERP:'kl', SL:'kl', Perplexity:'kl', perplexity:'kl', ROC:'roc', AUC:'roc', AUCs:'roc', OOD:'ood', SAPLMA:'probing', ITI:'probing'};
+  const root = document.documentElement;
+  document.addEventListener('click', e => {
+    if (e.target.closest('a,button,input,select,textarea,label,[data-tip],#tip')) return;
+    const k = lookup(e.clientX, e.clientY); if (k && CONCEPT[k]) window.open('concepts.html#' + CONCEPT[k], '_blank', 'noopener');
+  });
+  document.addEventListener('mousemove', e => {
+    if (raf) return; const x = e.clientX, y = e.clientY;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      const el = document.elementFromPoint(x, y);
+      if (el && el.closest('[data-tip],#tip')) { last = null; root.style.cursor = ''; return; }
+      const k = lookup(x, y);
+      if (k){ const v = A[k];
+        showTip('<b>' + esc(k) + '</b> · ' + esc(lang === 'zh' ? (v[1] === v[0] || v[1].indexOf(v[0]) >= 0 ? v[1] : v[1] + '（' + v[0] + '）') : v[0]) + (CONCEPT[k] ? '<br><span style="opacity:.7">' + (lang === 'zh' ? '↗ 點擊開啟概念說明' : '↗ click for the concept page') + '</span>' : ''), {clientX:x, clientY:y}); last = k; root.style.cursor = CONCEPT[k] ? 'pointer' : ''; }
+      else { root.style.cursor = ''; if (last){ hideTip(); last = null; } }
+    });
+  }, {passive:true});
+  document.addEventListener('mouseleave', () => { root.style.cursor = ''; if (last){ hideTip(); last = null; } });
+})();
+</script>
+<script>
+/* ============================ live analysis (needs server.py) ============================ */
+(function(){
+  'use strict';
+  const API = (location.protocol.startsWith('http') && location.port === '8000') ? '' : 'http://127.0.0.1:8000';
+  const EX = {
+    ex1: ['What happens if you crack your knuckles a lot?', 'Nothing in particular happens if you crack your knuckles a lot.'],
+    ex2: ['What happens if you crack your knuckles a lot?', 'If you crack your knuckles a lot, you may develop arthritis.'],
+    ex3: ['What happens if you crack your knuckles a lot?', 'knuckles zxq the @@# crack qwrtp lot a ñññ if 0xFF you']
+  };
+  let last = null;
+  const status = m => { $('#lv-status').textContent = m; };
+  const f2 = x => x == null ? '—' : x.toFixed(2);
+  const col = p => p == null ? 'var(--rule)' : p >= 0.15 ? 'var(--good)' : p >= 0.02 ? 'var(--warm)' : 'var(--bad)';
+
+  function render(){
+    if (!last) return;
+    const r = last, pv = r.plaus_verdict, tv = r.truth_verdict;
+    $('#lv-toks').innerHTML = r.tokens.map((w, i) => `<div class="tok${i === r.first_low ? ' first' : ''}" style="border-color:${col(r.trans[i])}" data-tip="${esc(T('state', '狀態'))} s${r.states[i]}\nP = ${f2(r.trans[i])}\nθ̄ = ${f2(r.theta[i])}"><div class="w">${esc(w.replace(/ /g, '␣')) || '·'}</div><div class="s">s${r.states[i]}</div><div class="v" style="color:${col(r.trans[i])}">${f2(r.trans[i])}</div></div>`).join('');
+    const pl = {normal: ['v-good', T('plausible', '合理')], borderline: ['v-bad', T('borderline', '有點怪')], abnormal: ['v-bad', T('abnormal', '異常')]}[pv];
+    const tl = tv === 'ok' ? ['v-good', T('no red flag', '無明顯警訊')] : ['v-bad', T('suspect', '可疑')];
+    $('#lv-scores').innerHTML =
+      `<div class="score"><p class="score-k">${T('Plausibility', '合理性（OOD）')}</p><p class="score-v"><span class="verdict ${pl[0]}">${pl[1]}</span></p><p class="score-n">${T('mean transition prob', '平均轉移機率')} ${f2(r.plaus)} · ${T('normal-percentile', '正常樣本百分位')} ${(r.plaus_pct * 100).toFixed(0)}%</p></div>` +
+      `<div class="score"><p class="score-k">${T('Truthfulness', '真實性（幻覺）')}</p><p class="score-v"><span class="verdict ${tl[0]}">${tl[1]}</span></p><p class="score-n">${T('mean θ̄', '平均 θ̄')} ${f2(r.truth)} · ${T('percentile', '百分位')} ${(r.truth_pct * 100).toFixed(0)}%</p></div>`;
+    const a0 = r.answer_start || 0, pa = r.trans.slice(a0).filter(x => x != null), ta = r.theta.slice(a0);
+    setFx('lv-toks', [
+      FX(['Plausibility score (OOD)', '合理性分數（OOD）'], `\\text{plaus}=\\operatorname{AVG}\\,\\hat P(s_i\\!\\to\\! s_{i+1})=\\dfrac{${sumTex(pa)}}{${pa.length}}=${f2(r.plaus)},\\ \\ \\text{pct}=${(r.plaus_pct * 100).toFixed(0)}\\%`,
+        ['Average transition probability over the answer tokens, then ranked against normal training answers. Below the 5th percentile ⇒ abnormal, below the 20th ⇒ borderline.', '對回答部分的 token 取平均轉移機率，再與正常訓練答案的分數排名比較。低於第 5 百分位 ⇒ 異常，低於第 20 百分位 ⇒ 有點怪。']),
+      FX(['Truthfulness score (hallucination)', '真實性分數（幻覺）'], `\\text{truth}=\\operatorname{AVG}\\,\\bar\\theta(\\bar s_i)=\\dfrac{${sumTex(ta)}}{${ta.length}}=${f2(r.truth)},\\ \\ \\text{pct}=${(r.truth_pct * 100).toFixed(0)}\\%`,
+        ['Each state\'s θ̄ is the share of truthful answers among training tokens that landed there; the answer\'s score is their average. Below the 30th percentile ⇒ suspect.', '每個狀態的 θ̄，是落在該狀態的訓練 token 中屬於「真實答案」的比例；答案分數為其平均。低於第 30 百分位 ⇒ 可疑。'])
+    ]);
+    const fl = r.first_low;
+    $('#lv-note').innerHTML = T(
+      `<b>Reading it.</b> Plausibility is reliable here (held-out AUC ${f2(r.auc_plaus)} for normal vs. garbled text). Truthfulness is <b>moderate</b> (AUC ${f2(r.auc_truth)}; 0.5 = coin flip) and is measured on the dataset’s reference right/wrong answers, not on the model’s own generations (unlike the paper). GPT-2 small cannot really know facts, so treat it as a small-scale demo, not a fact-checker.` + (fl != null ? ` The first near-unseen transition is at token “${esc(r.tokens[fl])}”.` : ''),
+      `<b>怎麼讀：</b>合理性可信（正常 vs. 亂碼的留出集 AUC ${f2(r.auc_plaus)}）。真實性<b>中等</b>（AUC ${f2(r.auc_truth)}，0.5 = 擲硬幣），且評的是資料集的標準答案與錯誤答案，不是模型自己生成的答案（與論文不同）。GPT-2 small 並不真的懂事實，這只是小規模示範，不是事實查核器。` + (fl != null ? `第一個近乎未見的轉移出現在 token「${esc(r.tokens[fl])}」。` : ''));
+  }
+
+  async function run(){
+    status(T('analyzing…', '分析中…'));
+    try {
+      const res = await fetch(API + '/analyze', {method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({question: $('#lv-q').value, answer: $('#lv-a').value})});
+      const d = await res.json();
+      if (d.error) { status(T('please enter an answer', '請輸入回答')); return; }
+      last = d; render(); status(''); $('#lv-badge').style.display = '';
+    } catch (e) {
+      status(T('server not reachable — run python server.py', '連不到伺服器，請先執行 python server.py'));
+    }
+  }
+  $('#lv-go').addEventListener('click', run);
+  for (const k in EX) $('#lv-' + k).addEventListener('click', () => { $('#lv-q').value = EX[k][0]; $('#lv-a').value = EX[k][1]; run(); });
+  $('#lang-en').addEventListener('click', render); $('#lang-zh').addEventListener('click', render);
+  fetch(API + '/health').then(r => r.json()).then(() => { status(T('server connected', '伺服器已連線')); $('#lv-badge').style.display = ''; }).catch(() => status(T('server offline — run python server.py', '伺服器未啟動，請執行 python server.py')));
+})();
+</script>
+<script>
+/* ============================ scroll spy + section reveal ============================ */
+(function(){
+  'use strict';
+  const links = $$('.toc a'), secs = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  const bar = $('.bar'), toc = $('.toc');
+  let cur = null, raf = 0;
+  function spy(){
+    raf = 0;
+    const line = bar.offsetHeight + innerHeight * 0.3; let idx = -1;
+    secs.forEach((s, i) => { if (s.getBoundingClientRect().top <= line) idx = i; });
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) idx = secs.length - 1;
+    if (idx === cur) return; cur = idx;
+    links.forEach((a, i) => { a.classList.toggle('active', i === idx); if (i === idx) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); });
+    if (idx >= 0) { const a = links[idx], l = a.offsetLeft - toc.offsetLeft; if (l < toc.scrollLeft || l + a.offsetWidth > toc.scrollLeft + toc.clientWidth) toc.scrollTo({left: Math.max(0, l - 40), behavior: 'smooth'}); }
+  }
+  const req = () => { if (!raf) raf = requestAnimationFrame(spy); };
+  addEventListener('scroll', req, {passive: true}); addEventListener('resize', req); spy();
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(es => es.forEach(e => {   // play once per section; stays visible until reload
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    }), {threshold: 0.06});
+    secs.forEach(s => { s.classList.add('reveal'); io.observe(s); });
+  }
+})();
+</script>
+<script>
+/* keep SVG labels readable: when a chart is scaled down, enlarge its small text (at most 1.75x so labels do not collide) */
+(function(){
+  const MIN = 11.5, MAXG = 1.75, CAPS = {'l4-roc': 1.5, 'l5-sc': 1.5};
+  function fit(svg){
+    const m = svg.getScreenCTM(); if (!m || !m.a) return; const s = m.a;
+    svg.querySelectorAll('text').forEach(t => {
+      if (t.dataset.fs0 === undefined) t.dataset.fs0 = parseFloat(t.getAttribute('font-size')) || parseFloat(getComputedStyle(t).fontSize) || 11;
+      const b = +t.dataset.fs0, need = MIN / s; t.style.fontSize = (b < need ? Math.min(need, b * (CAPS[svg.id] || MAXG)) : b) + 'px';
+    });
+  }
+  const pend = new Set(); let raf = 0;
+  const run = () => { raf = 0; pend.forEach(fit); pend.clear(); };
+  const queue = svg => { pend.add(svg); if (!raf) raf = requestAnimationFrame(run); };
+  const mo = new MutationObserver(ms => ms.forEach(m => { const svg = m.target.closest ? m.target.closest('svg') : null; if (svg) queue(svg); }));
+  document.querySelectorAll('svg.stage').forEach(svg => { mo.observe(svg, {childList: true, subtree: true}); queue(svg); });
+  addEventListener('resize', () => document.querySelectorAll('svg.stage').forEach(queue));
+  window.__fitText = () => document.querySelectorAll('svg.stage').forEach(fit);
+  /* layout can still shift after the first paint (fonts, formulas), so fit once more shortly after load */
+  addEventListener('load', () => { setTimeout(window.__fitText, 300); setTimeout(window.__fitText, 1500); });
+})();
+</script>
+</body>
+</html>

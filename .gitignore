@@ -1,0 +1,15 @@
+# regenerable artefacts
+live/luna_model.pkl
+live/luna_model_concat.pkl
+live/luna_model_last.pkl
+live/TruthfulQA.csv
+live/tune_run.log
+data/raw/
+
+# third-party reference code (cloned, not our work)
+luna-author-code/
+
+# python / tooling
+__pycache__/
+*.pyc
+s_tmp*.js
