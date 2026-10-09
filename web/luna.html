@@ -15,16 +15,16 @@
 
   {
     "meta":    { "source": "string", "generatedAt": "ISO date", "llms": ["..."] },
-    "states2d":{ "points": [ {"x":0.1,"y":-0.3,"split":"train"|"test"|"abn"} ] },   // PCA(2) view of concrete states  -> Lab 1
+    "states2d":{ "points": [ {"x":0.1,"y":-0.3,"split":"train"|"test"|"abn"} ] },   // PCA(2) view of concrete states  -> §03 widget
     "configs": [ { "task":"HE-C", "partition":"grid|GMM|KMeans", "model":"DTMC|HMM",
                    "pca":5, "states":10, "history":2, "hmmComp":null,
                    "auc":0.71,
                    "metrics": {"SUC":0,"COV":0,"SEN":0,"SS":0,"PERP":0,"SDE":0,
-                               "PRE":0,"ENT":0,"SL":0,"NDT":0,"IVT":0,"NVT":0} } ],     // -> Lab 5
+                               "PRE":0,"ENT":0,"SL":0,"NDT":0,"IVT":0,"NVT":0} } ],     // -> §08 widget
     "traces":  [ { "id":"x", "mode":"state|transition", "label":"normal|abnormal",
                    "prompt":"...", "tokens":["..."], "states":["s12","..."],
-                   "semantics":[0.2, null, 0.7] } ],                                    // -> Lab 3 (null allowed)
-    "scores":  { "HE-C": { "normal":[0.8,...], "abnormal":[0.2,...] } }                 // -> Lab 4 (semantics scores)
+                   "semantics":[0.2, null, 0.7] } ],                                    // -> §05 widget (null allowed)
+    "scores":  { "HE-C": { "normal":[0.8,...], "abnormal":[0.2,...] } }                 // -> §06 widget (semantics scores)
   }
   Task ids: OOD-A ADV-A TQA-A OOD-L ADV-L TQA-L HE-C MBPP-C CSNJ-C TCS-C
 -->
@@ -159,6 +159,8 @@ td.num{font-family:var(--mono);white-space:nowrap}
 .tok .s{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:1px}
 .tok .v{font-family:var(--mono);font-size:11px;margin-top:2px}
 .tok.first{outline:2px solid var(--bad);outline-offset:2px}
+/* pre-rendered intro animation (baked with Manim, not driven by JS) */
+.intro-video{width:100%;display:block;border-radius:7px;background:#05070c;border:1px solid var(--rule)}
 .verdict{display:inline-block;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:4px;border:1px solid currentColor}
 .v-bad{color:var(--bad)} .v-good{color:var(--good)}
 .tabs{margin-bottom:16px}
@@ -201,8 +203,10 @@ td.num{font-family:var(--mono);white-space:nowrap}
 .fx-tab:hover{border-color:var(--accent);color:var(--ink)}
 .fx-tab[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#0A1020}
 .fx-body{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:22px;align-items:center}
+.fx-body.stack{grid-template-columns:1fr}
 @media(max-width:900px){.fx-body{grid-template-columns:1fr}}
-.fx-item{background:var(--surface-2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:10px 14px;min-width:0}
+.fx-item{background:var(--surface-2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:10px 14px;min-width:0;overflow-x:auto}
+.fx-body.stack .fx-item{background:none;border-left:0;border-radius:0;padding:0}
 .fx-role{min-width:0}
 .fx-role p{margin:4px 0 0;font-size:14.5px;line-height:1.65;color:var(--ink-2)}
 .fx-role .fx-name{font-size:12px;margin:0}
@@ -240,7 +244,7 @@ footer{border-top:1px solid var(--rule);padding-block:30px 48px;font-size:12.5px
 #bg-table table{min-width:0;font-size:12.5px}
 #bg-table th,#bg-table td{padding:6px 10px}
 #bg-table .tablewrap{border:0;border-radius:0}
-.bg-ana-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);align-items:center}
+.bg-ana-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center}
 .bg-ana-grid .bg-svg{border-right:1px solid var(--rule)}
 .bg-ana-grid #bg-table .tablewrap{border-left:1px solid var(--rule)}
 @media(max-width:1000px){
@@ -318,7 +322,7 @@ html::-webkit-scrollbar-track{background:var(--ground)}
       <div class="meta-cell"><p class="meta-k"><span lang="en">Scale</span><span lang="zh">規模</span></p><p class="meta-v">3 views · 7 datasets · 12 metrics · 180 configs</p></div>
       <div class="meta-cell"><p class="meta-k"><span lang="en">Best result</span><span lang="zh">最佳成果</span></p><p class="meta-v">ROC AUC 0.90 (HumanEval)</p></div>
     </div>
-    <p class="note" style="margin-top:22px"><span lang="en"><b>Reading guide.</b> Labs marked <code>SIMULATED</code> use seeded synthetic data shaped after the paper's reported numbers; labs marked <code>REAL DATA</code> use real runs (Lab 1, 3, 4: our own GPT-2 small, same pipeline, not the paper's models; Lab 5: the authors' released results); Lab 2 builds its matrix from simulated traces; labs marked <code>PAPER</code> plot values transcribed from the paper's tables.</span><span lang="zh"><b>閱讀提示：</b>標示 <code>SIMULATED</code> 的實驗室使用依論文數字形狀產生的固定亂數合成資料；標示 <code>REAL DATA</code> 的是實跑資料（Lab 1、3、4：我們自己的 GPT-2 small、同一套流程、不是論文的模型；Lab 5：作者公開的結果）；Lab 2 的矩陣由模擬軌跡建立；標示 <code>PAPER</code> 的圖則直接繪製論文表格的數字。</span></p>
+    <p class="note" style="margin-top:22px"><span lang="en"><b>Reading guide.</b> Widgets marked <code>SIMULATED</code> use seeded synthetic data shaped after the paper's reported numbers; widgets marked <code>REAL DATA</code> use real runs (§03, §05, §06: our own GPT-2 small, same pipeline, not the paper's models; §08: the authors' released results); §04 builds its matrix from simulated traces; widgets marked <code>PAPER</code> plot values transcribed from the paper's tables.</span><span lang="zh"><b>閱讀提示：</b>標示 <code>SIMULATED</code> 的元件使用依論文數字形狀產生的固定亂數合成資料；標示 <code>REAL DATA</code> 的是實跑資料（§03、05、06：我們自己的 GPT-2 small、同一套流程、不是論文的模型；§08：作者公開的結果）；§04 的矩陣由模擬軌跡建立；標示 <code>PAPER</code> 的圖則直接繪製論文表格的數字。</span></p>
   </div></div>
 </section>
 
@@ -366,8 +370,17 @@ html::-webkit-scrollbar-track{background:var(--ground)}
 <!-- ================= 03 LAB1 ================= -->
 <section id="s3" class="sec-wide">
   <div class="sec-head"><span class="sec-num">03</span><div>
-    <h2><span lang="en">Lab 1 · State abstraction</span><span lang="zh">實驗室 1 · 狀態抽象</span></h2>
+    <h2><span lang="en">State abstraction</span><span lang="zh">狀態抽象</span></h2>
     <p class="sec-sub"><span lang="en">PCA-reduced concrete states → discrete abstract states, by grid or by clustering</span><span lang="zh">PCA 降維後的具體狀態 → 以網格或分群劃分成離散抽象狀態</span></p></div></div>
+  <div class="figure" style="margin-bottom:24px">
+    <div class="fig-head"><p class="fig-title"><span lang="en">From text to a point</span><span lang="zh">從文字到一個點</span></p><p class="fig-note"><span lang="en">Token → last hidden layer → PCA → a point on the map</span><span lang="zh">Token → 最後一層隱藏狀態 → PCA → 地圖上的一個點</span></p><span class="badge-sim">SIMULATED</span></div>
+    <div style="padding:16px 18px">
+      <video class="intro-video" poster="assets/intro-anim/intro-poster.jpg" controls preload="metadata" playsinline>
+        <source src="assets/intro-anim/intro.mp4" type="video/mp4">
+      </video>
+      <p class="note" style="margin-top:12px"><span lang="en">Pre-rendered walkthrough on a fixed example sentence (not tied to the data above). The first token gets the full layer-by-layer pass through the simulated decoder; every token after it reuses the same steps, just faster each time.</span><span lang="zh">以固定的範例句子預先算好的動畫（與上方資料無關）。第一個 token 完整走過模擬解碼器的逐層流程；之後每個 token 重複同樣步驟，只是一次比一次快。</span></p>
+    </div>
+  </div>
   <div class="col" style="margin-bottom:24px">
     <p><span lang="en">Real concrete states are hundreds to thousands of PCA dimensions; here we look at a 2-D slice so the geometry is visible. Training states define the abstract model; <strong>test</strong> states that land where no training state did are <em>unseen</em> — that is the Coverage metric. Abnormal inputs should be unseen more often than normal ones.</span><span lang="zh">真實的具體狀態有數百到數千個 PCA 維度；這裡取 2 維切面以便看見幾何結構。訓練狀態決定抽象模型；<strong>測試</strong>狀態若落在訓練狀態從未到過之處即為<em>未見</em>——這就是覆蓋率（Coverage）指標。異常輸入理應比正常輸入更常落在未見區域。</span></p>
   </div>
@@ -402,7 +415,7 @@ html::-webkit-scrollbar-track{background:var(--ground)}
 <!-- ================= 04 LAB2 ================= -->
 <section id="s4" class="sec-wide">
   <div class="sec-head"><span class="sec-num">04</span><div>
-    <h2><span lang="en">Lab 2 · Building the DTMC</span><span lang="zh">實驗室 2 · 建構 DTMC</span></h2>
+    <h2><span lang="en">Building the DTMC</span><span lang="zh">建構 DTMC</span></h2>
     <p class="sec-sub"><span lang="en">Count abstract transitions, normalize rows, then read off stationary distribution, entropy and sink states</span><span lang="zh">計數抽象轉移、列正規化，再讀出穩態分布、熵與匯點狀態</span></p></div></div>
   <div class="col" style="margin-bottom:24px">
     <p><span lang="en">A DTMC is the tuple <code>(S̄, s̄₀, δ̄, P̄)</code>. Its transition probability is nothing more than <strong>#concrete transitions s̄→s̄′ ÷ #outgoing transitions of s̄</strong>. So the model quality depends directly on how many traces you have seen — drag the trace count and watch the estimate converge to the (hidden) truth. Click states in the graph to score a path: for OOD detection, the mean transition probability <em>is</em> the semantic score.</span><span lang="zh">DTMC 是元組 <code>(S̄, s̄₀, δ̄, P̄)</code>。轉移機率就是 <strong>具體轉移 s̄→s̄′ 的數量 ÷ s̄ 的外向轉移總數</strong>，所以模型品質直接取決於看過多少軌跡——拖曳軌跡數，看估計值收斂到（隱藏的）真實值。在圖上依序點選狀態即可為路徑評分：在 OOD 偵測中，平均轉移機率<em>就是</em>語意分數。</span></p>
@@ -441,7 +454,7 @@ html::-webkit-scrollbar-track{background:var(--ground)}
 <!-- ================= 05 LAB3 ================= -->
 <section id="s5" class="sec-wide">
   <div class="sec-head"><span class="sec-num">05</span><div>
-    <h2><span lang="en">Lab 3 · Semantics binding &amp; token-level detection</span><span lang="zh">實驗室 3 · 語意綁定與逐 token 偵測</span></h2>
+    <h2><span lang="en">Semantics binding &amp; token-level detection</span><span lang="zh">語意綁定與逐 token 偵測</span></h2>
     <p class="sec-sub"><span lang="en">Every abstract state carries a semantic value; a trace's mean value is its score</span><span lang="zh">每個抽象狀態帶有語意值；軌跡的平均值即為分數</span></p></div></div>
   <div class="col" style="margin-bottom:24px">
     <p><span lang="en">Semantics <code>θ</code> says how well the LLM is satisfying a trust property in that state. For hallucination it is the truthfulness of answers that passed through the state (GPT-judge, pass@1, or a GPT-3.5 verdict); for OOD and adversarial inputs it is the <em>transition probability</em>. The abstract semantics <code>θ̄</code> of a state is the mean over its concrete members. A trace's <strong>semantic score</strong> is <code>AVG(θ̄(s̄ᵢ))</code>; below a threshold ⇒ abnormal — and the first low state tells you <em>where</em> the model went wrong.</span><span lang="zh">語意 <code>θ</code> 表示 LLM 在該狀態下對某項可信賴性的滿足程度。幻覺情境是經過該狀態之答案的真實性（GPT-judge、pass@1 或 GPT-3.5 判定）；OOD 與對抗情境則是<em>轉移機率</em>。狀態的抽象語意 <code>θ̄</code> 為其具體成員的平均。軌跡的<strong>語意分數</strong>為 <code>AVG(θ̄(s̄ᵢ))</code>；低於門檻 ⇒ 異常，而第一個低分狀態告訴你模型<em>在哪裡</em>出錯。</span></p>
@@ -472,10 +485,10 @@ html::-webkit-scrollbar-track{background:var(--ground)}
 <!-- ================= 06 LAB4 ================= -->
 <section id="s6" class="sec-wide">
   <div class="sec-head"><span class="sec-num">06</span><div>
-    <h2><span lang="en">Lab 4 · From scores to ROC AUC</span><span lang="zh">實驗室 4 · 從分數到 ROC AUC</span></h2>
+    <h2><span lang="en">From scores to ROC AUC</span><span lang="zh">從分數到 ROC AUC</span></h2>
     <p class="sec-sub"><span lang="en">The paper's headline metric, reconstructed from its reported mean / median / max</span><span lang="zh">以論文報告的平均／中位／最大值重建其主要指標</span></p></div></div>
   <div class="col" style="margin-bottom:24px">
-    <p><span lang="en">Detection quality is summarized by ROC AUC: the probability that a random normal sample scores higher than a random abnormal one (0.5 = coin flip). Choose a task and one of its reported AUCs; the lab synthesizes two score populations with exactly that separation (equal-variance Gaussians, <code>AUC = Φ(d′/√2)</code>) so you can see what "0.65" versus "0.90" means in practice.</span><span lang="zh">偵測品質以 ROC AUC 概括：隨機一個正常樣本分數高於隨機一個異常樣本的機率（0.5 = 擲硬幣）。選擇任務與其報告的 AUC，實驗室會合成具有該分離度的兩群分數（等變異數高斯，<code>AUC = Φ(d′/√2)</code>），讓你直觀看到「0.65」與「0.90」的差別。</span></p>
+    <p><span lang="en">Detection quality is summarized by ROC AUC: the probability that a random normal sample scores higher than a random abnormal one (0.5 = coin flip). Choose a task and one of its reported AUCs; the widget synthesizes two score populations with exactly that separation (equal-variance Gaussians, <code>AUC = Φ(d′/√2)</code>) so you can see what "0.65" versus "0.90" means in practice.</span><span lang="zh">偵測品質以 ROC AUC 概括：隨機一個正常樣本分數高於隨機一個異常樣本的機率（0.5 = 擲硬幣）。選擇任務與其報告的 AUC，元件會合成具有該分離度的兩群分數（等變異數高斯，<code>AUC = Φ(d′/√2)</code>），讓你直觀看到「0.65」與「0.90」的差別。</span></p>
   </div>
   <div class="figure">
     <div class="fig-head"><p class="fig-title"><span lang="en">Score distributions &amp; ROC</span><span lang="zh">分數分布與 ROC</span></p><p class="fig-note"><span lang="en">AUC targets are from the paper's Table V.</span><span lang="zh">AUC 目標值來自論文表 V。</span></p><span class="badge-sim" id="l4-badge">SIMULATED</span></div>
@@ -507,7 +520,7 @@ html::-webkit-scrollbar-track{background:var(--ground)}
     <h2><span lang="en">The mathematics &amp; the 12 metrics</span><span lang="zh">數學與 12 個指標</span></h2>
     <p class="sec-sub"><span lang="en">Core equations from the paper; metric definitions from its Appendix A (arXiv v2)</span><span lang="zh">核心公式取自論文；指標定義取自附錄 A（arXiv v2）</span></p></div></div>
   <div class="col">
-    <p class="in-lab-key"><span class="lab-tag">Lab</span><span lang="en">Darker, dashed cards are the formulas you can play with in the labs, with live numbers. Hover any symbol in a formula to see what it means.</span><span lang="zh">較暗的虛線卡片，是可以在實驗室中操作、並帶入即時數字的公式。把滑鼠移到公式裡的任何符號上，可以看它的意思。</span></p>
+    <p class="in-lab-key"><span class="lab-tag">03</span><span lang="en">Darker, dashed cards are formulas you can play with, with live numbers, in the section whose number is tagged. Hover any symbol in a formula to see what it means.</span><span lang="zh">較暗的虛線卡片，標著所屬章節編號，是可以在該節操作、並帶入即時數字的公式。把滑鼠移到公式裡的任何符號上，可以看它的意思。</span></p>
     <div id="core-eq"></div>
   </div>
   <div style="margin-top:34px">
@@ -519,7 +532,7 @@ html::-webkit-scrollbar-track{background:var(--ground)}
 <!-- ================= 08 LAB5 ================= -->
 <section id="s8" class="sec-wide">
   <div class="sec-head"><span class="sec-num">08</span><div>
-    <h2><span lang="en">Lab 5 · The 180-configuration space</span><span lang="zh">實驗室 5 · 180 種設定空間</span></h2>
+    <h2><span lang="en">The 180-configuration space</span><span lang="zh">180 種設定空間</span></h2>
     <p class="sec-sub"><span lang="en">Which quality metric predicts detection performance? Explore it per task</span><span lang="zh">哪個品質指標能預測偵測效能？逐任務探索</span></p></div></div>
   <div class="col" style="margin-bottom:24px">
     <p><span lang="en">Table III enumerates 180 hyper-parameter settings (27 + 81 + 18 + 54). Each dot below is one setting: x is a quality metric, y is its ROC AUC. If a metric tracks AUC, you can rank settings by that metric <em>without</em> labeled abnormal data — the paper's practitioner recipe. The simulated cloud is generated so its Pearson correlations match the paper's Tables VII/VIII; the Kendall τ and the shape of the cloud are computed live.</span><span lang="zh">表 III 列舉 180 種超參數設定（27 + 81 + 18 + 54）。下圖每個點是一種設定：x 是品質指標、y 是其 ROC AUC。若某指標與 AUC 同步，就能<em>不需</em>異常標註資料、僅憑該指標對設定排序——這是論文給實務者的做法。模擬點雲的 Pearson 相關係數依論文表 VII/VIII 設計；Kendall τ 與點雲形狀則為即時計算。</span></p>
@@ -766,7 +779,7 @@ async function tryFetch(){
   if (!/^https?:/.test(location.protocol)) return;
   try { const r = await fetch('luna-data.json', {cache: 'no-store'}); if (r.ok) mergeData(await r.json(), 'luna-data.json'); } catch (e) {}
 }
-function updatePill(){ const parts = [['states2d', 'Lab 1'], ['traces', 'Lab 3'], ['scores', 'Lab 4'], ['configs', 'Lab 5']].filter(x => App.loaded[x[0]]).map(x => x[1]);
+function updatePill(){ const parts = [['states2d', '§03'], ['traces', '§05'], ['scores', '§06'], ['configs', '§08']].filter(x => App.loaded[x[0]]).map(x => x[1]);
   const p = $('#src-pill'); p.className = 'pill' + (parts.length ? ' live' : '');
   p.innerHTML = T('data: ', '資料：') + '<b>' + (parts.length ? T('real · ', '真實 · ') + parts.join(', ') : T('simulated', '模擬')) + '</b>'; }
 
@@ -778,19 +791,23 @@ function renderBackground(){
   const defs = `<defs><marker id="bgar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7C869C"/></marker><marker id="bgar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#C2B4FF"/></marker></defs>`;
   const ar = (x1, y1, x2, y2) => `<path d="M${x1} ${y1} L${x2} ${y2}" stroke="${C.mute}" stroke-width="1.4" marker-end="url(#bgar)"/>`;
   /* --- what each approach looks at --- */
+  const txML = (x, y, lines, o = {}) => `<text x="${x}" y="${y}" text-anchor="${o.a || 'start'}" font-size="${o.fs || 11}" font-weight="${o.w || 400}" fill="${o.c || C.ink}" style="font-family:var(--sans)">` +
+    lines.map((ln, i) => `<tspan x="${x}"${i ? ` dy="${o.lh || 11}"` : ''}>${esc(ln)}</tspan>`).join('') + `</text>`;
   let a = defs; const lanes = [
-    {t: T('Black-box testing', '黑箱測試／評測'), u: T('e.g. HELM · sees the output text only', '如 HELM · 只看輸出文字'), res: T('answer right / wrong?', '答案對／錯？')},
-    {t: T('Probing the activations', '探測隱藏激活'), u: T('e.g. SAPLMA, ITI · one aspect', '如 SAPLMA、ITI · 單一面向'), res: T('one activation → true / false', '單一激活 → 真／假')},
-    {t: 'LUNA', u: T('the whole path of states', '整條狀態軌跡'), res: T('DTMC path → score + where', 'DTMC 路徑 → 分數 + 定位')}];
+    {t: T('Black-box testing', '黑箱測試／評測'), u: T(['e.g. HELM · sees', 'the output text only'], ['如 HELM · 只看輸出文字']), res: T(['answer right /', 'wrong?'], ['答案對／錯？'])},
+    {t: T('Probing the activations', '探測隱藏激活'), u: T(['e.g. SAPLMA, ITI ·', 'one aspect'], ['如 SAPLMA、ITI · 單一面向']), res: T(['one activation →', 'true / false'], ['單一激活 →', '真／假'])},
+    {t: 'LUNA', u: T(['the whole path', 'of states'], ['整條狀態軌跡']), res: T(['DTMC path →', 'score + where'], ['DTMC 路徑 →', '分數 + 定位'])}];
   lanes.forEach((L, i) => { const y = 8 + i * 84, cy = y + 34;
-    a += box(2, y, 636, 76, {fill: i === 2 ? C.soft : '#0F141E', stroke: i === 2 ? C.acc : C.rule}) + tx(14, y + 24, L.t, {w: 700, c: i === 2 ? C.acc : C.ink, fs: 12}) + tx(14, y + 42, L.u, {fs: 10, c: C.mute});
+    const ul = L.u, ulh = 11;
+    a += box(2, y, 636, 76, {fill: i === 2 ? C.soft : '#0F141E', stroke: i === 2 ? C.acc : C.rule}) + tx(14, y + 24, L.t, {w: 700, c: i === 2 ? C.acc : C.ink, fs: 12}) + txML(14, y + 38, ul, {fs: 10, c: C.mute, lh: ulh});
     for (let k = 0; k < 5; k++) { const x = 212 + k * 52; const hidden = i === 0;
       a += box(x, cy - 12, 44, 24, {r: 5, fill: hidden ? 'none' : C.sf, stroke: hidden ? C.rule : C.acc, dash: hidden}) + tx(x + 22, cy + 4, 'w' + '₁₂₃₄₅'[k], {a: 'middle', c: hidden ? C.mute : C.ink});
       if (i === 1 && k === 4) a += `<circle cx="${x + 22}" cy="${cy + 26}" r="5" fill="${C.warm}"/>`;
       if (i === 1 && k < 4) a += `<circle cx="${x + 22}" cy="${cy + 26}" r="3" fill="${C.rule}"/>`;
       if (i === 2) { a += tx(x + 22, cy + 28, 's' + [3, 7, 2, 7, 5][k], {a: 'middle', fs: 10, c: C.acc2}); if (k < 4) a += `<path d="M${x + 45} ${cy} H${x + 51}" stroke="${C.acc2}" marker-end="url(#bgar2)"/>`; } }
     if (i === 0) a += box(206, cy - 18, 264, 36, {r: 8, fill: 'none', stroke: C.warm, dash: true, sw: 1.4}) + tx(338, cy + 32, T('looks only here', '只看這裡'), {a: 'middle', fs: 9.5, c: C.warm});
-    a += ar(474, cy, 496, cy) + box(498, cy - 17, 134, 34, {r: 6, fill: C.sf}) + tx(565, cy + 4, L.res, {a: 'middle', fs: i === 1 ? 9 : 9.5});
+    const fs = i === 1 ? 9 : 9.5, lines = L.res, lh = 11;
+    a += ar(474, cy, 496, cy) + box(498, cy - 17, 134, 34, {r: 6, fill: C.sf}) + txML(565, cy + 4 - (lines.length - 1) * lh / 2, lines, {a: 'middle', fs, lh});
   });
   $('#bg-ana').innerHTML = a;
   const rows = [
@@ -838,10 +855,10 @@ function renderPipeline(){
   svg.querySelectorAll('[data-st]').forEach(g => { const go = () => { stageSel = +g.dataset.st; renderPipeline(); const n = document.querySelector('#pipe-svg [data-st="' + stageSel + '"]'); n && n.focus(); }; g.addEventListener('click', go); g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }); });
   const st = STAGES[stageSel], li = a => '<ul>' + a.map(x => `<li>${esc(x)}</li>`).join('') + '</ul>';
   $('#stage-panel').innerHTML = `<div><h4>${T('Input', '輸入')}</h4>${li(lang === 'zh' ? st.inZh : st.inEn)}<h4 style="margin-top:12px">${T('Output', '輸出')}</h4>${li(lang === 'zh' ? st.outZh : st.outEn)}</div>
-    <div><h4>${T('Knobs & choices', '可調項目')}</h4>${li(lang === 'zh' ? st.knobZh : st.knobEn)}<p style="margin:12px 0 0"><a href="${st.lab}">${T('Jump to the related lab →', '跳到相關實驗室 →')}</a></p></div>`;
+    <div><h4>${T('Knobs & choices', '可調項目')}</h4>${li(lang === 'zh' ? st.knobZh : st.knobEn)}<p style="margin:12px 0 0"><a href="${st.lab}">${T('Jump to §' + secNo(st.lab) + ' →', '跳到第' + secNo(st.lab) + '節 →')}</a></p></div>`;
 }
 
-/* ============================ Lab 1 ============================ */
+/* ============================ §03 widget ============================ */
 function kmeans(P, k, r, iters = 30){
   const d2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2; k = Math.min(k, P.length);
   const C = [P[Math.floor(r() * P.length)].slice()];
@@ -917,7 +934,7 @@ function lab1(){
     FX(['Succinctness · SUC', '簡潔性 · SUC'], `\\mathrm{SUC}=\\dfrac{|\\bar S|}{|S|}=\\dfrac{${nStates}}{${total}}=${f3(nStates / total)}`,
       ['How compact the abstraction is: fewer abstract states for the same concrete states is better, as long as information survives.', '抽象後模型有多精簡：同樣的具體狀態用越少抽象狀態表示越好，但不能簡到失去資訊。']),
     FX(['Coverage · COV', '覆蓋率 · COV'], `\\begin{aligned}\\mathrm{COV}&=\\dfrac{\\#\\,\\text{unseen}}{\\#\\,\\text{test}}\\\\ &=\\dfrac{${uN}}{${te.length}}=${f3(covN)}\\ (\\text{normal}),\\quad \\dfrac{${uA}}{${ab.length}}=${f3(covA)}\\ (\\text{abnormal})\\end{aligned}`,
-      ['Share of test states that fall where no training state was — the model has never seen that situation. (The paper divides by |S̄|; this lab uses the test-point count so the number is easy to read.)', '測試狀態中落在「訓練從沒到過」之處的比例，代表模型沒見過這種情況。（論文以 |S̄| 為分母，本實驗室改用測試點數，比較好讀。）']),
+      ['Share of test states that fall where no training state was — the model has never seen that situation. (The paper divides by |S̄|; this widget uses the test-point count so the number is easy to read.)', '測試狀態中落在「訓練從沒到過」之處的比例，代表模型沒見過這種情況。（論文以 |S̄| 為分母，本元件改用測試點數，比較好讀。）']),
     FX(['Sensitivity · SEN', '敏感度 · SEN'], `\\begin{aligned}\\mathrm{SEN}&=\\dfrac{\\#\\{\\bar s\\neq\\bar s'\\ \\text{after }\\epsilon\\text{-noise}\\}}{|S_{test}|}\\\\ &=${f3(sen)}\\end{aligned}`,
       ['If you nudge a state by a tiny ε, does it jump to a different abstract state? Lower means the abstraction is robust.', '把狀態微微擾動 ε，會不會跳到別的抽象狀態？越低代表抽象越穩健。'])
   ]);
@@ -931,7 +948,7 @@ function setupLab1(){
 }
 ['l1-part','l1-n','l1-train','l1-test','l1-abn'].forEach(id => $('#' + id).addEventListener('input', () => { setupLab1(); lab1(); }));
 
-/* ============================ Lab 2 ============================ */
+/* ============================ §04 widget ============================ */
 const L2 = {path: []};
 function l2Model(){
   const N = +$('#l2-n').value, det = +$('#l2-d').value / 100, M = +$('#l2-m').value;
@@ -1002,7 +1019,7 @@ $('#l2-typ').addEventListener('click', () => l2Preset('typ'));
 $('#l2-odd').addEventListener('click', () => l2Preset('odd'));
 ['l2-n','l2-m','l2-d'].forEach(id => $('#' + id).addEventListener('input', lab2));
 
-/* ============================ Lab 3 ============================ */
+/* ============================ §05 widget ============================ */
 function semColor(v){ if (v == null) return '#2F3A50'; const t = clamp(v, 0, 1); const h = 8 + t * 130; return `hsl(${h} 62% ${28 + t * 6}%)`; }
 function lab3(){
   const tr = App.data.traces; const sel = $('#l3-ex');
@@ -1013,7 +1030,7 @@ function lab3(){
   const th = +$('#l3-th').value / 100; $('#l3-thv').textContent = th.toFixed(2);
   const vals = t.semantics.filter(v => v != null), score = mean(vals), abn = score < th, first = t.semantics.findIndex(v => v != null && v < th);
   setBadge('#l3-badge', App.loaded.traces);
-  $('#l3-pick').innerHTML = App.loaded.traces ? T('<b>Note:</b> these examples are hand-picked by a fixed rule (largest normal-vs-abnormal score gap, plus one counter-example per task) to make the method readable — not a random sample. The default threshold is the best one on the test scores. For the overall result see Lab 4.', '<b>注意：</b>這些範例是依固定規則挑選的（正常與異常分數差距最大的題目，每種任務另加一個反例），目的是讓方法容易看懂，不是隨機抽樣。預設門檻是測試分數上的最佳門檻。整體效果請看實驗室 4。') : '';
+  $('#l3-pick').innerHTML = App.loaded.traces ? T('<b>Note:</b> these examples are hand-picked by a fixed rule (largest normal-vs-abnormal score gap, plus one counter-example per task) to make the method readable — not a random sample. The default threshold is the best one on the test scores. For the overall result see §06.', '<b>注意：</b>這些範例是依固定規則挑選的（正常與異常分數差距最大的題目，每種任務另加一個反例），目的是讓方法容易看懂，不是隨機抽樣。預設門檻是測試分數上的最佳門檻。整體效果請看第06節。') : '';
   $('#l3-prompt').innerHTML = `<b>${T('Prompt', '提示')}:</b> ${esc(t.prompt)}<br><b>${T('Semantics bound to', '語意綁定於')}:</b> ${t.mode === 'transition' ? T('transitions (OOD / adversarial): θ̄(⟨s̄ᵢ, s̄ᵢ₊₁⟩) = transition probability', '轉移（OOD／對抗）：θ̄(⟨s̄ᵢ, s̄ᵢ₊₁⟩) = 轉移機率') : T('states (hallucination): θ̄(s̄ᵢ) = truthfulness', '狀態（幻覺）：θ̄(s̄ᵢ) = 真實性')}`;
   $('#l3-toks').innerHTML = t.tokens.map((w, i) => { const v = t.semantics[i]; return `<div class="tok ${i === first ? 'first' : ''}" style="background:${semColor(v)}" title="θ̄=${v == null ? 'n/a' : v}"><div class="w">${esc(w)}</div><div class="s">${esc(t.states[i] || '')}</div><div class="v">${v == null ? '—' : v.toFixed(2)}</div></div>`; }).join('');
   const W = 620, H = 220, l = 40, r = 14, tp = 16, bt = 34, n = t.tokens.length, X = i => l + (n === 1 ? .5 : i / (n - 1)) * (W - l - r), Y = v => tp + (1 - v) * (H - tp - bt);
@@ -1027,7 +1044,7 @@ function lab3(){
     <div class="score"><p class="score-k">${T('Verdict', '判定')}</p><p class="score-v"><span class="verdict ${abn ? 'v-bad' : 'v-good'}">${abn ? T('abnormal', '異常') : T('normal', '正常')}</span></p><p class="score-n">${T('ground truth', '真實標籤')}: ${t.label === 'abnormal' ? T('abnormal', '異常') : T('normal', '正常')}</p></div>`;
   const right = (abn === (t.label === 'abnormal'));
   $('#l3-note').innerHTML = (first >= 0 ? T(`<b>Localization:</b> the first state below threshold is <code>${esc(t.states[first] || '?')}</code> at token “${esc(t.tokens[first])}” — the model "becomes abnormal" here.`, `<b>定位：</b>第一個低於門檻的狀態是 <code>${esc(t.states[first] || '?')}</code>，對應 token「${esc(t.tokens[first])}」——模型從這裡開始「變異常」。`) : T('<b>Localization:</b> no state falls below the threshold.', '<b>定位：</b>沒有任何狀態低於門檻。'))
-    + ' ' + (right ? T('Detector agrees with the label.', '偵測結果與標籤一致。') : T('<b>Detector disagrees with the label</b> — try another threshold; this is the FP/FN trade-off of Lab 4.', '<b>偵測結果與標籤不符</b>——換個門檻試試；這正是實驗室 4 的 FP／FN 取捨。'));
+    + ' ' + (right ? T('Detector agrees with the label.', '偵測結果與標籤一致。') : T('<b>Detector disagrees with the label</b> — try another threshold; this is the FP/FN trade-off of §06.', '<b>偵測結果與標籤不符</b>——換個門檻試試；這正是第06節的 FP／FN 取捨。'));
   setFx('l3-chart', [
     FX(['Abstract semantics θ̄', '抽象語意 θ̄'], `\\bar\\theta(\\bar s)=\\dfrac{1}{|\\bar s|}\\sum_{s\\in\\bar s}\\theta(s)`,
       ['Each abstract state gets the average semantic value of all concrete samples that landed in it. Hallucination: θ = how truthful the answer was. OOD / adversarial: θ = the transition probability.', '每個抽象狀態的語意，是落在該狀態所有具體樣本語意的平均。幻覺情境：θ＝答案的真實程度；OOD／對抗情境：θ＝轉移機率。']),
@@ -1039,7 +1056,7 @@ function lab3(){
 }
 ['l3-ex','l3-th'].forEach(id => $('#' + id).addEventListener('input', lab3));
 
-/* ============================ Lab 4 ============================ */
+/* ============================ §06 widget ============================ */
 function synthScores(taskId, auc){
   const r = rng(hash(taskId) + 5), n = 400, d = Math.SQRT2 * invPhi(clamp(auc, .5, .999));
   const z1 = [], z2 = []; for (let i = 0; i < n; i++) { z1.push(gauss(r)); z2.push(gauss(r)); }
@@ -1140,9 +1157,9 @@ const METRIC_EXTRA = {
  NDT:{lab:'#s5'},
  SL:{lab:'#s5'}
 };
-const LAB_NAME = {'#s2': ['the pipeline', '流程圖'], '#s3': ['Lab 1', '實驗室 1'], '#s4': ['Lab 2', '實驗室 2'], '#s5': ['Lab 3', '實驗室 3'], '#s6': ['Lab 4', '實驗室 4'], '#s8': ['Lab 5', '實驗室 5']};
-const extraHtml = x => x ? `<a class="try" href="${x.lab}">${T('see it in ' + LAB_NAME[x.lab][0] + ' →', '到' + LAB_NAME[x.lab][1] + '看它怎麼動 →')}</a>` : '';
-/* formulas that are worked through with live numbers in Labs 1-4 get the darker "in-lab" card style */
+const secNo = h => h.slice(2).padStart(2, '0');
+const extraHtml = x => x ? `<a class="try" href="${x.lab}">${T('see it in §' + secNo(x.lab) + ' →', '到第' + secNo(x.lab) + '節看它怎麼動 →')}</a>` : '';
+/* formulas that are worked through with live numbers in sections 03-04 get the darker "in-lab" card style */
 const IN_LAB = {SUC: '#s3', COV: '#s3', SEN: '#s3', SS: '#s4', SDE: '#s4'}, CORE_IN_LAB = [3, 4];
 
 /* ============================ hover explanations for formula symbols ============================
@@ -1249,7 +1266,7 @@ G('lv-toks', {
   'plaus': ['plausibility score: average transition probability over the answer tokens', '合理性分數：回答 token 的平均轉移機率'], 'truth': ['truthfulness score: average θ̄ over the answer tokens', '真實性分數：回答 token 的平均 θ̄'], 'pct': ['percentile among normal training answers (low = unusual)', '在正常訓練答案中的百分位（低＝不尋常）'],
   'P̂': ['estimated transition probability between abstract states', '抽象狀態之間的估計轉移機率'], 'θ̄': ['abstract semantics of a state (truthful share of training tokens that landed there)', '一個狀態的抽象語意（落在該狀態的訓練 token 中屬於真實答案的比例）'], 's̄': ['an abstract state', '一個抽象狀態'], 's̄_i': ['the i-th abstract state on the answer', '回答上第 i 個抽象狀態'], 'AVG': ['average over the answer tokens', '對回答的 token 取平均']
 });
-/* metric formulas (section 07 cards and the first Lab 5 tab) */
+/* metric formulas (section 07 cards and the first §08 widget tab) */
 G('SUC', {'S̄': ['set of abstract states', '抽象狀態的集合'], 'S': ['set of concrete states', '具體狀態的集合']});
 G('COV', {'S̄': ['set of abstract states', '抽象狀態的集合'], 'unseen': ['never seen in the training data', '訓練資料裡從沒出現過'], 's': ['a concrete test state', '一個具體的測試狀態'], 'c_i': ['centre of the cluster', '群的中心'], 'd': ['largest distance from a training state to its cluster centre', '訓練狀態到其群中心的最大距離'], '∥': ['distance between s and the centre', 's 與中心的距離']});
 G('SEN', {'S_test': ['set of test states', '測試狀態的集合'], 's̄': ['abstract state of s', 's 所屬的抽象狀態'], 's̄′': ['abstract state of the perturbed state s′', '擾動後的 s′ 所屬的抽象狀態'], 's′': ['s plus a tiny perturbation', 's 加上微小擾動'], 'ϵ': ['maximum size of the perturbation', '擾動的最大幅度'], '∥': ['distance between s and s′', 's 與 s′ 的距離'], '≠': ['not equal: changed to another abstract state', '不相等：換到另一個抽象狀態']});
@@ -1270,9 +1287,20 @@ G('SS', {'isasink': ['“is a sink”: a state that can never be left', '「是�
 let metricFam = 'model';
 function renderTexIn(root){ root.querySelectorAll('.tex').forEach(el => { const tex = el.dataset.tex, disp = el.dataset.display === '1';
   if (window.katex) { try { katex.render(tex, el, {displayMode: disp, throwOnError: false}); el.classList.remove('tex-fallback'); return; } catch (e) {} }
-  el.textContent = tex; el.classList.add('tex-fallback'); }); annotateSyms(root); }
+  el.textContent = tex; el.classList.add('tex-fallback'); }); annotateSyms(root); fitFxIn(root); }
 function renderTex(){ renderTexIn(document); }
 window.__katexReady = renderTex;
+/* when a formula is wider than the column that holds it (long matrices, long sums…), drop the
+   side-by-side layout and stack the explanation under the formula instead of letting it overflow */
+function fitFxBody(body){
+  const item = body.querySelector('.fx-item'); if (!item) return;
+  const tex = item.querySelector('.katex') || item.querySelector('.tex'); if (!tex) return;
+  body.classList.remove('stack');
+  const cs = getComputedStyle(item), pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  if (tex.scrollWidth > item.clientWidth - pad + 1) body.classList.add('stack');
+}
+function fitFxIn(root){ root.querySelectorAll('.fx-body').forEach(fitFxBody); }
+addEventListener('resize', () => fitFxIn(document));
 /* formula strip under each lab: live numbers substituted into the formula + what it is for.
    FX(name[en,zh], tex, role[en,zh]) ; setFx(anchorId, items) appends/updates a .fx block inside the anchor's .figure */
 const FX = (name, tex, role, ctx) => ({name, tex, role, ctx});
@@ -1285,7 +1313,7 @@ function setFx(anchor, items){
 const FXS = {}, FXI = {};   // selected tab / items per lab
 function drawFx(anchor){
   const el = document.getElementById(anchor + '-fx'), items = FXI[anchor], sel = FXS[anchor], it = items[sel];
-  el.innerHTML = `<div class="fx-top"><p class="fx-h">${T('Formulas in this lab — numbers update live · hover a symbol for its meaning', '本實驗室用到的公式——數字隨操作即時更新 · 把滑鼠移到符號上看意思')}</p>` +
+  el.innerHTML = `<div class="fx-top"><p class="fx-h">${T('Formulas in this widget — numbers update live · hover a symbol for its meaning', '本元件用到的公式——數字隨操作即時更新 · 把滑鼠移到符號上看意思')}</p>` +
     `<div class="fx-tabs" role="group">${items.map((x, i) => `<button type="button" class="fx-tab" data-i="${i}" aria-pressed="${i === sel}">${esc(T(x.name[0], x.name[1]))}</button>`).join('')}</div></div>` +
     `<div class="fx-body"><div class="fx-item"><span class="tex" data-display="1" data-ctx="${it.ctx || anchor}" data-tex="${esc(it.tex)}"></span></div>` +
     `<div class="fx-role"><p class="fx-name">${esc(T(it.name[0], it.name[1]))}</p><p>${esc(T(it.role[0], it.role[1]))}</p></div></div>`;
@@ -1293,7 +1321,7 @@ function drawFx(anchor){
   renderTexIn(el);
 }
 function renderFormulas(){
-  const tag = h => h ? `<span class="lab-tag">${esc(T(LAB_NAME[h][0], LAB_NAME[h][1]))}</span>` : '';
+  const tag = h => h ? `<span class="lab-tag">${secNo(h)}</span>` : '';
   $('#core-eq').innerHTML = CORE_EQ.map((e, i) => { const lab = CORE_IN_LAB.includes(i) ? CORE_EXTRA[i].lab : ''; return `<div class="mathblock${lab ? ' in-lab' : ''}">${tag(lab)}<span class="tex" data-display="1" data-ctx="core${i}" data-tex="${esc(e.tex)}"></span><div class="sec-sub" style="font-size:13px">${esc(T(e.en, e.zh))}</div>${extraHtml(CORE_EXTRA[i])}</div>`; }).join('');
   $('#metric-grid').innerHTML = METRICS.filter(m => m.fam === metricFam).map(m => `<div class="metric${IN_LAB[m.k] ? ' in-lab' : ''}">${tag(IN_LAB[m.k])}<h3><span class="ab">${m.k}</span>${esc(T(m.en, m.zh))}</h3><p>${esc(T(m.pEn, m.pZh))}</p><span class="tex" data-display="1" data-ctx="${m.k}" data-tex="${esc(m.tex)}"></span><p class="dir">${esc(T(m.dEn, m.dZh))}</p>${extraHtml(METRIC_EXTRA[m.k])}</div>`).join('');
   $('#mt-model').setAttribute('aria-pressed', metricFam === 'model'); $('#mt-sem').setAttribute('aria-pressed', metricFam === 'sem'); renderTex();
@@ -1301,7 +1329,7 @@ function renderFormulas(){
 $('#mt-model').addEventListener('click', () => { metricFam = 'model'; renderFormulas(); });
 $('#mt-sem').addEventListener('click', () => { metricFam = 'sem'; renderFormulas(); });
 
-/* ============================ Lab 5 ============================ */
+/* ============================ §08 widget ============================ */
 const L5 = {pin: null};
 const partColor = p => p === 'grid' ? '#F4C26B' : p === 'GMM' ? '#C2B4FF' : '#5FD3A0';
 function lab5(){

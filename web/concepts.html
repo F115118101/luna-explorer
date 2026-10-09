@@ -17,6 +17,7 @@
   --serif:Georgia,"Noto Serif TC","PingFang TC","Microsoft JhengHei",serif;
   --sans:system-ui,-apple-system,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
   --mono:ui-monospace,"SFMono-Regular",Consolas,"Courier New",monospace;
+  --bar-h:56px;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:96px}
@@ -176,8 +177,10 @@ td.num{font-family:var(--mono);white-space:nowrap}
 .fx-tab:hover{border-color:var(--accent);color:var(--ink)}
 .fx-tab[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#0A1020}
 .fx-body{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:22px;align-items:center}
+.fx-body.stack{grid-template-columns:1fr}
 @media(max-width:900px){.fx-body{grid-template-columns:1fr}}
-.fx-item{background:var(--surface-2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:10px 14px;min-width:0}
+.fx-item{background:var(--surface-2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:10px 14px;min-width:0;overflow-x:auto}
+.fx-body.stack .fx-item{background:none;border-left:0;border-radius:0;padding:0}
 .fx-role{min-width:0}
 .fx-role p{margin:4px 0 0;font-size:14.5px;line-height:1.65;color:var(--ink-2)}
 .fx-role .fx-name{font-size:12px;margin:0}
@@ -285,6 +288,28 @@ section{border-top:0}
 #drawer a.mi{display:block;padding:7px 12px;border-radius:7px;color:var(--ink-2);text-decoration:none;font-size:14px;border:1px solid transparent}
 #drawer a.mi:hover{color:var(--ink);background:var(--surface-2)}
 #drawer a.mi.on{color:var(--ink);background:var(--accent-soft);border-color:var(--accent)}
+/* ---- right drawer: per-figure controls ---- */
+.ctrls-toggle{display:inline-flex;gap:6px;align-items:center;margin-left:auto}
+.fig-head .ctrls-toggle{margin-left:auto}
+.fig-head .badge-sim{margin-left:10px}
+#hot-r{position:fixed;right:0;top:0;bottom:0;width:28px;z-index:60}
+.wrap{transition:padding-right .25s ease}
+body.ctrls-push .wrap{padding-right:calc(var(--ctrls-w,min(420px,90vw)) + var(--wp))}
+body.ctrls-resizing .wrap{transition:none}
+.ctrls-drawer{overscroll-behavior:contain;position:fixed;right:0;top:var(--bar-h,56px);bottom:0;width:var(--ctrls-w,min(420px,90vw));min-width:260px;max-width:92vw;transform:translateX(104%);z-index:62;background:var(--surface);border-left:1px solid var(--rule);box-shadow:var(--shadow);overflow-y:auto}
+.ctrls-drawer:not(.resizing){transition:transform .22s ease}
+.ctrls-drawer.open{transform:none}
+.ctrls-drawer-in{padding:20px 16px 28px}
+.ctrls-resizer{position:absolute;left:-5px;top:0;bottom:0;width:10px;cursor:ew-resize;z-index:3;touch-action:none}
+.ctrls-resizer::after{content:"";position:absolute;left:4px;top:0;bottom:0;width:2px;background:transparent}
+.ctrls-resizer:hover::after,.ctrls-resizer.dragging::after{background:var(--accent)}
+.ctrls-drawer .dh{font-weight:700;font-size:15px;margin:0 2px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ctrls-drawer .dh .x{background:none;border:0;color:var(--muted);font-size:20px;line-height:1;cursor:pointer;padding:0 4px}
+.ctrls-drawer .dh .x:hover{color:var(--ink)}
+.ctrls-drawer .tablewrap{overflow-x:visible}
+.ctrls-drawer table{min-width:0;table-layout:fixed}
+.ctrls-drawer th:first-child,.ctrls-drawer td:first-child{width:38%}
+.ctrls-drawer td,.ctrls-drawer th{white-space:normal;word-break:break-word}
 .pager{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:44px;padding-top:26px;border-top:1px solid var(--rule)}
 .pager a{display:block;min-width:200px;max-width:48%;padding:12px 18px;border:1px solid var(--rule);border-radius:8px;background:var(--surface);color:var(--ink);text-decoration:none}
 .pager a:hover{border-color:var(--accent)}
@@ -311,6 +336,7 @@ section{border-top:0}
 </div>
 <div id="tip"></div>
 <div id="hot" aria-hidden="true"></div>
+<div id="hot-r" aria-hidden="true"></div>
 <div id="scrim"></div>
 <aside id="drawer" aria-label="Contents"><div id="drawer-in"></div></aside>
 
@@ -384,7 +410,7 @@ section{border-top:0}
     </div>
   </div>
   <div class="figure" style="margin-bottom:24px">
-    <div class="fig-head"><p class="fig-title"><span lang="en">BPE on a toy corpus</span><span lang="zh">玩具語料上的 BPE</span></p><p class="fig-note"><span lang="en">Each press merges the most frequent adjacent pair (ties: first found). Coloured chips were created by a merge.</span><span lang="zh">每按一次，合併最常相鄰的一對（同數量取先找到的）。有色的方塊是合併產生的 token。</span></p><span class="badge-sim">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">BPE on a toy corpus</span><span lang="zh">玩具語料上的 BPE</span></p><p class="fig-note"><span lang="en">Each press merges the most frequent adjacent pair (ties: first found). Coloured chips were created by a merge.</span><span lang="zh">每按一次，合併最常相鄰的一對（同數量取先找到的）。有色的方塊是合併產生的 token。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-bpe">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
     <div class="demo-lite">
       <div>
         <p class="vis-label"><span lang="en">Words (count) and their current tokens</span><span lang="zh">詞（次數）與目前的切法</span></p>
@@ -398,13 +424,12 @@ section{border-top:0}
       </div>
     </div>
   </div>
-  <div class="col" style="margin-bottom:24px">
-    <p class="vis-label"><span lang="en">Controls</span><span lang="zh">操作說明</span></p>
+  <aside class="ctrls-drawer" id="ctrls-bpe"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
     <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
       <tr><td><b><span lang="en">Merge most frequent pair</span><span lang="zh">合併最常見的一對</span></b></td><td><span lang="en">Runs one BPE step by hand: merges whichever adjacent pair has the highest count in the table on the right (a tie goes to whichever pair the algorithm meets first).</span><span lang="zh">手動跑一步 BPE：把右邊表格裡次數最高的相鄰組合合併起來（次數相同時，取演算法先遇到的那一對）。</span></td></tr>
       <tr><td><b><span lang="en">Reset</span><span lang="zh">重設</span></b></td><td><span lang="en">Goes back to single characters. There is no slider here — just keep pressing “merge” to watch the vocabulary grow.</span><span lang="zh">回到單一字元。這裡沒有滑桿，只要不斷按「合併」就能看著詞彙表長出來。</span></td></tr>
     </tbody></table></div>
-  </div>
+  </div></aside>
   <div class="col">
     <p><span lang="en"><strong>Chinese depends on frequency.</strong> A tokenizer only merges what it saw often in its training text. GPT-2’s text is mostly English, so even <i>你好</i> falls back to bytes (4 tokens) and <i>電腦</i> takes 5; the English-only BERT vocabulary cannot represent either (<code>[UNK]</code>) — try the 中文 example. Newer tokenizers with larger multilingual vocabularies usually do much better on common Chinese words, but rare characters can still split into 2–3 byte tokens, which is why the same instruction often costs more tokens in Chinese than in English. (Only GPT-2 and BERT are available above; I did not test newer tokenizers.)</span><span lang="zh"><strong>中文取決於出現頻率。</strong>分詞器只會合併訓練文字裡常出現的片段。GPT-2 的訓練文字以英文為主，所以連 <i>你好</i> 都退回位元組（4 個 token），<i>電腦</i> 要 5 個；只有英文詞彙的 BERT 則兩個都表示不了（<code>[UNK]</code>）——按「中文」範例就能看到。較新、詞彙表更大且多語的分詞器，對常見中文詞通常好得多，但罕見字仍可能被拆成 2～3 個位元組 token，這就是為什麼同一句指令，中文常比英文多花 token。（上面只有 GPT-2 和 BERT，較新的分詞器我沒有測過。）</span></p>
     <p class="note"><span lang="en"><b>Link to LUNA.</b> LUNA reads one hidden state per <em>token</em> and maps it to one abstract state, so the tokenizer decides what one “step” of a trace is. In the implementation (GPT-2, section 10) <i>denser</i> is cut into <code>Ġdens</code> + <code>er</code> (press the English example): one word, two states. The scores are averages over tokens, not words, and a different tokenizer would give the same sentence a trace of a different length.</span><span lang="zh"><b>和 LUNA 的關係。</b>LUNA 每個 <em>token</em> 讀一個隱藏狀態，再對應到一個抽象狀態，所以分詞器決定了軌跡裡「一步」是什麼。在實作（第 10 節，GPT-2）裡，<i>denser</i> 被切成 <code>Ġdens</code> + <code>er</code>（按 English 範例就看得到）：一個字、兩個狀態。分數是對 token 取平均，不是對字；換一個分詞器，同一句話的軌跡長度也會不一樣。</span></p>
@@ -419,7 +444,7 @@ section{border-top:0}
     <p><span lang="en">Try: click one word to see its neighbours; switch to <em>analogy</em> and press a preset — the arrow from <i>man</i> to <i>king</i>, moved to <i>woman</i>, lands on <i>queen</i>.</span><span lang="zh">試試：點一個詞看它的鄰居；切到<em>類比</em>按預設按鈕——從 <i>man</i> 指向 <i>king</i> 的箭頭，平移到 <i>woman</i>，會落在 <i>queen</i>。</span></p>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">Embedding space (2-D toy)</span><span lang="zh">嵌入空間（2 維玩具）</span></p><p class="fig-note"><span lang="en">Click words. Real embeddings have thousands of dimensions.</span><span lang="zh">點選詞。真實嵌入有數千維。</span></p><span class="badge-sim">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">Embedding space (2-D toy)</span><span lang="zh">嵌入空間（2 維玩具）</span></p><p class="fig-note"><span lang="en">Click words. Real embeddings have thousands of dimensions.</span><span lang="zh">點選詞。真實嵌入有數千維。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-em">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
     <div class="demo">
       <div class="demo-vis">
         <p class="vis-label"><span lang="en">Word map</span><span lang="zh">詞的分布圖</span></p>
@@ -440,14 +465,13 @@ section{border-top:0}
     </div>
     <div class="legend"><span><span class="sw" style="background:#8CB8FF"></span><span lang="en">people</span><span lang="zh">人物</span></span><span><span class="sw" style="background:#F4C26B"></span><span lang="en">animals</span><span lang="zh">動物</span></span><span><span class="sw" style="background:#5FD3A0"></span><span lang="en">places</span><span lang="zh">地點</span></span><span><span class="sw" style="background:#C2B4FF"></span><span lang="en">verbs</span><span lang="zh">動詞</span></span><span><span class="sw" style="background:#FF9E7B"></span><span lang="en">vehicles</span><span lang="zh">交通工具</span></span></div>
   </div>
-  <div class="col" style="margin-top:16px">
-    <p class="vis-label"><span lang="en">Controls</span><span lang="zh">操作說明</span></p>
+  <aside class="ctrls-drawer" id="ctrls-em"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
     <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
       <tr><td><b><span lang="en">similar / analogy</span><span lang="zh">相似 / 類比</span></b></td><td><span lang="en">Switches what clicking a word does. In <i>similar</i> mode, click any word to see its nearest neighbours.</span><span lang="zh">決定點一個詞會發生什麼。在<i>相似</i>模式下，點任何詞看它最近的鄰居。</span></td></tr>
       <tr><td><b><code>king − man + woman</code> / <code>Paris − France + Japan</code></b></td><td><span lang="en">Preset buttons, only active in <i>analogy</i> mode: draw the vector arithmetic on the map.</span><span lang="zh">預設按鈕，只在<i>類比</i>模式下作用：在圖上畫出向量運算。</span></td></tr>
       <tr><td><b><span lang="en">Position</span><span lang="zh">位置</span></b></td><td><span lang="en">Does not move anything on the map — it only changes which row of the position-encoding chart below is highlighted.</span><span lang="zh">不會移動圖上任何東西——只改變下方位置編碼圖要高亮哪一列。</span></td></tr>
     </tbody></table></div>
-  </div>
+  </div></aside>
 </section>
 <section id="attention" class="sec-wide">
   <div class="sec-head"><div>
@@ -457,7 +481,7 @@ section{border-top:0}
     <p><span lang="en">For every token, attention scores how relevant each other token is, turns the scores into weights with softmax, and mixes the other tokens' vectors with those weights. In <em>A baby sat on the chair</em>, <i>sat</i> looks at <i>baby</i> and <i>chair</i> more than at <i>the</i>. A decoder-only model adds a <strong>causal mask</strong>: a token may only look at itself and earlier tokens.</span><span lang="zh">對每個 token，注意力先為其他每個 token 的相關程度打分，再用 softmax 把分數變成權重，最後用權重混合其他 token 的向量。在 <em>A baby sat on the chair</em> 裡，<i>sat</i> 對 <i>baby</i> 和 <i>chair</i> 的關注高於 <i>the</i>。decoder-only 模型多一個<strong>因果遮罩</strong>：token 只能看自己和之前的 token。</span></p>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">Attention explorer</span><span lang="zh">注意力探索器</span></p><p class="fig-note"><span lang="en">Click a token to make it the query.</span><span lang="zh">點一個 token 當查詢者。</span></p><span class="badge-sim">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">Attention explorer</span><span lang="zh">注意力探索器</span></p><p class="fig-note"><span lang="en">Click a token to make it the query.</span><span lang="zh">點一個 token 當查詢者。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-at">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
     <div class="demo stack"><div class="demo-vis twin">
         <p class="vis-label"><span lang="en">Where the selected token looks</span><span lang="zh">被選中的 token 看向哪裡</span></p>
         <div class="vis-box"><svg class="stage" id="at-arcs" viewBox="0 0 640 330"></svg></div>
@@ -476,15 +500,14 @@ section{border-top:0}
     </div>
     <div class="legend"><span><span lang="en">Small τ ⇒ sharp (look at one token). Large τ ⇒ flat (look at everything equally). Real models use τ = √d<sub>k</sub> on the dot products.</span><span lang="zh">τ 小 ⇒ 尖銳（只看一個 token）；τ 大 ⇒ 平均（每個都看）。真實模型是把內積除以 √d<sub>k</sub>。</span></span></div>
   </div>
-  <div class="col" style="margin-top:16px">
-    <p class="vis-label"><span lang="en">Controls</span><span lang="zh">操作說明</span></p>
+  <aside class="ctrls-drawer" id="ctrls-at"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
     <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
       <tr><td><b><span lang="en">(click a token)</span><span lang="zh">（點一個 token）</span></b></td><td><span lang="en">Makes that token the <b>query</b> — the chart shows where it looks.</span><span lang="zh">把它設為<b>查詢者</b>——圖表顯示它看向哪裡。</span></td></tr>
       <tr><td><b><span lang="en">Sentence</span><span lang="zh">句子</span></b></td><td><span lang="en">Switches the example.</span><span lang="zh">切換範例。</span></td></tr>
       <tr><td><b><span lang="en">causal mask</span><span lang="zh">因果遮罩</span></b></td><td><span lang="en">Turns the decoder-only rule on or off — unchecked, a token can also look at later tokens, which a real decoder never does.</span><span lang="zh">決定要不要套用 decoder-only 的規則——取消勾選後，token 也能看到後面的 token，這是真實 decoder 不會發生的事。</span></td></tr>
       <tr><td><b><span lang="en">Scale τ</span><span lang="zh">縮放 τ</span></b></td><td><span lang="en">Sharpens or flattens the weights before they are drawn (see the legend below).</span><span lang="zh">在畫出權重之前讓它更尖銳或更平均（見下方圖例）。</span></td></tr>
     </tbody></table></div>
-  </div>
+  </div></aside>
 </section>
 <section id="sampling" class="sec-wide">
   <div class="sec-head"><div>
@@ -494,7 +517,7 @@ section{border-top:0}
     <p><span lang="en">The last layer gives one score (logit) per vocabulary word. Softmax turns them into probabilities that sum to 1. <strong>Temperature</strong> sharpens or flattens them, <strong>top-k</strong> keeps only the k most likely. Because each pick becomes part of the next input, an answer is a <em>path</em> — the reason LUNA models whole trajectories rather than single outputs. The entropy of the distribution says how unsure the model is.</span><span lang="zh">最後一層為詞彙表中每個字給一個分數（logit）。softmax 把它們變成加總為 1 的機率。<strong>溫度</strong>讓分布更尖或更平，<strong>top-k</strong> 只保留最可能的 k 個。每次挑出的字都成為下一步輸入的一部分，所以答案是一條<em>路徑</em>——這就是 LUNA 要建模整條軌跡、而不是單一輸出的原因。分布的熵代表模型有多不確定。</span></p>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">Sampling playground</span><span lang="zh">取樣遊樂場</span></p><p class="fig-note"><span lang="en">A tiny made-up language; press “sample” repeatedly.</span><span lang="zh">一個編出來的迷你語言；連續按「取樣」。</span></p><span class="badge-sim">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">Sampling playground</span><span lang="zh">取樣遊樂場</span></p><p class="fig-note"><span lang="en">A tiny made-up language; press “sample” repeatedly.</span><span lang="zh">一個編出來的迷你語言；連續按「取樣」。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-sm">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
     <div class="demo">
       <div class="demo-vis">
         <p class="vis-label"><span lang="en">Probability of each candidate next token</span><span lang="zh">每個候選字的機率</span></p>
@@ -511,8 +534,7 @@ section{border-top:0}
       </div>
     </div>
   </div>
-  <div class="col" style="margin-top:16px">
-    <p class="vis-label"><span lang="en">Controls</span><span lang="zh">操作說明</span></p>
+  <aside class="ctrls-drawer" id="ctrls-sm"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
     <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
       <tr><td><b><span lang="en">Temperature</span><span lang="zh">溫度</span></b></td><td><span lang="en">Reshapes the bars before picking: low makes the tallest bar even taller (more predictable), high flattens them (more random).</span><span lang="zh">在挑選之前先改變長條的形狀：低溫讓最高的長條更高（更可預測），高溫讓長條變平（更隨機）。</span></td></tr>
       <tr><td><b>top-k</b></td><td><span lang="en">Hides every candidate outside the k most likely before picking.</span><span lang="zh">挑選前，把最可能的 k 個以外的候選全部隱藏。</span></td></tr>
@@ -520,7 +542,7 @@ section{border-top:0}
       <tr><td><b><span lang="en">pick most likely</span><span lang="zh">挑最可能的</span></b></td><td><span lang="en">Always takes the tallest bar instead of sampling.</span><span lang="zh">永遠選最高的長條，不隨機取樣。</span></td></tr>
       <tr><td><b><span lang="en">reset</span><span lang="zh">重來</span></b></td><td><span lang="en">Clears the generated text.</span><span lang="zh">清空已產生的文字。</span></td></tr>
     </tbody></table></div>
-  </div>
+  </div></aside>
 </section>
 <section id="probing" class="sec-wide">
   <div class="sec-head"><div>
@@ -531,7 +553,7 @@ section{border-top:0}
     <p><span lang="en">Try: press “fit probe”, then raise the steering strength and watch the red (false) points cross the boundary.</span><span lang="zh">試試：按「擬合探針」，再把介入強度拉高，看紅色（假）的點怎麼越過邊界。</span></p>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">A probe, a push, and a timeline</span><span lang="zh">探針、介入與時間軸</span></p><p class="fig-note"><span lang="en">2-D toy activations; real ones have thousands of dimensions.</span><span lang="zh">2 維玩具激活；真實的有數千維。</span></p><span class="badge-sim">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">A probe, a push, and a timeline</span><span lang="zh">探針、介入與時間軸</span></p><p class="fig-note"><span lang="en">2-D toy activations; real ones have thousands of dimensions.</span><span lang="zh">2 維玩具激活；真實的有數千維。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-pb">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
     <div class="demo stack"><div class="demo-vis twin">
         <p class="vis-label"><span lang="en">Hidden activations of true and false statements</span><span lang="zh">真話與假話的隱藏激活</span></p>
         <div class="vis-box"><svg class="stage" id="pb-plot" viewBox="0 0 640 400"></svg></div>
@@ -552,8 +574,7 @@ section{border-top:0}
     </div>
     <div class="legend"><span><span class="sw" style="background:#8CB8FF"></span><span lang="en">true statements</span><span lang="zh">真話</span></span><span><span class="sw" style="background:#FF7B8B"></span><span lang="en">false statements</span><span lang="zh">假話</span></span><span><span lang="en">faint dots = before the ITI push, solid = after</span><span lang="zh">淡色點＝ITI 介入前，實心＝介入後</span></span></div>
   </div>
-  <div class="col" style="margin-top:16px">
-    <p class="vis-label"><span lang="en">Controls</span><span lang="zh">操作說明</span></p>
+  <aside class="ctrls-drawer" id="ctrls-pb"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
     <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
       <tr><td><b><span lang="en">Boundary angle / offset</span><span lang="zh">邊界角度／位移</span></b></td><td><span lang="en">Move the probe's decision line by hand.</span><span lang="zh">手動移動探針的分界線。</span></td></tr>
       <tr><td><b><span lang="en">fit probe</span><span lang="zh">擬合探針</span></b></td><td><span lang="en">Lets gradient descent place the boundary automatically.</span><span lang="zh">讓梯度下降自動擺好邊界。</span></td></tr>
@@ -561,7 +582,7 @@ section{border-top:0}
       <tr><td><b><span lang="en">ITI strength α</span><span lang="zh">ITI 強度 α</span></b></td><td><span lang="en">Pushes every point along the boundary's normal direction (0 = no push) — raise it and watch false (red) points cross into the true side.</span><span lang="zh">把每個點沿著邊界法向推動（0 代表沒有推動）——拉高它，看假話（紅色）的點怎麼越過邊界。</span></td></tr>
       <tr><td><b><span lang="en">Token written</span><span lang="zh">寫到第幾個 token</span></b></td><td><span lang="en">Only moves the marker on the lower timeline; it does not change the points above.</span><span lang="zh">只移動下方時間軸上的標記，不會改變上方的點。</span></td></tr>
     </tbody></table></div>
-  </div>
+  </div></aside>
 </section>
 <section id="pca" class="sec-wide">
   <div class="sec-head"><div>
@@ -571,7 +592,7 @@ section{border-top:0}
     <p><span lang="en">Principal Component Analysis looks for the direction along which the data varies most, and keeps only the coordinates along it. Rotate the axis below: the variance kept is largest when the axis lines up with the long direction of the cloud. LUNA keeps 3, 5 or 10 components for grid partitions and 512–2,048 for clusters.</span><span lang="zh">主成分分析找出資料變動最大的方向，只保留沿該方向的座標。轉動下面的軸：當軸對準點雲的長邊時，保留的變異量最大。LUNA 在網格劃分保留 3、5 或 10 個成分，分群則保留 512～2,048 個。</span></p>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">Projection explorer</span><span lang="zh">投影探索器</span></p><p class="fig-note"><span lang="en">Rotate the axis, then press “snap to PC1”.</span><span lang="zh">轉動軸，再按「對準 PC1」。</span></p><span class="badge-sim">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">Projection explorer</span><span lang="zh">投影探索器</span></p><p class="fig-note"><span lang="en">Rotate the axis, then press “snap to PC1”.</span><span lang="zh">轉動軸，再按「對準 PC1」。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-pc">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
     <div class="demo stack"><div class="demo-vis twin">
         <p class="vis-label"><span lang="en">Points projected onto the axis</span><span lang="zh">點投影到軸上</span></p>
         <div class="vis-box"><svg class="stage" id="pc-plot" viewBox="0 0 400 360"></svg></div>
@@ -589,14 +610,13 @@ section{border-top:0}
       </div>
     </div>
   </div>
-  <div class="col" style="margin-top:16px">
-    <p class="vis-label"><span lang="en">Controls</span><span lang="zh">操作說明</span></p>
+  <aside class="ctrls-drawer" id="ctrls-pc"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
     <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
       <tr><td><b><span lang="en">Data</span><span lang="zh">資料</span></b></td><td><span lang="en">Switches the point cloud's shape.</span><span lang="zh">切換點雲的形狀。</span></td></tr>
       <tr><td><b><span lang="en">Axis angle</span><span lang="zh">軸角度</span></b></td><td><span lang="en">Rotates the projection axis by hand — watch the right-hand curve track how much variance that angle keeps.</span><span lang="zh">手動轉動投影軸——看右邊的曲線怎麼跟著顯示這個角度保留了多少變異量。</span></td></tr>
       <tr><td><b><span lang="en">snap to PC1</span><span lang="zh">對準 PC1</span></b></td><td><span lang="en">Jumps straight to the angle that keeps the most variance, without you having to search for it.</span><span lang="zh">直接跳到保留變異量最多的角度，不用自己慢慢找。</span></td></tr>
     </tbody></table></div>
-  </div>
+  </div></aside>
 </section>
 <section id="kmeans" class="sec-wide">
   <div class="sec-head"><div>
@@ -606,7 +626,7 @@ section{border-top:0}
     <p><span lang="en">K-Means alternates two steps: <strong>assign</strong> every point to its nearest centre, then <strong>move</strong> each centre to the mean of its points. It stops when nothing changes. States only appear where data exists, which is why clustering gives LUNA compact models. Try the <em>ring</em> data: K-Means cuts it into wedges, because it only knows round clusters.</span><span lang="zh">K-Means 反覆做兩步：<strong>指派</strong>——每個點歸給最近的中心；<strong>移動</strong>——每個中心移到自己那群點的平均。直到沒有變化為止。狀態只在有資料的地方出現，這就是分群讓 LUNA 的模型很精簡的原因。試試<em>環形</em>資料：K-Means 會把它切成扇形，因為它只認得圓形的群。</span></p>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">K-Means stepper</span><span lang="zh">K-Means 逐步執行</span></p><p class="fig-note"><span lang="en">Step through assign / move, or run to the end.</span><span lang="zh">逐步看指派／移動，或一次跑到收斂。</span></p><span class="badge-sim">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">K-Means stepper</span><span lang="zh">K-Means 逐步執行</span></p><p class="fig-note"><span lang="en">Step through assign / move, or run to the end.</span><span lang="zh">逐步看指派／移動，或一次跑到收斂。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-km">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
     <div class="demo">
       <div class="demo-vis">
         <p class="vis-label"><span lang="en">Points, centres and regions</span><span lang="zh">點、中心與區域</span></p>
@@ -623,8 +643,7 @@ section{border-top:0}
       </div>
     </div>
   </div>
-  <div class="col" style="margin-top:16px">
-    <p class="vis-label"><span lang="en">Controls</span><span lang="zh">操作說明</span></p>
+  <aside class="ctrls-drawer" id="ctrls-km"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
     <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
       <tr><td><b><span lang="en">Data</span><span lang="zh">資料</span></b></td><td><span lang="en">Switches the point cloud; try <em>ring</em> to see K-Means fail on a non-round shape.</span><span lang="zh">切換點雲；試試<em>環形</em>資料，看 K-Means 在非圓形的形狀上怎麼失敗。</span></td></tr>
       <tr><td><b>k</b></td><td><span lang="en">Sets how many centres (clusters) to fit.</span><span lang="zh">設定要擬合幾個中心（群）。</span></td></tr>
@@ -632,7 +651,7 @@ section{border-top:0}
       <tr><td><b><span lang="en">run to end</span><span lang="zh">跑到收斂</span></b></td><td><span lang="en">Keeps stepping until nothing changes.</span><span lang="zh">一直跑到不再變化。</span></td></tr>
       <tr><td><b><span lang="en">new start</span><span lang="zh">重新開始</span></b></td><td><span lang="en">Re-randomises the starting centres without changing the data.</span><span lang="zh">只重新隨機取起始中心，資料不變。</span></td></tr>
     </tbody></table></div>
-  </div>
+  </div></aside>
 </section>
 <section id="gmm" class="sec-wide">
   <div class="sec-head"><div>
@@ -642,7 +661,7 @@ section{border-top:0}
     <p><span lang="en">A GMM describes the data as a mix of bell-shaped blobs, each with its own centre, size and tilt. EM alternates <strong>E-step</strong> (every point gets a probability of belonging to each blob) and <strong>M-step</strong> (re-fit each blob using those probabilities). Unlike K-Means, a point between two blobs belongs partly to both. Switch to the <em>elongated</em> data: GMM follows the tilted blobs, K-Means cannot.</span><span lang="zh">GMM 把資料看成幾個鐘形團塊的混合，每個有自己的中心、大小與傾斜。EM 反覆做 <strong>E 步</strong>（每個點得到屬於各團塊的機率）和 <strong>M 步</strong>（用這些機率重新擬合每個團塊）。和 K-Means 不同，介於兩個團塊之間的點會「部分屬於」兩邊。切到<em>細長</em>資料：GMM 能跟著傾斜的團塊，K-Means 做不到。</span></p>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">EM stepper</span><span lang="zh">EM 逐步執行</span></p><p class="fig-note"><span lang="en">Ellipses show 1σ and 2σ of every blob.</span><span lang="zh">橢圓是每個團塊的 1σ 與 2σ。</span></p><span class="badge-sim">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">EM stepper</span><span lang="zh">EM 逐步執行</span></p><p class="fig-note"><span lang="en">Ellipses show 1σ and 2σ of every blob.</span><span lang="zh">橢圓是每個團塊的 1σ 與 2σ。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-gm">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
     <div class="demo">
       <div class="demo-vis">
         <p class="vis-label"><span lang="en">Points coloured by responsibility</span><span lang="zh">依歸屬機率上色的點</span></p>
@@ -660,8 +679,7 @@ section{border-top:0}
       </div>
     </div>
   </div>
-  <div class="col" style="margin-top:16px">
-    <p class="vis-label"><span lang="en">Controls</span><span lang="zh">操作說明</span></p>
+  <aside class="ctrls-drawer" id="ctrls-gm"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
     <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
       <tr><td><b><span lang="en">Data</span><span lang="zh">資料</span></b></td><td><span lang="en">Switches the point cloud; try <em>elongated</em> to see GMM follow a tilted shape K-Means cannot.</span><span lang="zh">切換點雲；試試<em>細長</em>資料，看 GMM 怎麼跟著傾斜的形狀走，K-Means 做不到。</span></td></tr>
       <tr><td><b>k</b></td><td><span lang="en">Sets how many blobs to fit.</span><span lang="zh">設定要擬合幾個團塊。</span></td></tr>
@@ -671,7 +689,7 @@ section{border-top:0}
       <tr><td><b><span lang="en">new start</span><span lang="zh">重新開始</span></b></td><td><span lang="en">Re-randomises the blobs without changing the data.</span><span lang="zh">只重新隨機取起點，資料不變。</span></td></tr>
       <tr><td><b><span lang="en">show hard assignment</span><span lang="zh">只顯示最可能的一群</span></b></td><td><span lang="en">Recolours every point by its single most likely blob, as if K-Means had run instead.</span><span lang="zh">把每個點依它最可能屬於的單一團塊重新上色，就像換成 K-Means 跑過一樣。</span></td></tr>
     </tbody></table></div>
-  </div>
+  </div></aside>
 </section>
 <section id="markov" class="sec-wide">
   <div class="sec-head"><div>
@@ -681,7 +699,7 @@ section{border-top:0}
     <p><span lang="en">A discrete-time Markov chain hops between a few states; the chance of the next state depends only on the current one, and each row of the transition matrix sums to 1. LUNA's abstract model is such a chain whose states are the clusters from the PCA, K-Means and GMM pages. Let it wander: the share of time spent in each state settles on the <strong>stationary distribution</strong> π, which LUNA uses to weigh the states (SDE) and to find traps (SS, sink states).</span><span lang="zh">離散時間馬可夫鏈在幾個狀態之間跳動；下一個狀態的機率只取決於目前狀態，轉移矩陣每一列加總為 1。LUNA 的抽象模型就是這樣一條鏈，狀態就是PCA、K-Means、GMM 那幾頁的分群。讓它走一走：停留在各狀態的時間比例會穩定到<strong>穩態分布</strong> π，LUNA 用它來替各狀態加權（SDE）和找出陷阱（SS，匯點狀態）。</span></p>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">Random walk on a 4-state chain</span><span lang="zh">4 個狀態的隨機漫步</span></p><p class="fig-note"><span lang="en">Press ×1000 and compare blue with the yellow lines.</span><span lang="zh">按 ×1000，比較藍色與黃線。</span></p><span class="badge-sim">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">Random walk on a 4-state chain</span><span lang="zh">4 個狀態的隨機漫步</span></p><p class="fig-note"><span lang="en">Press ×1000 and compare blue with the yellow lines.</span><span lang="zh">按 ×1000，比較藍色與黃線。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-mk">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
     <div class="demo stack"><div class="demo-vis twin">
         <p class="vis-label"><span lang="en">The chain (edge width = probability)</span><span lang="zh">這條鏈（邊寬＝機率）</span></p>
         <div class="vis-box"><svg class="stage" id="mk-graph" viewBox="0 0 560 340"></svg></div>
@@ -698,14 +716,13 @@ section{border-top:0}
       </div>
     </div>
   </div>
-  <div class="col" style="margin-top:16px">
-    <p class="vis-label"><span lang="en">Controls</span><span lang="zh">操作說明</span></p>
+  <aside class="ctrls-drawer" id="ctrls-mk"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
     <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
       <tr><td><b><span lang="en">Chain</span><span lang="zh">轉移矩陣</span></b></td><td><span lang="en">Loads a different transition matrix.</span><span lang="zh">載入不同的鏈。</span></td></tr>
       <tr><td><b>× 1 / × 100 / × 1000</b></td><td><span lang="en">Takes that many random steps of the walk and adds them to the running tally of time spent in each state (the blue bars); the yellow lines are the true stationary distribution π, computed directly from the matrix, for comparison.</span><span lang="zh">讓隨機漫步走那麼多步，並累加進「各狀態停留時間」的統計（藍色長條）；黃線是直接從矩陣算出的真正穩態分布 π，拿來對照。</span></td></tr>
       <tr><td><b><span lang="en">reset</span><span lang="zh">重來</span></b></td><td><span lang="en">Clears the walk and starts over.</span><span lang="zh">清空這趟漫步，重新開始。</span></td></tr>
     </tbody></table></div>
-  </div>
+  </div></aside>
 </section>
 <section id="hmm" class="sec-wide">
   <div class="sec-head"><div>
@@ -723,7 +740,7 @@ section{border-top:0}
     <p><span lang="en"><strong>The toy below</strong> is the smallest version of this: 2 hidden states (S1, S2) and 3 visible symbols (a, b, c). The 8 training sequences (10 symbols each) were generated by a hidden “true” model. Press “1 EM round” and watch the learned numbers move toward it and the likelihood climb. The sequence you build with the a / b / c buttons (up to 8 symbols) is the one being decoded.</span><span lang="zh"><strong>下面的玩具圖</strong>是這件事的最小版本：2 個隱藏狀態（S1、S2）、3 種看得到的符號（a、b、c）。8 條訓練序列（各 10 個符號）由一個隱藏的「真實」模型產生。按「1 輪 EM」，看學到的數字怎麼靠近它、似然怎麼上升。你用 a / b / c 按鈕組出的序列（最多 8 個符號）就是被解碼的那一條。</span></p>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">Decode a sequence, then train</span><span lang="zh">解碼一個序列，然後訓練</span></p><p class="fig-note"><span lang="en">Build a sequence with a / b / c, press “1 EM round” a few times.</span><span lang="zh">用 a / b / c 組一個序列，按幾次「1 輪 EM」。</span></p><span class="badge-sim">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">Decode a sequence, then train</span><span lang="zh">解碼一個序列，然後訓練</span></p><p class="fig-note"><span lang="en">Build a sequence with a / b / c, press “1 EM round” a few times.</span><span lang="zh">用 a / b / c 組一個序列，按幾次「1 輪 EM」。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-hm">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
     <div class="demo stack"><div class="demo-vis twin">
         <p class="vis-label"><span lang="en">Hidden states behind your sequence</span><span lang="zh">你的序列背後的隱藏狀態</span></p>
         <div class="vis-box"><svg class="stage" id="hm-trellis" viewBox="0 0 640 290"></svg></div>
@@ -740,8 +757,7 @@ section{border-top:0}
       </div>
     </div>
   </div>
-  <div class="col" style="margin-top:16px">
-    <p class="vis-label"><span lang="en">Controls</span><span lang="zh">操作說明</span></p>
+  <aside class="ctrls-drawer" id="ctrls-hm"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
     <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
       <tr><td><b>a / b / c</b></td><td><span lang="en">Builds the observed sequence shown in the top chart (up to 8 symbols). The sequence is only decoded with the model as it currently stands — building it does not itself train anything.</span><span lang="zh">組出上方圖中顯示的觀測序列（最多 8 個符號）。這個序列只是用目前的模型去解碼，組序列本身不會訓練模型。</span></td></tr>
       <tr><td><b><span lang="en">clear</span><span lang="zh">清除</span></b></td><td><span lang="en">Empties the observed sequence.</span><span lang="zh">清空觀測序列。</span></td></tr>
@@ -749,7 +765,7 @@ section{border-top:0}
       <tr><td><b><span lang="en">10 rounds</span><span lang="zh">10 輪</span></b></td><td><span lang="en">Runs ten EM rounds at once.</span><span lang="zh">一次跑十輪。</span></td></tr>
       <tr><td><b><span lang="en">reset model</span><span lang="zh">重設模型</span></b></td><td><span lang="en">Goes back to the untrained starting numbers.</span><span lang="zh">回到還沒訓練的起始數字。</span></td></tr>
     </tbody></table></div>
-  </div>
+  </div></aside>
   <div class="col" style="margin-top:24px">
     <p class="note"><span lang="en"><b>Link to LUNA.</b> The toy has 2 hidden states and 3 symbols; the real thing is much bigger. The <em>visible symbols</em> are the abstract states (clusters or grid cells, a few hundred) that each generated token falls into, so one LLM output is a sequence of abstract-state ids. The <em>hidden states</em> are an extra layer fitted on top (100, 200 or 400 of them in the paper). What Baum-Welch returns is a set of learned parameters (initial, transition and emission probabilities), not a sequence. The paper gives this second layer of abstraction as one reason HMMs do worse than DTMCs.</span><span lang="zh"><b>和 LUNA 的關係。</b>玩具圖只有 2 個隱藏狀態、3 種符號，真實的規模大得多。<em>看得到的符號</em>是每個生成的 token 落入的抽象狀態（分群或網格，幾百個），所以一次 LLM 輸出就是一串抽象狀態編號；<em>隱藏狀態</em>是在它之上再擬合的一層（論文裡有 100、200 或 400 個）。Baum-Welch 回傳的是一組學到的參數（初始、轉移、發射機率），不是一條序列。多了這一層抽象，是論文解釋 HMM 表現不如 DTMC 的原因之一。</span></p>
     <p class="note" style="margin-top:12px"><span lang="en"><b>Difference from the authors' released code</b> (read, not run). The toy uses discrete emissions like the paper. The released code instead fits hmmlearn's <code>GaussianHMM</code> on the abstract-state <em>id</em> treated as one continuous number. At detection time it decodes the hidden states and then looks up a DTMC transition table counted on abstract states, not the HMM's own learned transition matrix.</span><span lang="zh"><b>和作者釋出程式碼的差異</b>（只讀過、沒執行）。玩具圖照論文用離散發射；釋出的程式碼則是用 hmmlearn 的 <code>GaussianHMM</code>，把抽象狀態的<em>編號</em>當成一個連續數字去擬合。偵測時先解出隱藏狀態，再去查「用抽象狀態統計出來的 DTMC 轉移表」，並沒有用 HMM 自己學到的轉移矩陣。</span></p>
@@ -763,7 +779,7 @@ section{border-top:0}
     <p><span lang="en">A model is only trustworthy on inputs that resemble its training data. The textbook test (the paper's Eq. 2) estimates the density p<sub>X</sub> of the training inputs and flags anything below a threshold λ as out-of-distribution. The paper builds OOD inputs by rewriting SST-2 sentences in Shakespeare's style. In real LLMs the input space is far too large for a density estimate, so LUNA scores a path by its <em>transition probabilities</em> instead.</span><span lang="zh">模型只有在輸入像訓練資料時才可信。教科書上的做法（論文的式 2）是估計訓練輸入的密度 p<sub>X</sub>，低於門檻 λ 的就判為分布外。論文把 SST-2 的句子改寫成莎士比亞風格來製造分布外輸入。真實 LLM 的輸入空間太大，沒辦法估計密度，所以 LUNA 改用一條路徑的<em>轉移機率</em>來打分。</span></p>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">Density and threshold</span><span lang="zh">密度與門檻</span></p><p class="fig-note"><span lang="en">Move the test point, then move λ.</span><span lang="zh">移動測試點，再移動 λ。</span></p><span class="badge-sim">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">Density and threshold</span><span lang="zh">密度與門檻</span></p><p class="fig-note"><span lang="en">Move the test point, then move λ.</span><span lang="zh">移動測試點，再移動 λ。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-od">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
     <div class="demo">
       <div class="demo-vis">
         <p class="vis-label"><span lang="en">Training density p<sub>X</sub>(x), threshold λ and a test point (1-D toy)</span><span lang="zh">訓練密度 p<sub>X</sub>(x)、門檻 λ 與一個測試點（1 維玩具）</span></p>
@@ -780,14 +796,13 @@ section{border-top:0}
       </div>
     </div>
   </div>
-  <div class="col" style="margin-top:16px">
-    <p class="vis-label"><span lang="en">Controls</span><span lang="zh">操作說明</span></p>
+  <aside class="ctrls-drawer" id="ctrls-od"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
     <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
       <tr><td><b><span lang="en">Test input</span><span lang="zh">測試輸入</span></b></td><td><span lang="en">Jumps the test point to a preset position.</span><span lang="zh">把測試點跳到預設位置。</span></td></tr>
       <tr><td><b>x</b></td><td><span lang="en">Moves the test point by hand along the axis — the further it sits from the training density's bulk, the more “out of distribution” it is.</span><span lang="zh">手動沿軸移動測試點——離訓練密度主體越遠，就越「分布外」。</span></td></tr>
       <tr><td><b>λ</b></td><td><span lang="en">Moves the threshold line; the point is flagged OOD whenever the density under it falls below λ.</span><span lang="zh">移動門檻線；只要測試點下方的密度低於 λ，就判定為分布外。</span></td></tr>
     </tbody></table></div>
-  </div>
+  </div></aside>
 </section>
 <section id="roc" class="sec-wide">
   <div class="sec-head"><div>
@@ -797,7 +812,7 @@ section{border-top:0}
     <p><span lang="en">LUNA gives every answer a semantic score; low means abnormal. Choose a threshold and you get four counts (TP, FN, FP, TN) and one point of the ROC curve. Sweep the threshold across every score and the points form a staircase. Lab 4 shows the same with hundreds of samples; here each step is a single sample, and the AUC can also be read as a <strong>pair count</strong>.</span><span lang="zh">LUNA 為每個答案給一個語意分數；低代表異常。選一個門檻，就得到四個數字（TP、FN、FP、TN）和 ROC 曲線上的一個點。把門檻掃過每一個分數，這些點就連成階梯。Lab 4 用幾百個樣本呈現同樣的事；這裡每一階就是一個樣本，而且 AUC 也可以當作<strong>配對計數</strong>來讀。</span></p>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">Threshold, staircase and pairs</span><span lang="zh">門檻、階梯與配對</span></p><p class="fig-note"><span lang="en">Drag the threshold; press “new samples” to see AUC wobble.</span><span lang="zh">拖動門檻；按「新樣本」看 AUC 怎麼晃動。</span></p><span class="badge-sim">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">Threshold, staircase and pairs</span><span lang="zh">門檻、階梯與配對</span></p><p class="fig-note"><span lang="en">Drag the threshold; press “new samples” to see AUC wobble.</span><span lang="zh">拖動門檻；按「新樣本」看 AUC 怎麼晃動。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-rc">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
     <div class="demo">
       <div class="demo-vis">
         <p class="vis-label"><span lang="en">Scores of normal and abnormal samples</span><span lang="zh">正常與異常樣本的分數</span></p>
@@ -818,14 +833,13 @@ section{border-top:0}
       </div>
     </div>
   </div>
-  <div class="col" style="margin-top:16px">
-    <p class="vis-label"><span lang="en">Controls</span><span lang="zh">操作說明</span></p>
+  <aside class="ctrls-drawer" id="ctrls-rc"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
     <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
       <tr><td><b><span lang="en">Threshold</span><span lang="zh">門檻</span></b></td><td><span lang="en">Drags the decision line across the top chart and moves the matching point on the ROC staircase — everything to one side counts as “flagged abnormal”.</span><span lang="zh">在上方圖拖動分界線，同時在 ROC 階梯上移動對應的點——分界一側的全部算「判為異常」。</span></td></tr>
       <tr><td><b>d′</b></td><td><span lang="en">Changes how far apart the normal and abnormal score distributions truly are (separability); pulling it to 0 makes the two overlap completely.</span><span lang="zh">改變正常與異常分數分布真正相距多遠（可分性）；拉到 0 會讓兩者完全重疊。</span></td></tr>
       <tr><td><b><span lang="en">new samples</span><span lang="zh">新樣本</span></b></td><td><span lang="en">Redraws a fresh 10 + 10 sample and lets you see the ROC curve and AUC wobble from sampling alone.</span><span lang="zh">重新抽一組 10 + 10 的樣本，看看光是抽樣就能讓 ROC 曲線和 AUC 怎麼晃動。</span></td></tr>
     </tbody></table></div>
-  </div>
+  </div></aside>
 </section>
 <section id="kl" class="sec-wide">
   <div class="sec-head"><div>
@@ -835,7 +849,7 @@ section{border-top:0}
     <p><span lang="en"><strong>KL divergence</strong> measures how far a distribution Q is from a reference P. It is 0 only when they are identical and it is <em>not symmetric</em>. <strong>Perplexity</strong> measures how surprised a language model is by a text: the average number of words it was torn between. LUNA's PERP metric is the KL divergence between the perplexities of normal and abnormal data, and its SL metric is the KL divergence between a posterior and a prior.</span><span lang="zh"><strong>KL 散度</strong>衡量分布 Q 離基準 P 有多遠。只有兩者完全相同時才是 0，而且<em>不對稱</em>。<strong>困惑度</strong>衡量語言模型看到一段文字有多意外：平均在幾個字之間猶豫。LUNA 的 PERP 指標是正常與異常資料的困惑度之間的 KL 散度，SL 指標則是後驗與先驗之間的 KL 散度。</span></p>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">Compare two distributions</span><span lang="zh">比較兩個分布</span></p><p class="fig-note"><span lang="en">Move Q away from P; try the opposite direction of KL.</span><span lang="zh">把 Q 從 P 移開；也看看 KL 反方向的值。</span></p><span class="badge-sim">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">Compare two distributions</span><span lang="zh">比較兩個分布</span></p><p class="fig-note"><span lang="en">Move Q away from P; try the opposite direction of KL.</span><span lang="zh">把 Q 從 P 移開；也看看 KL 反方向的值。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-kl">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
     <div class="demo">
       <div class="demo-vis">
         <p class="vis-label"><span lang="en">P (blue) and Q (yellow) over 8 bins</span><span lang="zh">P（藍）與 Q（黃）在 8 個區間上的分布</span></p>
@@ -852,14 +866,13 @@ section{border-top:0}
       </div>
     </div>
   </div>
-  <div class="col" style="margin-top:16px">
-    <p class="vis-label"><span lang="en">Controls</span><span lang="zh">操作說明</span></p>
+  <aside class="ctrls-drawer" id="ctrls-kl"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
     <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
       <tr><td><b><span lang="en">Q shift</span><span lang="zh">Q 的位移</span></b></td><td><span lang="en">Moves the yellow distribution Q relative to the fixed blue reference P — watch KL(P‖Q) and KL(Q‖P) in the score panel diverge as Q moves away.</span><span lang="zh">相對於固定不動的藍色基準 P，移動黃色的 Q——觀察分數面板裡的 KL(P‖Q) 與 KL(Q‖P) 怎麼隨著 Q 移開而不一樣。</span></td></tr>
       <tr><td><b><span lang="en">Q spread</span><span lang="zh">Q 的寬度</span></b></td><td><span lang="en">Stretches Q wider or narrower, same effect on the two KL scores.</span><span lang="zh">讓 Q 變寬或變窄，對兩個 KL 分數的影響相同。</span></td></tr>
       <tr><td><b><span lang="en">Model on a text</span><span lang="zh">模型讀一段文字</span></b></td><td><span lang="en">A separate, unrelated mini-demo below: replays a toy language model reading one of a few texts, showing the probability it gave the actual next word at each step and the perplexity that implies.</span><span lang="zh">下面另一個獨立的小示範，和上面的滑桿無關：重演一個玩具語言模型讀某段文字，顯示每一步給「實際下一個字」的機率，以及由此算出的困惑度。</span></td></tr>
     </tbody></table></div>
-  </div>
+  </div></aside>
 </section>
 <nav class="pager" id="pager" aria-label="Chapter navigation"></nav>
 </div>
@@ -894,8 +907,19 @@ const stat = (rows) => rows.map(x => `<div class="score"><p class="score-k">${x[
 /* ---- formulas (KaTeX) with a tab strip per figure: FX(name[en,zh], tex, role[en,zh]) ---- */
 function renderTexIn(root){ root.querySelectorAll('.tex').forEach(el => { const tex = el.dataset.tex, disp = el.dataset.display === '1';
   if (window.katex) { try { katex.render(tex, el, {displayMode: disp, throwOnError: false}); el.classList.remove('tex-fallback'); return; } catch (e) {} }
-  el.textContent = tex; el.classList.add('tex-fallback'); }); annotateSyms(root); }
+  el.textContent = tex; el.classList.add('tex-fallback'); }); annotateSyms(root); fitFxIn(root); }
 window.__katexReady = () => renderTexIn(document);
+/* when a formula is wider than the column that holds it, drop the side-by-side layout and
+   stack the explanation under the formula instead of letting it overflow */
+function fitFxBody(body){
+  const item = body.querySelector('.fx-item'); if (!item) return;
+  const tex = item.querySelector('.katex') || item.querySelector('.tex'); if (!tex) return;
+  body.classList.remove('stack');
+  const cs = getComputedStyle(item), pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  if (tex.scrollWidth > item.clientWidth - pad + 1) body.classList.add('stack');
+}
+function fitFxIn(root){ root.querySelectorAll('.fx-body').forEach(fitFxBody); }
+addEventListener('resize', () => fitFxIn(document));
 const FX = (name, tex, role) => ({name, tex, role});
 const FXS = {}, FXI = {};
 function setFx(anchor, items){
@@ -1801,6 +1825,83 @@ $('#drawer').addEventListener('click', e => { if (e.target.closest('a')) menuClo
 $('#menu-btn').addEventListener('click', () => { if ($('#drawer').classList.contains('open') && menuPinned) menuClose(); else menuOpen(true); });
 $('#scrim').addEventListener('click', menuClose);
 addEventListener('keydown', e => { if (e.key === 'Escape') menuClose(); });
+let ctrlsPinned = false;
+function ctrlsCloseAll(){
+  $$('.ctrls-drawer.open').forEach(d => d.classList.remove('open'));
+  $$('.ctrls-toggle[aria-expanded="true"]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  ctrlsPinned = false;
+  document.body.classList.remove('ctrls-push');
+}
+function ctrlsOpen(id, pin){
+  const d = document.getElementById(id);
+  if (!d) return;
+  ctrlsCloseAll();
+  d.classList.add('open');
+  ctrlsPinned = pin;
+  document.body.classList.add('ctrls-push');
+}
+function currentCtrlsDrawer(){
+  const sec = $$('.wrap > section').find(s => !s.classList.contains('sec-hidden'));
+  return sec ? sec.querySelector('.ctrls-drawer') : null;
+}
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.ctrls-toggle');
+  if (btn){
+    const id = btn.getAttribute('aria-controls');
+    const d = document.getElementById(id);
+    if (d && d.classList.contains('open') && ctrlsPinned) ctrlsCloseAll();
+    else { ctrlsOpen(id, true); btn.setAttribute('aria-expanded', 'true'); }
+    return;
+  }
+  if (e.target.closest('.ctrls-drawer .x')) ctrlsCloseAll();
+});
+let ctrlsResizing = false;
+document.addEventListener('mousemove', e => {
+  if (ctrlsPinned || ctrlsResizing) return;
+  const inHotR = e.clientX >= innerWidth - 28;
+  const open = $('.ctrls-drawer.open');
+  if (!open){
+    if (inHotR){ const d = currentCtrlsDrawer(); if (d) ctrlsOpen(d.id, false); }
+    return;
+  }
+  const r = open.getBoundingClientRect();
+  const inDrawer = e.clientX >= r.left - 12 && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+  if (!inHotR && !inDrawer) ctrlsCloseAll();
+});
+document.addEventListener('mousedown', e => {
+  const handle = e.target.closest('.ctrls-resizer');
+  if (!handle) return;
+  e.preventDefault();
+  const d = handle.closest('.ctrls-drawer');
+  ctrlsResizing = true;
+  d.classList.add('resizing');
+  handle.classList.add('dragging');
+  document.body.classList.add('ctrls-resizing');
+  const onMove = ev => {
+    const w = Math.min(innerWidth * 0.92, Math.max(260, innerWidth - ev.clientX));
+    document.documentElement.style.setProperty('--ctrls-w', w + 'px');
+    fitFxIn(document);
+  };
+  const onUp = () => {
+    ctrlsResizing = false;
+    d.classList.remove('resizing');
+    handle.classList.remove('dragging');
+    document.body.classList.remove('ctrls-resizing');
+    removeEventListener('mousemove', onMove);
+    removeEventListener('mouseup', onUp);
+    fitFxIn(document);
+    try { localStorage.setItem('luna-ctrls-w', getComputedStyle(document.documentElement).getPropertyValue('--ctrls-w')); } catch (err) {}
+  };
+  addEventListener('mousemove', onMove);
+  addEventListener('mouseup', onUp);
+});
+(function initCtrlsW(){
+  try { const w = localStorage.getItem('luna-ctrls-w'); if (w) document.documentElement.style.setProperty('--ctrls-w', w); } catch (e) {}
+})();
+function syncBarH(){ document.documentElement.style.setProperty('--bar-h', $('.bar').offsetHeight + 'px'); }
+addEventListener('resize', syncBarH);
+syncBarH();
+$('.wrap').addEventListener('transitionend', e => { if (e.propertyName === 'padding-right') fitFxIn(document); });
 function showSec(id){
   if (!SECIDS.includes(id)) id = 'home';
   const changed = id !== CUR; CUR = id;
@@ -1818,6 +1919,7 @@ function setLang(l){
   $('#lang-en').setAttribute('aria-pressed', l === 'en'); $('#lang-zh').setAttribute('aria-pressed', l === 'zh');
   try { localStorage.setItem('luna-lang', l); } catch (e) {}
   renderAll();
+  syncBarH();
 }
 $('#lang-en').addEventListener('click', () => setLang('en')); $('#lang-zh').addEventListener('click', () => setLang('zh'));
 (function init(){
