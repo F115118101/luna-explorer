@@ -7,6 +7,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from transformers import AutoModel, AutoTokenizer
 from luna_grid import GridPartition  # noqa: F401  (needed to unpickle grid-partition models)
@@ -19,6 +20,10 @@ lm = AutoModel.from_pretrained(M["model"], output_hidden_states=True).eval()
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# static assets (images, the pre-rendered intro video, …); StaticFiles handles Range requests
+# itself, which is what lets <video> seeking jump straight to the dragged frame instead of
+# re-buffering from the start.
+app.mount("/assets", StaticFiles(directory=os.path.join(WEB, "assets")), name="assets")
 
 
 class Req(BaseModel):

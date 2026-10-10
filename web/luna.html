@@ -52,9 +52,6 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
 .bar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--ground) 86%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--rule)}
 .bar-in{max-width:1440px;margin:0 auto;padding:9px clamp(28px,4.5vw,72px);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .mark{font-weight:700;font-size:15px;letter-spacing:.02em;display:flex;align-items:center;gap:9px;margin-right:auto}
-.pill{font-family:var(--mono);font-size:11px;padding:3px 9px;border:1px solid var(--rule);border-radius:999px;color:var(--muted);background:var(--surface)}
-.pill b{color:var(--warm);font-weight:600}
-.pill.live b{color:var(--good)}
 .btn{font-family:var(--sans);font-size:12px;font-weight:600;padding:5px 12px;border:1px solid var(--rule);border-radius:999px;background:var(--surface);color:var(--ink-2);cursor:pointer}
 .btn:hover{border-color:var(--accent);color:var(--ink)}
 .seg{display:inline-flex;border:1px solid var(--rule);border-radius:999px;overflow:hidden;background:var(--surface)}
@@ -160,7 +157,17 @@ td.num{font-family:var(--mono);white-space:nowrap}
 .tok .v{font-family:var(--mono);font-size:11px;margin-top:2px}
 .tok.first{outline:2px solid var(--bad);outline-offset:2px}
 /* pre-rendered intro animation (baked with Manim, not driven by JS) */
-.intro-video{width:100%;display:block;border-radius:7px;background:#05070c;border:1px solid var(--rule)}
+.intro-video{width:100%;max-width:100ch;display:block;border-radius:7px 7px 0 0;background:#05070c;border:1px solid var(--rule);border-bottom:0;cursor:pointer}
+/* custom video scrubber — native <video controls> only seeks on mouse-up in most browsers;
+   this sets currentTime on every pointermove so the frame tracks the playhead while dragging */
+.player{display:flex;align-items:center;gap:10px;max-width:100ch;padding:8px 10px;background:var(--surface);border:1px solid var(--rule);border-radius:0 0 7px 7px;user-select:none}
+.player-play{flex:none;width:28px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;font-size:12px;line-height:1}
+.player-seek{flex:1;min-width:0;position:relative;height:20px;display:flex;align-items:center;cursor:pointer;touch-action:none}
+.player-seek-track{position:absolute;left:0;right:0;height:4px;border-radius:999px;background:var(--rule)}
+.player-seek-fill{position:absolute;left:0;height:4px;border-radius:999px;background:var(--accent)}
+.player-seek-thumb{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;background:var(--accent);transform:translate(-50%,-50%);box-shadow:0 0 0 3px rgba(140,184,255,.22)}
+.player-seek:hover .player-seek-thumb{box-shadow:0 0 0 5px rgba(140,184,255,.3)}
+.player-time{font-family:var(--mono);font-size:11px;color:var(--muted);min-width:4.5em;text-align:right;white-space:nowrap}
 .verdict{display:inline-block;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:4px;border:1px solid currentColor}
 .v-bad{color:var(--bad)} .v-good{color:var(--good)}
 .tabs{margin-bottom:16px}
@@ -283,7 +290,6 @@ html::-webkit-scrollbar-track{background:var(--ground)}
       <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="mg" x1="0" x2="1"><stop offset="0" stop-color="#8CB8FF"/><stop offset="1" stop-color="#C2B4FF"/></linearGradient></defs><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="url(#mg)"/></svg>
       LUNA Explorer
     </span>
-    <span class="pill" id="src-pill"></span>
     <div class="seg" role="group" aria-label="Language">
       <button id="lang-en" type="button" aria-pressed="false">EN</button>
       <button id="lang-zh" type="button" aria-pressed="true">中文</button>
@@ -375,9 +381,10 @@ html::-webkit-scrollbar-track{background:var(--ground)}
   <div class="figure" style="margin-bottom:24px">
     <div class="fig-head"><p class="fig-title"><span lang="en">From text to a point</span><span lang="zh">從文字到一個點</span></p><p class="fig-note"><span lang="en">Token → last hidden layer → PCA → a point on the map</span><span lang="zh">Token → 最後一層隱藏狀態 → PCA → 地圖上的一個點</span></p><span class="badge-sim">SIMULATED</span></div>
     <div style="padding:16px 18px">
-      <video class="intro-video" poster="assets/intro-anim/intro-poster.jpg" controls preload="metadata" playsinline>
+      <video class="intro-video" id="intro-video" poster="assets/intro-anim/intro-poster.jpg" preload="auto" playsinline>
         <source src="assets/intro-anim/intro.mp4" type="video/mp4">
       </video>
+      <div class="player" id="intro-player"></div>
       <p class="note" style="margin-top:12px"><span lang="en">Pre-rendered walkthrough on a fixed example sentence (not tied to the data above). The first token gets the full layer-by-layer pass through the simulated decoder; every token after it reuses the same steps, just faster each time.</span><span lang="zh">以固定的範例句子預先算好的動畫（與上方資料無關）。第一個 token 完整走過模擬解碼器的逐層流程；之後每個 token 重複同樣步驟，只是一次比一次快。</span></p>
     </div>
   </div>
@@ -456,6 +463,16 @@ html::-webkit-scrollbar-track{background:var(--ground)}
   <div class="sec-head"><span class="sec-num">05</span><div>
     <h2><span lang="en">Semantics binding &amp; token-level detection</span><span lang="zh">語意綁定與逐 token 偵測</span></h2>
     <p class="sec-sub"><span lang="en">Every abstract state carries a semantic value; a trace's mean value is its score</span><span lang="zh">每個抽象狀態帶有語意值；軌跡的平均值即為分數</span></p></div></div>
+  <div class="figure" style="margin-bottom:24px">
+    <div class="fig-head"><p class="fig-title"><span lang="en">Sentence score → abstract state → trace score</span><span lang="zh">句子分數 → 抽象狀態 → 軌跡分數</span></p><p class="fig-note"><span lang="en">Pre-rendered walkthrough, simulated grid.</span><span lang="zh">預先算好的動畫，模擬網格。</span></p><span class="badge-sim">SIMULATED</span></div>
+    <div style="padding:16px 18px">
+      <video class="intro-video" id="trace-video" poster="assets/semantics-anim/trace-poster.jpg" preload="auto" playsinline>
+        <source src="assets/semantics-anim/trace.mp4" type="video/mp4">
+      </video>
+      <div class="player" id="trace-player"></div>
+      <p class="note" style="margin-top:12px"><span lang="en">Each example sentence is judged ONE score, broadcast to every one of its tokens — the paper's Definition 3 binds truthfulness to the whole answer's state sequence, not per token — landing in a simulated 5×5 grid whose cells keep a running average. The ~30 early sentences are generated placeholders purely to fill the grid; only the final sentence is real TruthfulQA data, read back out with no fresh scoring into a token-vs-θ̄ chart, the same shape as the Trace Inspector below.</span><span lang="zh">每個範例句子只打一個分數，廣播給它所有的 token——論文 Definition 3 把真實性綁在整個答案的狀態序列上，不是逐 token——落進模擬的 5×5 網格，格子會保留一個累積平均。前面約 30 句是生成出來、純粹用來填格子的；只有最後一句是真實的 TruthfulQA 資料，不重新打分、直接讀回畫成 token 對 θ̄ 的折線圖，跟下方軌跡檢視器是同一種圖。</span></p>
+    </div>
+  </div>
   <div class="col" style="margin-bottom:24px">
     <p><span lang="en">Semantics <code>θ</code> says how well the LLM is satisfying a trust property in that state. For hallucination it is the truthfulness of answers that passed through the state (GPT-judge, pass@1, or a GPT-3.5 verdict); for OOD and adversarial inputs it is the <em>transition probability</em>. The abstract semantics <code>θ̄</code> of a state is the mean over its concrete members. A trace's <strong>semantic score</strong> is <code>AVG(θ̄(s̄ᵢ))</code>; below a threshold ⇒ abnormal — and the first low state tells you <em>where</em> the model went wrong.</span><span lang="zh">語意 <code>θ</code> 表示 LLM 在該狀態下對某項可信賴性的滿足程度。幻覺情境是經過該狀態之答案的真實性（GPT-judge、pass@1 或 GPT-3.5 判定）；OOD 與對抗情境則是<em>轉移機率</em>。狀態的抽象語意 <code>θ̄</code> 為其具體成員的平均。軌跡的<strong>語意分數</strong>為 <code>AVG(θ̄(s̄ᵢ))</code>；低於門檻 ⇒ 異常，而第一個低分狀態告訴你模型<em>在哪裡</em>出錯。</span></p>
   </div>
@@ -779,10 +796,6 @@ async function tryFetch(){
   if (!/^https?:/.test(location.protocol)) return;
   try { const r = await fetch('luna-data.json', {cache: 'no-store'}); if (r.ok) mergeData(await r.json(), 'luna-data.json'); } catch (e) {}
 }
-function updatePill(){ const parts = [['states2d', '§03'], ['traces', '§05'], ['scores', '§06'], ['configs', '§08']].filter(x => App.loaded[x[0]]).map(x => x[1]);
-  const p = $('#src-pill'); p.className = 'pill' + (parts.length ? ' live' : '');
-  p.innerHTML = T('data: ', '資料：') + '<b>' + (parts.length ? T('real · ', '真實 · ') + parts.join(', ') : T('simulated', '模擬')) + '</b>'; }
-
 /* ============================ 01 background figures ============================ */
 function renderBackground(){
   const C = {ink:'#E7EBF3', mute:'#7C869C', rule:'#2F3A50', acc:'#8CB8FF', acc2:'#C2B4FF', warm:'#F4C26B', sf:'#161D2B', soft:'#16233D'};
@@ -1422,7 +1435,7 @@ function renderVersions(){
     `<p class="note">${T(`Chosen by the higher mean of the two <em>validation</em> AUCs; the test AUCs (${m.testQuestions} held-out questions, noise about ±0.03) are only reported. “Plausibility” = original vs garbled text (our own OOD test); “truthfulness” = TruthfulQA reference true vs false answer. Not comparable with the paper’s Llama-7b results.`, `以兩個<em>驗證集</em> AUC 的平均較高者為準；測試集 AUC（${m.testQuestions} 題保留題，誤差約 ±0.03）只用來呈現。「合理性」＝原文 vs 亂碼（我們自己做的 OOD 測試）；「真實性」＝TruthfulQA 標準答案 vs 錯誤答案。不能和論文 Llama-7b 的結果直接比。`)}</p>`;
 }
 function renderAll(){
-  updatePill(); renderBackground(); renderVersions(); renderPipeline(); setupLab1(); lab1(); lab2(); lab3(); lab4(); renderFormulas(); lab5(); renderResults();
+  renderBackground(); renderVersions(); renderPipeline(); setupLab1(); lab1(); lab2(); lab3(); lab4(); renderFormulas(); lab5(); renderResults();
 }
 function setLang(l){
   lang = l; document.documentElement.setAttribute('data-lang', l); document.documentElement.lang = l === 'zh' ? 'zh-Hant' : 'en';
@@ -1432,6 +1445,46 @@ function setLang(l){
 }
 $('#lang-en').addEventListener('click', () => setLang('en'));
 $('#lang-zh').addEventListener('click', () => setLang('zh'));
+
+/* ============================ custom video scrubber ============================
+   Binds a play button + draggable seek bar to a <video>, setting video.currentTime on every
+   pointermove (throttled to one seek per animation frame) instead of relying on the browser's
+   native progress bar, which in most engines only seeks when the mouse is released — this is
+   what makes the displayed frame track the playhead live while dragging. */
+function bindVideoScrubber(video, el){
+  el.innerHTML = `<button class="btn player-play" type="button"></button>` +
+    `<div class="player-seek"><div class="player-seek-track"></div><div class="player-seek-fill"></div><div class="player-seek-thumb"></div></div>` +
+    `<span class="player-time"></span>`;
+  const btn = el.querySelector('.player-play'), seekEl = el.querySelector('.player-seek'),
+    fillEl = el.querySelector('.player-seek-fill'), thumbEl = el.querySelector('.player-seek-thumb'), timeEl = el.querySelector('.player-time');
+  let dragging = false, pendingT = null, raf = null, wasPlaying = false;
+  const fmt = s => (s >= 0 ? Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0') : '0:00');
+  function draw(){
+    const dur = video.duration || 0, t = dur ? clamp(video.currentTime / dur, 0, 1) : 0;
+    btn.textContent = video.paused ? '▶' : '❙❙'; btn.setAttribute('aria-label', video.paused ? 'play' : 'pause');
+    fillEl.style.width = thumbEl.style.left = (t * 100) + '%';
+    timeEl.textContent = fmt(video.currentTime) + ' / ' + fmt(dur);
+  }
+  function applyPending(){
+    if (pendingT != null && video.duration) { video.currentTime = pendingT * video.duration; pendingT = null; draw(); }
+    raf = dragging ? requestAnimationFrame(applyPending) : null;
+  }
+  function seekFromEvent(e){ const r = seekEl.getBoundingClientRect(); pendingT = clamp((e.clientX - r.left) / r.width, 0, 1);
+    if (!raf) raf = requestAnimationFrame(applyPending); }
+  const toggle = () => { video.paused ? video.play() : video.pause(); };
+  btn.addEventListener('click', toggle);
+  video.addEventListener('click', toggle);
+  seekEl.addEventListener('pointerdown', e => { dragging = true; wasPlaying = !video.paused; video.pause(); seekEl.setPointerCapture(e.pointerId); seekFromEvent(e); });
+  seekEl.addEventListener('pointermove', e => { if (dragging) seekFromEvent(e); });
+  const endDrag = e => { if (!dragging) return; dragging = false; try { seekEl.releasePointerCapture(e.pointerId); } catch (err) {}
+    if (wasPlaying) video.play(); };
+  seekEl.addEventListener('pointerup', endDrag); seekEl.addEventListener('pointercancel', endDrag);
+  ['loadedmetadata', 'timeupdate', 'play', 'pause'].forEach(ev => video.addEventListener(ev, draw));
+  draw();
+}
+bindVideoScrubber($('#intro-video'), $('#intro-player'));
+bindVideoScrubber($('#trace-video'), $('#trace-player'));
+
 (function init(){
   let saved = 'zh'; try { saved = localStorage.getItem('luna-lang') || 'zh'; } catch (e) {}
   App.sim = simulate(); App.data = App.sim; setLang(saved); tryFetch();
