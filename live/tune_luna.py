@@ -1,8 +1,10 @@
-"""Improve the live LUNA model: all 817 TruthfulQA questions, last decoder block only, config sweep on a validation split.
+"""LUNA OOD model (plausibility: original vs garbled text) on GPT-2, config sweep on a validation split.
 
-Usage:  python live/tune_luna.py     (writes luna_model.pkl, which server.py loads)
+Usage:  python live/tune_luna.py     (writes luna_model.pkl, which server.py and export_luna_data.py load)
 
-Split by question: 60% train / 20% val / 20% test.  Configs are picked on VAL; TEST is scored once at the end.
+Uses the 790 questions of TruthfulQA.csv only as a source of normal text ("Q: ...\nA: <Best Answer>"); abnormal = the same
+text shuffled with junk words inserted. Split by question: 60% train / 20% val / 20% test. Configs are picked on VAL;
+TEST is scored once at the end. Truthfulness (hallucination) is a separate model: tune_luna_gen.py.
 """
 import csv, itertools, json, os, pickle, random, shutil, time, urllib.request
 import numpy as np
@@ -32,7 +34,6 @@ PCA_DIMS = {"concat": [512, 1024, 2048], "last": [96, 192, 384]}
 SCALES = [False]            # no standardisation (neither the paper nor the authors' luna/*.py mention a scaler)
 K_LIST = [200, 400, 600]
 GRID_M = [5, 10, 15]
-MIN_PLAUS_VAL = 0.80      # a config must keep OOD detection at least this good to be eligible
 SEED = 0
 HERE = os.path.dirname(os.path.abspath(__file__))
 CSV_URL = "https://raw.githubusercontent.com/sylinrl/TruthfulQA/main/TruthfulQA.csv"
@@ -79,7 +80,7 @@ traces = []   # dict(split, kind, emb, start)
 t0 = time.time()
 for split, rs in parts.items():
     for r in rs:
-        items = [("true", qa(r["Question"], r["Best Answer"])), ("false", qa(r["Question"], r["Best Incorrect Answer"]))]
+        items = [("true", qa(r["Question"], r["Best Answer"]))]
         if split != "train": items.append(("garb", garble(items[0][1])))
         for kind, text in items:
             tokens, h = embed(text)
@@ -96,36 +97,22 @@ print("tokens:", H.shape[0], " train tokens:", len(tr_tok))
 def auc(pos, neg): return roc_auc_score([1] * len(pos) + [0] * len(neg), list(pos) + list(neg))
 
 
+def plaus_score(S, P, i):
+    s = S[offs[i]:offs[i + 1]]; st = traces[i]["start"]
+    tr = P[s[:-1], s[1:]]                     # transition into token j+1
+    tr = tr[max(st - 1, 0):]                  # transitions landing on answer tokens
+    return float(tr.mean()) if len(tr) else 0.0
+
+
 def evaluate(S, K, split):
-    """S: state id per token (global). Build DTMC/theta from train, return (plaus AUC, truth AUC, P, theta)."""
-    counts = np.zeros((K, K)); tot = np.zeros(K); good = np.zeros(K)
+    """S: state id per token (global). Build the DTMC from train, return (plausibility AUC, P)."""
+    counts = np.zeros((K, K))
     for i in tr_idx:
-        s = S[offs[i]:offs[i + 1]]; y = traces[i]["kind"] == "true"
-        if y:
-            np.add.at(counts, (s[:-1], s[1:]), 1)
-        np.add.at(tot, s, 1)
-        if y: np.add.at(good, s, 1)
+        s = S[offs[i]:offs[i + 1]]
+        np.add.at(counts, (s[:-1], s[1:]), 1)
     P = counts / np.maximum(counts.sum(1, keepdims=True), 1)   # #transitions s->s' / #outgoing transitions of s (no smoothing applied; the paper does not mention any)
-    theta = good / np.maximum(tot, 1)                          # paper: average of all concrete semantics inside the abstract state
-
-    def score(i):
-        s = S[offs[i]:offs[i + 1]]; st = traces[i]["start"]
-        tr = P[s[:-1], s[1:]]                     # transition into token j+1
-        tr = tr[max(st - 1, 0):]                  # transitions landing on answer tokens
-        return (float(tr.mean()) if len(tr) else 0.0), float(theta[s[st:]].mean() if len(s[st:]) else theta[s].mean())
-    sc = {k: np.array([score(i) for i, t in enumerate(traces) if t["split"] == split and t["kind"] == k]) for k in ("true", "false", "garb")}
-    return auc(sc["true"][:, 0], sc["garb"][:, 0]), auc(sc["true"][:, 1], sc["false"][:, 1]), P, theta
-
-
-
-def calib_refs(S, P, theta):
-    ref = []
-    for i in tr_idx:                      # scores of truthful TRAIN traces = reference distribution for the percentile shown in the page
-        if traces[i]["kind"] != "true": continue
-        s = S[offs[i]:offs[i + 1]]; st = traces[i]["start"]
-        tr = P[s[:-1], s[1:]][max(st - 1, 0):]
-        ref.append(((float(tr.mean()) if len(tr) else 0.0), float(theta[s[st:]].mean() if len(s[st:]) else theta[s].mean())))
-    return np.array(ref)
+    sc = {k: [plaus_score(S, P, i) for i, t in enumerate(traces) if t["split"] == split and t["kind"] == k] for k in ("true", "garb")}
+    return auc(sc["true"], sc["garb"]), P
 
 
 summary = []
@@ -140,39 +127,35 @@ for lname, layers in LAYER_SETS.items():
         for K in K_LIST:
             km = KMeans(n_clusters=K, n_init=2, random_state=SEED).fit(Z[tr_tok])
             S = km.predict(Z)
-            ap, at, _, _ = evaluate(S, K, "val")
-            results.append(dict(name=f"{lname}-kmeans", nd=nd, K=K, val_plaus=ap, val_truth=at))
+            ap, _ = evaluate(S, K, "val")
+            results.append(dict(name=f"{lname}-kmeans", nd=nd, K=K, val_plaus=ap))
             cache[(f"{lname}-kmeans", nd, K)] = (pca, km, S)
-            print(f"{lname:6s} kmeans pca={nd:4d} K={K:4d}  val plaus {ap:.3f}  truth {at:.3f}", flush=True)
+            print(f"{lname:6s} kmeans pca={nd:4d} K={K:4d}  val plaus {ap:.3f}", flush=True)
     pca3 = PCA(n_components=3, random_state=SEED, svd_solver="randomized").fit(X[tr_tok])
     Z3 = pca3.transform(X); del X
     for m in GRID_M:
         gp = GridPartition(m).fit(Z3[tr_tok]); S = gp.predict(Z3); K = m ** 3
-        ap, at, _, _ = evaluate(S, K, "val")
-        results.append(dict(name=f"{lname}-grid", nd=3, K=K, val_plaus=ap, val_truth=at))
+        ap, _ = evaluate(S, K, "val")
+        results.append(dict(name=f"{lname}-grid", nd=3, K=K, val_plaus=ap))
         cache[(f"{lname}-grid", 3, K)] = (pca3, gp, S)
-        print(f"{lname:6s} grid   pca=   3 K={K:4d}  val plaus {ap:.3f}  truth {at:.3f}", flush=True)
+        print(f"{lname:6s} grid   pca=   3 K={K:4d}  val plaus {ap:.3f}", flush=True)
 
-    ok = [r for r in results if r["val_plaus"] >= MIN_PLAUS_VAL] or results      # (no config reaches 0.80 for "last": falls back to all)
-    best = max(ok, key=lambda r: r["val_truth"])
+    best = max(results, key=lambda r: r["val_plaus"])
     pca, km, S = cache[(best["name"], best["nd"], best["K"])]
-    tp, tt, P, theta = evaluate(S, best["K"], "test")
-    print(f"best on VAL for '{lname}': {best['name']} pca{best['nd']} K{best['K']}  ->  TEST plaus {tp:.3f}  truth {tt:.3f}", flush=True)
-    ref = calib_refs(S, P, theta)
-    model = dict(model=MODEL, version=lname, layer=layers[0], layers=layers, hs_layers=layers, scaler=None, pca=pca, km=km,
-                 P=P, theta=theta, K=best["K"], ref_plaus=np.sort(ref[:, 0]), ref_truth=np.sort(ref[:, 1]),
-                 auc_plaus=tp, auc_truth=tt, counts=None, n_train=len(tr_idx))
+    tp, P = evaluate(S, best["K"], "test")
+    print(f"best on VAL for '{lname}': {best['name']} pca{best['nd']} K{best['K']}  ->  TEST plaus {tp:.3f}", flush=True)
+    ref = [plaus_score(S, P, i) for i in tr_idx]      # TRAIN traces = reference distribution for the percentile shown in the page
+    model = dict(model=MODEL, task="ood", version=lname, layer=layers[0], layers=layers, hs_layers=layers, scaler=None, pca=pca, km=km,
+                 P=P, K=best["K"], ref_plaus=np.sort(ref), auc_plaus=tp, counts=None, n_train=len(tr_idx))
     with open(os.path.join(HERE, f"luna_model_{lname}.pkl"), "wb") as f: pickle.dump(model, f)
     summary.append(dict(version=lname, layers=layers, dims_per_token=len(layers) * H.shape[2], partition=best["name"].split("-")[1],
-                        pca=best["nd"], states=best["K"], val_plaus=round(best["val_plaus"], 4), val_truth=round(best["val_truth"], 4),
-                        test_plaus=round(tp, 4), test_truth=round(tt, 4)))
+                        pca=best["nd"], states=best["K"], val=round(best["val_plaus"], 4), test=round(tp, 4)))
     del S, cache
 
-# the version served by the page = higher mean of the two VALIDATION AUCs (the test AUCs are only reported, not used to choose)
-for r in summary: r["val_mean"] = round((r["val_plaus"] + r["val_truth"]) / 2, 4)
-chosen = max(summary, key=lambda r: r["val_mean"])
+# the version served by the page = higher VALIDATION AUC (the test AUCs are only reported, not used to choose)
+chosen = max(summary, key=lambda r: r["val"])
 for r in summary: r["selected"] = r is chosen
 shutil.copyfile(os.path.join(HERE, f"luna_model_{chosen['version']}.pkl"), os.path.join(HERE, "luna_model.pkl"))
-json.dump(dict(model=MODEL, nTrain=len(tr_idx), versions=summary), open(os.path.join(HERE, "luna_versions.json"), "w", encoding="utf-8"), indent=1)
-print("\n" + "\n".join(f"{r['version']:6s} val {r['val_plaus']:.3f}/{r['val_truth']:.3f}  TEST plaus {r['test_plaus']:.3f}  truth {r['test_truth']:.3f}" + ("   <- used by the page" if r["selected"] else "") for r in summary))
+json.dump(dict(model=MODEL, task="ood", nTrain=len(tr_idx), nTest=len(parts["test"]), versions=summary), open(os.path.join(HERE, "luna_versions.json"), "w", encoding="utf-8"), indent=1)
+print("\n" + "\n".join(f"{r['version']:6s} val {r['val']:.3f}  TEST plaus {r['test']:.3f}" + ("   <- used by the page" if r["selected"] else "") for r in summary))
 print("(test has ~160 questions -> AUC noise about +-0.03)")

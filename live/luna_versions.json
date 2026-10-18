@@ -1,6 +1,8 @@
 {
  "model": "gpt2",
- "nTrain": 948,
+ "task": "ood",
+ "nTrain": 474,
+ "nTest": 158,
  "versions": [
   {
    "version": "concat",
@@ -20,13 +22,10 @@
    ],
    "dims_per_token": 9216,
    "partition": "kmeans",
-   "pca": 512,
-   "states": 600,
-   "val_plaus": 0.8688,
-   "val_truth": 0.7793,
-   "test_plaus": 0.8775,
-   "test_truth": 0.7685,
-   "val_mean": 0.824,
+   "pca": 2048,
+   "states": 400,
+   "val": 0.9253,
+   "test": 0.8993,
    "selected": true
   },
   {
@@ -36,13 +35,10 @@
    ],
    "dims_per_token": 768,
    "partition": "kmeans",
-   "pca": 192,
-   "states": 400,
-   "val_plaus": 0.6942,
-   "val_truth": 0.6727,
-   "test_plaus": 0.746,
-   "test_truth": 0.678,
-   "val_mean": 0.6835,
+   "pca": 96,
+   "states": 200,
+   "val": 0.799,
+   "test": 0.8048,
    "selected": false
   }
  ]

@@ -1,0 +1,28 @@
+{
+ "model": "gpt2",
+ "task": "hal",
+ "nTrain": 522,
+ "nTest": 164,
+ "versions": [
+  {
+   "version": "concat",
+   "dims_per_token": 9216,
+   "partition": "kmeans",
+   "pca": 2048,
+   "states": 600,
+   "val": 0.7701,
+   "test": 0.6526,
+   "selected": true
+  },
+  {
+   "version": "last",
+   "dims_per_token": 768,
+   "partition": "kmeans",
+   "pca": 384,
+   "states": 600,
+   "val": 0.7472,
+   "test": 0.655,
+   "selected": false
+  }
+ ]
+}

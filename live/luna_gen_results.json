@@ -1,0 +1,242 @@
+{
+ "n_questions": 817,
+ "n_true": 270,
+ "split": {
+  "train": 522,
+  "val": 131,
+  "test": 164
+ },
+ "picked_on_val": {
+  "version": "concat",
+  "partition": "kmeans",
+  "pca": 2048,
+  "states": 600,
+  "val": 0.7701,
+  "test": 0.6526,
+  "val_test": 0.7071
+ },
+ "authors_style_val_test": {
+  "mean": 0.6753,
+  "median": 0.6817,
+  "max": 0.7071,
+  "min": 0.6104
+ },
+ "settings": [
+  {
+   "version": "concat",
+   "partition": "kmeans",
+   "pca": 512,
+   "states": 200,
+   "val": 0.7168,
+   "test": 0.6386,
+   "val_test": 0.675
+  },
+  {
+   "version": "concat",
+   "partition": "kmeans",
+   "pca": 512,
+   "states": 400,
+   "val": 0.7351,
+   "test": 0.6472,
+   "val_test": 0.6877
+  },
+  {
+   "version": "concat",
+   "partition": "kmeans",
+   "pca": 512,
+   "states": 600,
+   "val": 0.7348,
+   "test": 0.6535,
+   "val_test": 0.6922
+  },
+  {
+   "version": "concat",
+   "partition": "kmeans",
+   "pca": 1024,
+   "states": 200,
+   "val": 0.7119,
+   "test": 0.6413,
+   "val_test": 0.6754
+  },
+  {
+   "version": "concat",
+   "partition": "kmeans",
+   "pca": 1024,
+   "states": 400,
+   "val": 0.7477,
+   "test": 0.6668,
+   "val_test": 0.7048
+  },
+  {
+   "version": "concat",
+   "partition": "kmeans",
+   "pca": 1024,
+   "states": 600,
+   "val": 0.7398,
+   "test": 0.6488,
+   "val_test": 0.6913
+  },
+  {
+   "version": "concat",
+   "partition": "kmeans",
+   "pca": 2048,
+   "states": 200,
+   "val": 0.7232,
+   "test": 0.6394,
+   "val_test": 0.6799
+  },
+  {
+   "version": "concat",
+   "partition": "kmeans",
+   "pca": 2048,
+   "states": 400,
+   "val": 0.7425,
+   "test": 0.6424,
+   "val_test": 0.6885
+  },
+  {
+   "version": "concat",
+   "partition": "kmeans",
+   "pca": 2048,
+   "states": 600,
+   "val": 0.7701,
+   "test": 0.6526,
+   "val_test": 0.7071
+  },
+  {
+   "version": "concat",
+   "partition": "grid",
+   "pca": 3,
+   "states": 125,
+   "val": 0.6486,
+   "test": 0.5948,
+   "val_test": 0.6195
+  },
+  {
+   "version": "concat",
+   "partition": "grid",
+   "pca": 3,
+   "states": 1000,
+   "val": 0.6837,
+   "test": 0.5414,
+   "val_test": 0.6104
+  },
+  {
+   "version": "concat",
+   "partition": "grid",
+   "pca": 3,
+   "states": 3375,
+   "val": 0.6758,
+   "test": 0.5841,
+   "val_test": 0.6287
+  },
+  {
+   "version": "last",
+   "partition": "kmeans",
+   "pca": 96,
+   "states": 200,
+   "val": 0.7294,
+   "test": 0.6556,
+   "val_test": 0.6892
+  },
+  {
+   "version": "last",
+   "partition": "kmeans",
+   "pca": 96,
+   "states": 400,
+   "val": 0.7395,
+   "test": 0.663,
+   "val_test": 0.6997
+  },
+  {
+   "version": "last",
+   "partition": "kmeans",
+   "pca": 96,
+   "states": 600,
+   "val": 0.7309,
+   "test": 0.6464,
+   "val_test": 0.6877
+  },
+  {
+   "version": "last",
+   "partition": "kmeans",
+   "pca": 192,
+   "states": 200,
+   "val": 0.7175,
+   "test": 0.6452,
+   "val_test": 0.68
+  },
+  {
+   "version": "last",
+   "partition": "kmeans",
+   "pca": 192,
+   "states": 400,
+   "val": 0.6995,
+   "test": 0.6523,
+   "val_test": 0.6752
+  },
+  {
+   "version": "last",
+   "partition": "kmeans",
+   "pca": 192,
+   "states": 600,
+   "val": 0.7269,
+   "test": 0.6391,
+   "val_test": 0.6821
+  },
+  {
+   "version": "last",
+   "partition": "kmeans",
+   "pca": 384,
+   "states": 200,
+   "val": 0.7106,
+   "test": 0.6622,
+   "val_test": 0.6855
+  },
+  {
+   "version": "last",
+   "partition": "kmeans",
+   "pca": 384,
+   "states": 400,
+   "val": 0.7128,
+   "test": 0.6531,
+   "val_test": 0.6813
+  },
+  {
+   "version": "last",
+   "partition": "kmeans",
+   "pca": 384,
+   "states": 600,
+   "val": 0.7472,
+   "test": 0.655,
+   "val_test": 0.6984
+  },
+  {
+   "version": "last",
+   "partition": "grid",
+   "pca": 3,
+   "states": 125,
+   "val": 0.739,
+   "test": 0.6143,
+   "val_test": 0.672
+  },
+  {
+   "version": "last",
+   "partition": "grid",
+   "pca": 3,
+   "states": 1000,
+   "val": 0.7193,
+   "test": 0.6219,
+   "val_test": 0.6631
+  },
+  {
+   "version": "last",
+   "partition": "grid",
+   "pca": 3,
+   "states": 3375,
+   "val": 0.6835,
+   "test": 0.594,
+   "val_test": 0.6321
+  }
+ ]
+}

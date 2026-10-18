@@ -78,5 +78,7 @@ out = {"meta": {"source": "LUNA authors' released results (github.com/dasong-sd/
        "configs": configs}
 with open(OUT, "w", encoding="utf-8") as f:
     json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
+with open(OUT[:-2], "w", encoding="utf-8") as f:   # luna-data.js: same data for pages opened as file://
+    f.write("window.LUNA_DATA=" + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n")
 print("configs:", len(configs), counts)
 print("wrote", os.path.normpath(OUT), round(os.path.getsize(OUT) / 1e3), "KB")
