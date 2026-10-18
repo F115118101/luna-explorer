@@ -1,6 +1,6 @@
 # LUNA 互動導讀
 
-論文：*LUNA: A Model-Based Universal Analysis Framework for Large Language Models*（IEEE TSE 2024）
+論文：*LUNA: A Model-Based Universal Analysis Framework for Large Language Models*（IEEE TSE 2024，[DOI: 10.1109/TSE.2024.3411928](https://doi.org/10.1109/TSE.2024.3411928)）。論文 PDF 與全文受 IEEE 版權保護，不包含在本 repo 中，請從 IEEE Xplore 取得。
 
 ## 啟動
 
@@ -22,8 +22,7 @@ python live/server.py         # 開啟 http://127.0.0.1:8000/
 | `web/` | 導讀網頁 `luna.html`、背景概念補充頁 `concepts.html`（導讀裡的名詞點擊後開啟）、各階段測驗 `quiz.html`，以及 Lab 5 用的真實資料 `luna-data.json` |
 | `live/` | 第 10 節實作：`tune_luna.py` 訓練、`server.py` 提供分析服務 |
 | `data/` | 論文作者釋出的原始結果（`raw/`）與轉換腳本 `build_luna_data.py` |
-| `notes/` | 論文英文原文 `LUNA_原始.md`（對應 `LUNA_翻譯.md`，查證用）、論文翻譯、概念與公式整理、時間估算 |
-| `paper/` | 論文 PDF |
+| `notes/` | 概念與公式整理、時間估算、報告準備筆記（論文全文與翻譯只留在本機，不上傳） |
 
 ## 資料來源與限制
 

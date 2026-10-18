@@ -4,7 +4,21 @@ live/luna_model_concat.pkl
 live/luna_model_last.pkl
 live/TruthfulQA.csv
 live/tune_run.log
+live/truthfulqa_hf_generation.parquet
+live/gen_hidden/
+live/generate_*.log
+live/judge_run.log
+live/tune_gen_run.log
+live/gpt2_answers_fewshot_partial.jsonl
 data/raw/
+
+# secrets
+.env
+
+# IEEE-copyrighted paper: the PDF and its full text / full translation stay local, never public
+paper/
+notes/LUNA_原始.md
+notes/LUNA_翻譯.md
 
 # third-party reference code (cloned, not our work)
 luna-author-code/
