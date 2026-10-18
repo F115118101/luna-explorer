@@ -10,30 +10,34 @@ gets that score from a specific fine-tuned GPT-3 model they name explicitly in t
 fine-tuned by them as a TruthfulQA judge, NOT a generic "GPT" and not GPT-3.5/4/ChatGPT. It
 feeds the subject LLM's own generated answer into the TruthfulQA end2end prompt
 ("Q: ...\nA: ...\nTrue:") and reads off `truth_prob = exp(logprob of " yes"))` — a CONTINUOUS
-probability in [0, 1], not a 0/1 label.
+probability in [0, 1]. Averaging that raw probability per state is what this video shows and
+what the paper describes (notes/LUNA_原始.md:191, 240); it is also the authors'
+get_semantic_state_model() (luna/probabilistic_abstraction_model.py:1114), used only by their
+online-monitor demo. For the AUCs they REPORT, the authors first cut truth_prob at 0.5 into a
+0/1 label (luna/data_loader.py:19, 52) and average THAT per state: theta_avg = pos / (pos + neg)
+(construct_dtmc_state_model, l.1088). Same broadcast-and-average mechanism, 0/1 inputs.
 
 Also verified against the author's generation code (reproduce/generate_nlp.py:25-62
-parse_hidden_states): their concrete states only ever come from the ANSWER. They extract
-hidden states per GENERATION step of `model.generate(...)`, one vector per newly produced
-token — the prompt (Q) is context the model reads, never something it "generates," so it never
-gets its own concrete state at all. Our local live/tune_luna.py instead does one plain forward
-pass over the WHOLE "Q: ...\nA: ..." string, so Q tokens DO get hidden states and DO feed into
-our local theta_avg accumulation (`tot`/`good` in tune_luna.py are never filtered to the answer
-span) — a further, real divergence from the author's method, not just the label source. This
-video shows Q on screen for readability, consistent with the author's answer-only scoring: Q is
-visible but never scored or sent into the grid, only A is.
+parse_hidden_states): they extract hidden states per GENERATION step of `model.generate(...)`,
+taking the last position at each step. Step 0's last position is the last PROMPT token; every
+later step is a newly generated token. So apart from that one token, the prompt (Q) gets no
+concrete state of its own. This video shows Q on screen for readability, consistent with the
+author's answer-only scoring: Q is visible but never scored or sent into the grid, only A is.
 
-=== What THIS repo's local live/tune_luna.py does differently from the author (a simplification) ===
-We have no OpenAI API key and did not fine-tune our own davinci-002 judge, so live/tune_luna.py
-substitutes TruthfulQA.csv's own `Best Answer` (always labeled 1.0) vs `Best Incorrect Answer`
-(always labeled 0.0) as a free stand-in — a flat binary label, not the author's fine-tuned
-judge's continuous probability. This is a known, intentional simplification, not an error — but
-it must never be presented as "what LUNA does."
+=== This repo's local truthfulness model (live/tune_luna_gen.py) ===
+It follows the authors: GPT-2 answers TruthfulQA itself with their prompt and sampling
+(live/generate_answers.py), hidden states are recorded during generation, and each answer gets a
+0/1 label. The only substitution is the judge: Gemini instead of the authors' fine-tuned
+davinci-002 GPT-judge (no longer available), which gives the 0/1 label directly.
 
 === What THIS animation does ===
 The FINALE sentence uses real data: real tokens/states/theta_avg pulled from
 web/luna-data.json's own-GPT-2 traces (the same JSON the site's own Trace Inspector renders
 from), with real state ids hashed (md5 % 25) into one of the 25 simulated grid cells.
+NOTE: trace.mp4 was rendered from an EARLIER luna-data.json, whose truthfulness traces came from
+TruthfulQA's human-written reference answers ("Q: ...\nA: <Best Answer / Best Incorrect Answer>",
+Q tokens with semantics None). The current file holds GPT-2's own 100-token answers with no Q
+tokens, so FINALE_IDX / question_tokens() below must be adapted before re-rendering.
 
 The earlier demo sentences — there are ~30 of them, purely to fill the grid and show the
 running-average mechanic at volume — are NOT real TruthfulQA questions: both the Q/A text and
@@ -45,6 +49,9 @@ bigger/richer coloring across the 30 rounds is for that reason simulated, not a 
 
 Run:
     manim -qh --fps 30 scene.py Trace
+then re-encode with a keyframe every 10 frames, or dragging the page's seek bar lags (the frame only catches up
+after decoding from the previous keyframe; ffmpeg's default is one keyframe per 250 frames = 8.3 s):
+    ffmpeg -i <rendered>.mp4 -c:v libx264 -crf 20 -preset slow -pix_fmt yuv420p -g 10 -keyint_min 10 -sc_threshold 0 -movflags +faststart -an trace.mp4
 """
 import colorsys
 import hashlib

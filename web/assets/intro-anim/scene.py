@@ -9,6 +9,9 @@ the earlier custom-scrubber problems outright.
 
 Run:
     manim -qh --fps 30 scene.py Intro
+then re-encode with a keyframe every 10 frames, or dragging the page's seek bar lags (the frame only catches up
+after decoding from the previous keyframe; ffmpeg's default is one keyframe per 250 frames = 8.3 s):
+    ffmpeg -i <rendered>.mp4 -c:v libx264 -crf 20 -preset slow -pix_fmt yuv420p -g 10 -keyint_min 10 -sc_threshold 0 -movflags +faststart -an intro.mp4
 Output:
     media/videos/scene/1080p30/Intro.mp4
 """
@@ -252,17 +255,24 @@ class Intro(MovingCameraScene):
         cell_x = [c.get_center()[0] for c in cells]
 
         # TOKENS sits right above the grid, centered on it, raised closer to the top of frame
-        cap_words = [
-            Text(w, font=MONO, font_size=23, color=MUTED) for w in TOKENS
-        ]
-        caption = VGroup(*cap_words).arrange(RIGHT, buff=0.2)
+        # one single Text for the whole line (same fix as semantics-anim make_row): separate
+        # Text objects each get their own tight box, so arrange() centering them made "." and
+        # descender-less words bob up and down. One string = one shared baseline. Per-word
+        # slices are taken by visible-glyph count, since spaces never become submobjects.
+        caption = Text(" ".join(TOKENS), font=MONO, font_size=23, color=MUTED)
+        cap_words = []
+        vis_pos = 0
+        for w in TOKENS:
+            cap_words.append(caption[vis_pos:vis_pos + len(w)])
+            vis_pos += len(w)
         caption.next_to(cells, UP, buff=0.5)
         cap_words[0].set_color(WARM)
         self.play(FadeIn(caption, shift=UP * 0.2), run_time=0.6)
 
         def connect_lines(ti):
             return VGroup(*[
-                Line(cap_words[ti].get_bottom(),
+                # start from the row's shared bottom, not the word's own box bottom ("." would sit high)
+                Line([cap_words[ti].get_x(), caption.get_bottom()[1], 0],
                      c.get_top(),
                      color=MUTED,
                      stroke_opacity=0.5) for c in cells

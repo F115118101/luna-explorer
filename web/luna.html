@@ -11,7 +11,8 @@
   DATA CONTRACT (so simulated data can be swapped for real data later)
   --------------------------------------------------------------------
   The page reads everything through App.data. On load it tries fetch('luna-data.json') (works when served over http,
-  e.g. python server.py), else generates simulated data. Any top-level key you omit falls back to simulated data.
+  e.g. python server.py), else uses window.LUNA_DATA from luna-data.js (same content, works when the file is opened
+  directly), else generates simulated data. Any top-level key you omit falls back to simulated data.
 
   {
     "meta":    { "source": "string", "generatedAt": "ISO date", "llms": ["..."] },
@@ -24,7 +25,7 @@
     "traces":  [ { "id":"x", "mode":"state|transition", "label":"normal|abnormal",
                    "prompt":"...", "tokens":["..."], "states":["s12","..."],
                    "semantics":[0.2, null, 0.7] } ],                                    // -> §05 widget (null allowed)
-    "scores":  { "HE-C": { "normal":[0.8,...], "abnormal":[0.2,...] } }                 // -> §06 widget (semantics scores)
+    "scores":  { "GPT2-TQA": { "normal":[0.8,...], "abnormal":[0.2,...] } }             // -> §06 widget (our own model's real test scores; §06 has no simulated fallback)
   }
   Task ids: OOD-A ADV-A TQA-A OOD-L ADV-L TQA-L HE-C MBPP-C CSNJ-C TCS-C
 -->
@@ -236,10 +237,6 @@ footer{border-top:1px solid var(--rule);padding-block:30px 48px;font-size:12.5px
 @media(max-width:900px){.hero-grid{grid-template-columns:1fr}.hero-grid .meta-grid{margin-top:24px}}
 .sec-wide>.col{max-width:70%}
 @media(max-width:900px){.sec-wide>.col{max-width:none}}
-#s7>.col{max-width:none}
-#core-eq{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-#core-eq .mathblock{margin:0}
-@media(max-width:900px){#core-eq{grid-template-columns:1fr}}
 .split{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:20px;align-items:stretch}
 .split .cards{grid-template-columns:1fr}
 .split>div:last-child{position:relative;min-height:300px}
@@ -302,10 +299,9 @@ html::-webkit-scrollbar-track{background:var(--ground)}
     <a href="#s4">04 <span lang="en">DTMC</span><span lang="zh">DTMC</span></a>
     <a href="#s5">05 <span lang="en">Semantics</span><span lang="zh">語意綁定</span></a>
     <a href="#s6">06 <span lang="en">ROC</span><span lang="zh">ROC</span></a>
-    <a href="#s7">07 <span lang="en">Metrics</span><span lang="zh">指標</span></a>
-    <a href="#s8">08 <span lang="en">180 configs</span><span lang="zh">180 設定</span></a>
-    <a href="#s9">09 <span lang="en">Results</span><span lang="zh">結果</span></a>
-    <a href="#s11">10 <span lang="en">Implementation</span><span lang="zh">實作</span></a>
+    <a href="#s7">07 <span lang="en">180 configs</span><span lang="zh">180 設定</span></a>
+    <a href="#s8">08 <span lang="en">Results</span><span lang="zh">結果</span></a>
+    <a href="#s9">09 <span lang="en">Implementation</span><span lang="zh">實作</span></a>
   </nav>
 </div>
 <div id="tip"></div>
@@ -399,7 +395,7 @@ html::-webkit-scrollbar-track{background:var(--ground)}
       <div class="demo-side">
         <div class="ctrls">
           <div class="ctrl-row"><label class="ctrl-lab" for="l1-part"><span lang="en">Partition</span><span lang="zh">劃分方法</span></label><select id="l1-part"></select></div>
-          <div class="ctrl-row"><label class="ctrl-lab" for="l1-n" id="l1-n-lab"></label><input type="range" id="l1-n" min="3" max="14" value="6"><span class="kval" id="l1-nv"></span></div>
+          <div class="ctrl-row"><label class="ctrl-lab" for="l1-n" id="l1-n-lab"></label><input type="range" id="l1-n" min="3" max="14" value="5"><span class="kval" id="l1-nv"></span></div>
           <div class="ctrl-row">
             <label class="switch"><input type="checkbox" id="l1-train" checked><span lang="en">train</span><span lang="zh">訓練</span></label>
             <label class="switch"><input type="checkbox" id="l1-test" checked><span lang="en">test·normal</span><span lang="zh">測試·正常</span></label>
@@ -424,6 +420,16 @@ html::-webkit-scrollbar-track{background:var(--ground)}
   <div class="sec-head"><span class="sec-num">04</span><div>
     <h2><span lang="en">Building the DTMC</span><span lang="zh">建構 DTMC</span></h2>
     <p class="sec-sub"><span lang="en">Count abstract transitions, normalize rows, then read off stationary distribution, entropy and sink states</span><span lang="zh">計數抽象轉移、列正規化，再讀出穩態分布、熵與匯點狀態</span></p></div></div>
+  <div class="figure" style="margin-bottom:24px">
+    <div class="fig-head"><p class="fig-title"><span lang="en">Grid cells → DTMC nodes → one trace</span><span lang="zh">網格 → DTMC 節點 → 一條軌跡</span></p><p class="fig-note"><span lang="en">Pre-rendered walkthrough; real states, simulated transitions.</span><span lang="zh">預先算好的動畫；狀態為真實資料，轉移為模擬。</span></p><span class="badge-sim">SIMULATED</span></div>
+    <div style="padding:16px 18px">
+      <video class="intro-video" id="dtmc-video" poster="assets/dtmc-anim/dtmc-poster.jpg" preload="auto" playsinline>
+        <source src="assets/dtmc-anim/dtmc.mp4" type="video/mp4">
+      </video>
+      <div class="player" id="dtmc-player"></div>
+      <p class="note" style="margin-top:12px"><span lang="en">The dots are the same real concrete states (our GPT-2, PCA-2) and the same 5×5 grid as the Partition explorer in §03; each cell is one abstract state. Every token of the sentence drops into a cell, then each non-empty cell becomes a DTMC node (size ∝ stationary π) and the edges are directed transitions (width ∝ P̂), drawn like the Transition-model builder below. This sentence's path is always one of those edges, shown in yellow. The token-to-cell assignment and the transition probabilities are simulated for illustration.</span><span lang="zh">圖中的點與 §03 劃分探索器相同，是真實的具體狀態（我們的 GPT-2，PCA-2），網格也同樣是 5×5；每一格是一個抽象狀態。句子的每個 token 依序落入一格，接著每個非空的格子變成 DTMC 節點（大小 ∝ 穩態分布 π），邊是有方向的轉移（粗細 ∝ P̂），畫法與下方的轉移模型建構器相同。這句話的路徑一定在這些邊之中，以黃色標出。token 落在哪一格與轉移機率是為了說明而模擬的。</span></p>
+    </div>
+  </div>
   <div class="col" style="margin-bottom:24px">
     <p><span lang="en">A DTMC is the tuple <code>(S̄, s̄₀, δ̄, P̄)</code>. Its transition probability is nothing more than <strong>#concrete transitions s̄→s̄′ ÷ #outgoing transitions of s̄</strong>. So the model quality depends directly on how many traces you have seen — drag the trace count and watch the estimate converge to the (hidden) truth. Click states in the graph to score a path: for OOD detection, the mean transition probability <em>is</em> the semantic score.</span><span lang="zh">DTMC 是元組 <code>(S̄, s̄₀, δ̄, P̄)</code>。轉移機率就是 <strong>具體轉移 s̄→s̄′ 的數量 ÷ s̄ 的外向轉移總數</strong>，所以模型品質直接取決於看過多少軌跡——拖曳軌跡數，看估計值收斂到（隱藏的）真實值。在圖上依序點選狀態即可為路徑評分：在 OOD 偵測中，平均轉移機率<em>就是</em>語意分數。</span></p>
   </div>
@@ -438,7 +444,7 @@ html::-webkit-scrollbar-track{background:var(--ground)}
       </div>
       <div class="demo-side">
         <div class="ctrls">
-          <div class="ctrl-row"><label class="ctrl-lab" for="l2-n"><span lang="en">States |S̄|</span><span lang="zh">狀態數 |S̄|</span></label><input type="range" id="l2-n" min="4" max="10" value="7"><span class="kval" id="l2-nv"></span></div>
+          <div class="ctrl-row"><label class="ctrl-lab" for="l2-n"><span lang="en">States |S̄|</span><span lang="zh">狀態數 |S̄|</span></label><input type="range" id="l2-n" min="4" max="10" value="5"><span class="kval" id="l2-nv"></span></div>
           <div class="ctrl-row"><label class="ctrl-lab" for="l2-m"><span lang="en">Traces seen</span><span lang="zh">看過軌跡數</span></label><input type="range" id="l2-m" min="5" max="500" value="120"><span class="kval" id="l2-mv"></span></div>
           <div class="ctrl-row"><label class="ctrl-lab" for="l2-d"><span lang="en">Determinism of true LLM</span><span lang="zh">真實 LLM 的確定性</span></label><input type="range" id="l2-d" min="0" max="100" value="45"><span class="kval" id="l2-dv"></span></div>
         </div>
@@ -503,12 +509,13 @@ html::-webkit-scrollbar-track{background:var(--ground)}
 <section id="s6" class="sec-wide">
   <div class="sec-head"><span class="sec-num">06</span><div>
     <h2><span lang="en">From scores to ROC AUC</span><span lang="zh">從分數到 ROC AUC</span></h2>
-    <p class="sec-sub"><span lang="en">The paper's headline metric, reconstructed from its reported mean / median / max</span><span lang="zh">以論文報告的平均／中位／最大值重建其主要指標</span></p></div></div>
+    <p class="sec-sub"><span lang="en">The paper's headline metric, shown on our own GPT-2 model's real scores</span><span lang="zh">論文的主要指標，用我們自己 GPT-2 模型的真實分數呈現</span></p></div></div>
   <div class="col" style="margin-bottom:24px">
-    <p><span lang="en">Detection quality is summarized by ROC AUC: the probability that a random normal sample scores higher than a random abnormal one (0.5 = coin flip). Choose a task and one of its reported AUCs; the widget synthesizes two score populations with exactly that separation (equal-variance Gaussians, <code>AUC = Φ(d′/√2)</code>) so you can see what "0.65" versus "0.90" means in practice.</span><span lang="zh">偵測品質以 ROC AUC 概括：隨機一個正常樣本分數高於隨機一個異常樣本的機率（0.5 = 擲硬幣）。選擇任務與其報告的 AUC，元件會合成具有該分離度的兩群分數（等變異數高斯，<code>AUC = Φ(d′/√2)</code>），讓你直觀看到「0.65」與「0.90」的差別。</span></p>
+    <p><span lang="en">Detection quality is summarized by ROC AUC: the probability that a random normal sample scores higher than a random abnormal one (0.5 = coin flip, 1.0 = perfectly separated). The paper publishes only aggregated AUCs, not per-sample scores, so its score distributions cannot be drawn; its AUCs are in section 08. The figure below uses the real test-set scores of our own GPT-2 model. Step-by-step ROC construction: <a href="concepts.html#roc">concepts → ROC</a>.</span><span lang="zh">偵測品質以 ROC AUC 概括：隨機一個正常樣本分數高於隨機一個異常樣本的機率（0.5 = 擲硬幣，1.0 = 完全分開）。論文只公開彙總後的 AUC，沒有逐樣本分數，因此畫不出它的分數分布；論文的 AUC 見第 08 節。下圖使用我們自己 GPT-2 模型在測試集上的真實分數。ROC 怎麼一步一步建出來：<a href="concepts.html#roc">觀念頁 → ROC</a>。</span></p>
+    <p><span lang="en">Where the labels come from (hallucination, TruthfulQA): in the authors' released code, the judge's continuous <code>truth_prob</code> is first cut at 0.5 into a 0/1 label (<code>luna/data_loader.py</code>). That 0/1 label is both the normal/abnormal ground truth for the ROC and the value each training token carries into its state — so the <code>θ̄</code> used for the reported AUC is the fraction of a state's tokens that came from true answers, <code>pos / (pos + neg)</code> (<code>construct_dtmc_state_model</code>). This is the same averaging as in section 05, just applied to 0/1 instead of the raw probability; the continuous-probability average appears only in the authors' online-monitor demo (<code>get_semantic_state_model</code>).</span><span lang="zh">標籤從哪來（幻覺任務，TruthfulQA）：作者公開的程式會先把評審模型給的連續值 <code>truth_prob</code> 以 0.5 為門檻切成 0／1 標籤（<code>luna/data_loader.py</code>）。這個 0／1 標籤既是 ROC 的正常／異常答案，也是每個訓練 token 帶進所屬狀態的值。因此論文 AUC 所用的 <code>θ̄</code>，是該狀態的 token 中來自真話答案的比例，即 <code>pos / (pos + neg)</code>（<code>construct_dtmc_state_model</code>）。這和第 05 節的平均是同一套做法，只是平均的對象是 0／1 而不是原始機率；以連續機率取平均的版本只出現在作者的線上監測示範（<code>get_semantic_state_model</code>）。</span></p>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">Score distributions &amp; ROC</span><span lang="zh">分數分布與 ROC</span></p><p class="fig-note"><span lang="en">AUC targets are from the paper's Table V.</span><span lang="zh">AUC 目標值來自論文表 V。</span></p><span class="badge-sim" id="l4-badge">SIMULATED</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">Score distributions &amp; ROC</span><span lang="zh">分數分布與 ROC</span></p><p class="fig-note"><span lang="en">Held-out test questions only.</span><span lang="zh">只用保留的測試題。</span></p><span class="badge-sim" id="l4-badge">SIMULATED</span></div>
     <div class="demo">
       <div class="demo-vis twin">
         <p class="vis-label"><span lang="en">Semantic score histogram</span><span lang="zh">語意分數直方圖</span></p>
@@ -519,8 +526,6 @@ html::-webkit-scrollbar-track{background:var(--ground)}
       <div class="demo-side">
         <div class="ctrls">
           <div class="ctrl-row"><label class="ctrl-lab" for="l4-task"><span lang="en">Task</span><span lang="zh">任務</span></label><select id="l4-task"></select></div>
-          <div class="ctrl-row"><label class="ctrl-lab" for="l4-q"><span lang="en">Config quality</span><span lang="zh">設定品質</span></label><select id="l4-q"></select></div>
-          <div class="ctrl-row" id="l4-custom-row"><label class="ctrl-lab" for="l4-auc">AUC</label><input type="range" id="l4-auc" min="50" max="99" value="70"><span class="kval" id="l4-aucv"></span></div>
           <div class="ctrl-row"><label class="ctrl-lab" for="l4-th"><span lang="en">Threshold</span><span lang="zh">門檻</span></label><input type="range" id="l4-th" min="0" max="100" value="50"><span class="kval" id="l4-thv"></span></div>
         </div>
         <div class="scores" id="l4-scores"></div>
@@ -531,28 +536,14 @@ html::-webkit-scrollbar-track{background:var(--ground)}
   </div>
 </section>
 
-<!-- ================= 07 FORMULAS ================= -->
-<section id="s7">
+<!-- ================= 07 LAB5 ================= -->
+<section id="s7" class="sec-wide">
   <div class="sec-head"><span class="sec-num">07</span><div>
-    <h2><span lang="en">The mathematics &amp; the 12 metrics</span><span lang="zh">數學與 12 個指標</span></h2>
-    <p class="sec-sub"><span lang="en">Core equations from the paper; metric definitions from its Appendix A (arXiv v2)</span><span lang="zh">核心公式取自論文；指標定義取自附錄 A（arXiv v2）</span></p></div></div>
-  <div class="col">
-    <p class="in-lab-key"><span class="lab-tag">03</span><span lang="en">Darker, dashed cards are formulas you can play with, with live numbers, in the section whose number is tagged. Hover any symbol in a formula to see what it means.</span><span lang="zh">較暗的虛線卡片，標著所屬章節編號，是可以在該節操作、並帶入即時數字的公式。把滑鼠移到公式裡的任何符號上，可以看它的意思。</span></p>
-    <div id="core-eq"></div>
-  </div>
-  <div style="margin-top:34px">
-    <div class="seg tabs" role="group" aria-label="metric family"><button id="mt-model" type="button" aria-pressed="true"><span lang="en">Abstract-model-wise (6)</span><span lang="zh">抽象模型層級（6）</span></button><button id="mt-sem" type="button" aria-pressed="false"><span lang="en">Semantics-wise (6, new)</span><span lang="zh">語意層級（6，新提出）</span></button></div>
-    <div class="metric-grid" id="metric-grid"></div>
-  </div>
-</section>
-
-<!-- ================= 08 LAB5 ================= -->
-<section id="s8" class="sec-wide">
-  <div class="sec-head"><span class="sec-num">08</span><div>
     <h2><span lang="en">The 180-configuration space</span><span lang="zh">180 種設定空間</span></h2>
     <p class="sec-sub"><span lang="en">Which quality metric predicts detection performance? Explore it per task</span><span lang="zh">哪個品質指標能預測偵測效能？逐任務探索</span></p></div></div>
   <div class="col" style="margin-bottom:24px">
     <p><span lang="en">Table III enumerates 180 hyper-parameter settings (27 + 81 + 18 + 54). Each dot below is one setting: x is a quality metric, y is its ROC AUC. If a metric tracks AUC, you can rank settings by that metric <em>without</em> labeled abnormal data — the paper's practitioner recipe. The simulated cloud is generated so its Pearson correlations match the paper's Tables VII/VIII; the Kendall τ and the shape of the cloud are computed live.</span><span lang="zh">表 III 列舉 180 種超參數設定（27 + 81 + 18 + 54）。下圖每個點是一種設定：x 是品質指標、y 是其 ROC AUC。若某指標與 AUC 同步，就能<em>不需</em>異常標註資料、僅憑該指標對設定排序——這是論文給實務者的做法。模擬點雲的 Pearson 相關係數依論文表 VII/VIII 設計；Kendall τ 與點雲形狀則為即時計算。</span></p>
+    <p class="note" style="margin:0"><span lang="en">Not sure what a metric like PERP or PRE means, or want the core equations behind this page? See </span><span lang="zh">不確定 PERP、PRE 這類指標的意思，或想看這整頁背後的核心公式？請見 </span><a href="concepts.html#metrics"><span lang="en">the mathematics &amp; the 12 metrics →</span><span lang="zh">數學與 12 個指標 →</span></a></p>
   </div>
   <div class="figure">
     <div class="fig-head"><p class="fig-title"><span lang="en">Configuration explorer</span><span lang="zh">設定探索器</span></p><p class="fig-note"><span lang="en">Hover for a config; click to pin it.</span><span lang="zh">懸停查看設定；點擊固定。</span></p><span class="badge-sim" id="l5-badge">SIMULATED</span></div>
@@ -587,9 +578,9 @@ html::-webkit-scrollbar-track{background:var(--ground)}
   </div>
 </section>
 
-<!-- ================= 09 RESULTS ================= -->
-<section id="s9" class="sec-wide">
-  <div class="sec-head"><span class="sec-num">09</span><div>
+<!-- ================= 08 RESULTS ================= -->
+<section id="s8" class="sec-wide">
+  <div class="sec-head"><span class="sec-num">08</span><div>
     <h2><span lang="en">Results from the paper</span><span lang="zh">論文實驗結果</span></h2>
     <p class="sec-sub"><span lang="en">Transcribed directly from Tables IV and V — this figure does not depend on simulation</span><span lang="zh">直接轉錄自表 IV 與表 V——此圖不依賴模擬</span></p></div></div>
   <div class="split">
@@ -604,20 +595,20 @@ html::-webkit-scrollbar-track{background:var(--ground)}
     <div class="cards">
       <div class="card"><span class="tag">RQ1</span><h3><span lang="en">Can it tell normal from abnormal?</span><span lang="zh">能區分正常與異常嗎？</span></h3><p><span lang="en">Yes. Normal-train and normal-test transition distributions coincide; abnormal ones differ (6 of 7 tasks visibly). 20 %–64 % of all 180 models are individually significant (Mann-Whitney U, p &lt; 0.05).</span><span lang="zh">可以。正常訓練與測試的轉移分布重合，異常則不同（7 個任務中 6 個明顯）。180 個模型中 20%–64% 各自達顯著（Mann-Whitney U，p &lt; 0.05）。</span></p></div>
       <div class="card"><span class="tag">RQ2</span><h3><span lang="en">What shapes model quality?</span><span lang="zh">什麼影響模型品質？</span></h3><p><span lang="en">More PCA components ⇒ better perplexity &amp; coverage but worse sensitivity &amp; SDE. Clustering ⇒ compact and well-covered; grid ⇒ better distribution/transition fidelity. DTMC ≥ HMM on most metrics.</span><span lang="zh">PCA 成分越多 ⇒ 困惑度與覆蓋率較佳，但敏感度與 SDE 較差。分群 ⇒ 精簡且覆蓋好；網格 ⇒ 分布／轉移保真較佳。多數指標上 DTMC ≥ HMM。</span></p></div>
-      <div class="card"><span class="tag">RQ3</span><h3><span lang="en">Which metrics predict AUC?</span><span lang="zh">哪些指標預測 AUC？</span></h3><p><span lang="en">Semantic preciseness (PRE) correlates strongly everywhere (Pearson 0.81–1.00); perplexity is the broadly useful model-wise metric. Others flip sign across tasks — combine several.</span><span lang="zh">語意精確度（PRE）處處強相關（Pearson 0.81–1.00）；困惑度是最廣用的模型層級指標。其他指標跨任務正負不一——需組合使用。</span></p></div>
+      <div class="card"><span class="tag">RQ3</span><h3><span lang="en">Which metrics predict AUC?</span><span lang="zh">哪些指標預測 AUC？</span></h3><p><span lang="en">Semantic preciseness (PRE) correlates strongly everywhere (Pearson 0.81–1.00); perplexity is the broadly useful model-wise metric. Others flip sign across tasks — combine several. (<a href="concepts.html#metrics">what these metrics mean →</a>)</span><span lang="zh">語意精確度（PRE）處處強相關（Pearson 0.81–1.00）；困惑度是最廣用的模型層級指標。其他指標跨任務正負不一——需組合使用。（<a href="concepts.html#metrics">這些指標是什麼意思 →</a>）</span></p></div>
       <div class="card"><span class="tag"><span lang="en">Caveat</span><span lang="zh">限制</span></span><h3><span lang="en">Honest reading</span><span lang="zh">誠實解讀</span></h3><p><span lang="en">Most mean AUCs sit at 0.55–0.70; the 0.83–0.90 headline numbers are best-of-180 configurations. White-box only, three 7–13B models, and results are configuration-sensitive.</span><span lang="zh">多數平均 AUC 落在 0.55–0.70；0.83–0.90 的亮眼數字是 180 種設定中的最佳者。僅限白箱、僅 3 個 7–13B 模型，且結果對設定敏感。</span></p></div>
     </div>
   </div></div>
 </section>
 
 
-<!-- ================= 11 LIVE ================= -->
-<section id="s11" class="sec-wide">
-  <div class="sec-head"><span class="sec-num">10</span><div>
+<!-- ================= 09 LIVE ================= -->
+<section id="s9" class="sec-wide">
+  <div class="sec-head"><span class="sec-num">09</span><div>
     <h2><span lang="en">Implementation</span><span lang="zh">實作</span></h2>
-    <p class="sec-sub"><span lang="en">We built the LUNA pipeline on a small local GPT-2 — two versions compared, the better one is run on your text below</span><span lang="zh">我們在本機的小型 GPT-2 上實作 LUNA 流程：比較兩個版本，下方用分數較高的那個分析你輸入的文字</span></p></div></div>
+    <p class="sec-sub"><span lang="en">We built the LUNA pipeline on a small local GPT-2 — two versions compared per task, the better one is run on your text below</span><span lang="zh">我們在本機的小型 GPT-2 上實作 LUNA 流程：每個任務比較兩個版本，下方用分數較高的那個分析你輸入的文字</span></p></div></div>
   <div class="col" style="margin-bottom:24px">
-    <p class="note"><span lang="en"><b>Setup.</b> Run <code>python server.py</code> in this folder, then open <code>http://127.0.0.1:8000/</code>. The model is GPT-2 small on CPU, trained on TruthfulQA; which of the two versions below is served is decided on a validation split.</span><span lang="zh"><b>啟動方式：</b>在此資料夾執行 <code>python server.py</code>，再開啟 <code>http://127.0.0.1:8000/</code>。模型是 CPU 上的 GPT-2 small，以 TruthfulQA 訓練；下表兩個版本中，用哪一個是由驗證集分數決定。</span></p>
+    <p class="note"><span lang="en"><b>Setup.</b> Run <code>python server.py</code> in this folder, then open <code>http://127.0.0.1:8000/</code>. The model is GPT-2 small on CPU. Plausibility is trained on TruthfulQA’s reference answers (normal) vs garbled copies; truthfulness on GPT-2’s own answers to TruthfulQA, judged true/false by Gemini. Which version each task uses is decided on a validation split.</span><span lang="zh"><b>啟動方式：</b>在此資料夾執行 <code>python server.py</code>，再開啟 <code>http://127.0.0.1:8000/</code>。模型是 CPU 上的 GPT-2 small。合理性用 TruthfulQA 的標準答案（正常）對上打亂的版本來訓練；真實性用 GPT-2 自己回答 TruthfulQA、再由 Gemini 判斷真假的答案來訓練。每個任務用哪個版本，由驗證集分數決定。</span></p>
     <div id="lv-versions"></div>
   </div>
   <div class="figure">
@@ -657,6 +648,7 @@ html::-webkit-scrollbar-track{background:var(--ground)}
   <span lang="zh">本頁為下列論文的互動導讀：D. Song 等，“LUNA: A Model-Based Universal Analysis Framework for Large Language Models”，IEEE TSE 50(7):1921–1943，2024 · arXiv:2310.14211 · 程式碼與資料：sites.google.com/view/llm-luna。標示為模擬的面板僅供說明，並非論文結果。</span>
 </div></footer>
 
+<script src="luna-data.js"></script>
 <script>
 'use strict';
 /* ============================ core helpers ============================ */
@@ -670,13 +662,12 @@ const f2 = v => (v == null || isNaN(v)) ? '—' : v.toFixed(2);
 const f3 = v => (v == null || isNaN(v)) ? '—' : v.toFixed(3);
 function rng(seed){ return function(){ seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function gauss(r){ let u = 0; while (!u) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); }
-function hash(str){ let h = 2166136261; for (const c of str) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
-const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN;
-const sd = a => { const m = mean(a); return Math.sqrt(mean(a.map(x => (x - m) ** 2))); };
 function erf(x){ const s = Math.sign(x); x = Math.abs(x); const t = 1 / (1 + 0.3275911 * x);
   const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x); return s * y; }
 const Phi = x => 0.5 * (1 + erf(x / Math.SQRT2));
-function invPhi(p){ let lo = -8, hi = 8; for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (Phi(m) < p) lo = m; else hi = m; } return (lo + hi) / 2; }
+function hash(str){ let h = 2166136261; for (const c of str) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN;
+const sd = a => { const m = mean(a); return Math.sqrt(mean(a.map(x => (x - m) ** 2))); };
 function pearson(x, y){ const mx = mean(x), my = mean(y); let a = 0, b = 0, c = 0;
   for (let i = 0; i < x.length; i++) { a += (x[i] - mx) * (y[i] - my); b += (x[i] - mx) ** 2; c += (y[i] - my) ** 2; } return a / Math.sqrt(b * c); }
 function kendall(x, y){ let c = 0, d = 0, tx = 0, ty = 0; const n = x.length;
@@ -793,8 +784,8 @@ function mergeData(obj, name){
   App.data = d; App.source = name; renderAll();
 }
 async function tryFetch(){
-  if (!/^https?:/.test(location.protocol)) return;
-  try { const r = await fetch('luna-data.json', {cache: 'no-store'}); if (r.ok) mergeData(await r.json(), 'luna-data.json'); } catch (e) {}
+  if (/^https?:/.test(location.protocol)) try { const r = await fetch('luna-data.json', {cache: 'no-store'}); if (r.ok) return mergeData(await r.json(), 'luna-data.json'); } catch (e) {}
+  if (window.LUNA_DATA) mergeData(window.LUNA_DATA, 'luna-data.js');   // file:// blocks fetch, so the .js copy is the fallback
 }
 /* ============================ 01 background figures ============================ */
 function renderBackground(){
@@ -845,7 +836,7 @@ const STAGES = [
  {n:'03', en:'Model quality assessment', zh:'模型品質評估', sec:'III-D',
   inEn:['Semantics-bound abstract model'], inZh:['已綁定語意的抽象模型'],
   outEn:['6 abstract-model-wise + 6 semantics-wise metrics'], outZh:['6 個抽象模型層級 + 6 個語意層級指標'],
-  knobEn:['Which metrics to trust for which task','Rank the 180 configs without abnormal labels'], knobZh:['哪個任務信任哪些指標','不需異常標註即可對 180 設定排序'], lab:'#s8'},
+  knobEn:['Which metrics to trust for which task','Rank the 180 configs without abnormal labels'], knobZh:['哪個任務信任哪些指標','不需異常標註即可對 180 設定排序'], lab:'#s7'},
  {n:'04', en:'Practical application', zh:'實際應用', sec:'III-E',
   inEn:['New prompt + generated answer'], inZh:['新的提示與生成答案'],
   outEn:['Semantic score = AVG θ̄ → normal / abnormal','First low state localizes the fault'], outZh:['語意分數 = AVG θ̄ → 正常／異常','第一個低分狀態可定位錯誤'],
@@ -956,7 +947,7 @@ function setupLab1(){
   const sel = $('#l1-part'); fillSelect(sel, [['grid', T('Grid (regular)', '網格（規則）')], ['KMeans', 'KMeans'], ['GMM', 'GMM']], true);
   const isGrid = sel.value === 'grid', n = $('#l1-n'); n.min = isGrid ? 3 : 4; n.max = isGrid ? 14 : 40;
   $('#l1-n-lab').textContent = isGrid ? T('cells per dim m', '每維格數 m') : T('clusters n', '群數 n');
-  if (n._mode !== sel.value) { n.value = isGrid ? 6 : 12; n._mode = sel.value; }
+  if (n._mode !== sel.value) { n.value = isGrid ? 5 : 12; n._mode = sel.value; }
   $('#l1-nv').textContent = isGrid ? `${n.value}² = ${n.value ** 2}` : n.value;
 }
 ['l1-part','l1-n','l1-train','l1-test','l1-abn'].forEach(id => $('#' + id).addEventListener('input', () => { setupLab1(); lab1(); }));
@@ -1043,7 +1034,7 @@ function lab3(){
   const th = +$('#l3-th').value / 100; $('#l3-thv').textContent = th.toFixed(2);
   const vals = t.semantics.filter(v => v != null), score = mean(vals), abn = score < th, first = t.semantics.findIndex(v => v != null && v < th);
   setBadge('#l3-badge', App.loaded.traces);
-  $('#l3-pick').innerHTML = App.loaded.traces ? T('<b>Note:</b> these examples are hand-picked by a fixed rule (largest normal-vs-abnormal score gap, plus one counter-example per task) to make the method readable — not a random sample. The default threshold is the best one on the test scores. For the overall result see §06.', '<b>注意：</b>這些範例是依固定規則挑選的（正常與異常分數差距最大的題目，每種任務另加一個反例），目的是讓方法容易看懂，不是隨機抽樣。預設門檻是測試分數上的最佳門檻。整體效果請看第06節。') : '';
+  $('#l3-pick').innerHTML = App.loaded.traces ? T('<b>Note:</b> these examples are hand-picked by a fixed rule to make the method readable — not a random sample. OOD: the questions with the largest original-vs-garbled score gap. HAL: GPT-2’s own answers (all 100 generated tokens, judged true/false by Gemini), the highest-scoring true and lowest-scoring false ones; normal and abnormal therefore come from different questions. Each task also gets one counter-example. The default threshold is the best one on the test scores. For the overall result see §06.', '<b>注意：</b>這些範例是依固定規則挑選的，目的是讓方法容易看懂，不是隨機抽樣。OOD：原文與亂碼分數差距最大的題目。HAL：GPT-2 自己生成的答案（完整 100 個生成 token，由 Gemini 判斷真假），挑分數最高的真話與分數最低的假話，所以正常與異常範例來自不同題目。每種任務另加一個反例。預設門檻是測試分數上的最佳門檻。整體效果請看第06節。') : '';
   $('#l3-prompt').innerHTML = `<b>${T('Prompt', '提示')}:</b> ${esc(t.prompt)}<br><b>${T('Semantics bound to', '語意綁定於')}:</b> ${t.mode === 'transition' ? T('transitions (OOD / adversarial): θ̄(⟨s̄ᵢ, s̄ᵢ₊₁⟩) = transition probability', '轉移（OOD／對抗）：θ̄(⟨s̄ᵢ, s̄ᵢ₊₁⟩) = 轉移機率') : T('states (hallucination): θ̄(s̄ᵢ) = truthfulness', '狀態（幻覺）：θ̄(s̄ᵢ) = 真實性')}`;
   $('#l3-toks').innerHTML = t.tokens.map((w, i) => { const v = t.semantics[i]; return `<div class="tok ${i === first ? 'first' : ''}" style="background:${semColor(v)}" title="θ̄=${v == null ? 'n/a' : v}"><div class="w">${esc(w)}</div><div class="s">${esc(t.states[i] || '')}</div><div class="v">${v == null ? '—' : v.toFixed(2)}</div></div>`; }).join('');
   const W = 620, H = 220, l = 40, r = 14, tp = 16, bt = 34, n = t.tokens.length, X = i => l + (n === 1 ? .5 : i / (n - 1)) * (W - l - r), Y = v => tp + (1 - v) * (H - tp - bt);
@@ -1051,7 +1042,7 @@ function lab3(){
   s += `<path d="M${l} ${Y(th)} H${W - r}" stroke="#F4C26B" stroke-dasharray="5 4" stroke-width="1.4"/><text x="${W - r}" y="${Y(th) - 5}" font-size="10" fill="#F4C26B" text-anchor="end">${T('threshold', '門檻')} ${th.toFixed(2)}</text>`;
   s += `<path d="M${l} ${Y(score)} H${W - r}" stroke="#C2B4FF" stroke-width="1" opacity=".7"/><text x="${l + 4}" y="${Y(score) - 5}" font-size="10" fill="#C2B4FF">${T('mean', '平均')} ${score.toFixed(2)}</text>`;
   let d = '', pen = false; t.semantics.forEach((v, i) => { if (v == null) { pen = false; return; } d += `${pen ? 'L' : 'M'}${X(i)} ${Y(v)} `; pen = true; }); s += `<path d="${d}" fill="none" stroke="#8CB8FF" stroke-width="2"/>`;
-  t.semantics.forEach((v, i) => { if (v != null) s += `<circle data-tip="${esc(t.tokens[i])} · ${esc(t.states[i] || '')}<br>θ̄ = ${v.toFixed(3)}" cx="${X(i)}" cy="${Y(v)}" r="4.5" fill="${v < th ? '#FF7B8B' : '#5FD3A0'}" stroke="#080B12" stroke-width="1.4"/>`; s += `<text x="${X(i)}" y="${H - 14}" font-size="10" fill="#AEB7CA" text-anchor="middle">${esc(t.tokens[i].slice(0, 9))}</text>`; });
+  t.semantics.forEach((v, i) => { if (v != null) s += `<circle data-tip="${esc(t.tokens[i])} · ${esc(t.states[i] || '')}<br>θ̄ = ${v.toFixed(3)}" cx="${X(i)}" cy="${Y(v)}" r="${n > 40 ? 2.6 : 4.5}" fill="${v < th ? '#FF7B8B' : '#5FD3A0'}" stroke="#080B12" stroke-width="1.4"/>`; if (n <= 40) s += `<text x="${X(i)}" y="${H - 14}" font-size="10" fill="#AEB7CA" text-anchor="middle">${esc(t.tokens[i].slice(0, 9))}</text>`; });
   const svg = $('#l3-chart'); svg.innerHTML = s; bindTips(svg);
   $('#l3-scores').innerHTML = `<div class="score"><p class="score-k">${T('Semantic score', '語意分數')}</p><p class="score-v">${score.toFixed(2)}</p><p class="score-n">AVG θ̄</p></div>
     <div class="score"><p class="score-k">${T('Verdict', '判定')}</p><p class="score-v"><span class="verdict ${abn ? 'v-bad' : 'v-good'}">${abn ? T('abnormal', '異常') : T('normal', '正常')}</span></p><p class="score-n">${T('ground truth', '真實標籤')}: ${t.label === 'abnormal' ? T('abnormal', '異常') : T('normal', '正常')}</p></div>`;
@@ -1070,12 +1061,6 @@ function lab3(){
 ['l3-ex','l3-th'].forEach(id => $('#' + id).addEventListener('input', lab3));
 
 /* ============================ §06 widget ============================ */
-function synthScores(taskId, auc){
-  const r = rng(hash(taskId) + 5), n = 400, d = Math.SQRT2 * invPhi(clamp(auc, .5, .999));
-  const z1 = [], z2 = []; for (let i = 0; i < n; i++) { z1.push(gauss(r)); z2.push(gauss(r)); }
-  const mu = .5 + d * .09, sg = .09;
-  return {normal: z1.map(z => clamp(mu + z * sg, 0, 1)), abnormal: z2.map(z => clamp(mu - d * sg + z * sg, 0, 1))};
-}
 function rocOf(nor, abn){
   const all = nor.map(v => [v, 0]).concat(abn.map(v => [v, 1])).sort((a, b) => a[0] - b[0]); // predict abnormal if score <= thr
   let tp = 0, fp = 0; const P = abn.length, N = nor.length, pts = [[0, 0]]; let i = 0;
@@ -1083,16 +1068,12 @@ function rocOf(nor, abn){
   let auc = 0; for (let k = 1; k < pts.length; k++) auc += (pts[k][0] - pts[k - 1][0]) * (pts[k][1] + pts[k - 1][1]) / 2; return {pts, auc};
 }
 function lab4(){
-  const tsel = $('#l4-task'), qsel = $('#l4-q');
-  const ownIds = Object.keys(App.data.scores || {}).filter(k => !TASKS.some(t => t.id === k));   // real scores of our own model (not one of the paper's 10 tasks)
-  const ownLabel = id => T(`GPT-2 (ours) · ${id === 'GPT2-OOD' ? 'OOD: original vs garbled text' : 'HAL: TruthfulQA true vs false answer'}`, `GPT-2（自己的模型）· ${id === 'GPT2-OOD' ? 'OOD：原文 vs 亂碼' : 'HAL：TruthfulQA 真實 vs 錯誤答案'}`);
-  if (!tsel._ready || tsel._lang !== lang || tsel._own !== ownIds.join()) { const firstOwn = ownIds.length && !tsel._own, cur = firstOwn ? '' : tsel.value; tsel._own = ownIds.join(); fillSelect(tsel, TASKS.map(t => [t.id, taskLabel(t)]).concat(ownIds.map(id => [id, ownLabel(id)]))); if (cur) tsel.value = cur; else tsel.value = ownIds.includes('GPT2-TQA') ? 'GPT2-TQA' : 'HE-C'; tsel._ready = true; tsel._lang = lang;
-    const cq = qsel.value; fillSelect(qsel, [['mean', T('mean of 180', '180 個的平均')], ['median', T('median', '中位數')], ['max', T('best config (max)', '最佳設定（最大）')], ['min', T('worst config (min)', '最差設定（最小）')], ['custom', T('custom AUC…', '自訂 AUC…')]]); qsel.value = cq || 'max'; }
-  const own = ownIds.includes(tsel.value), task = own ? {id: tsel.value, own: true} : TASKS.find(t => t.id === tsel.value), q = qsel.value; $('#l4-custom-row').style.display = q === 'custom' && !own ? 'flex' : 'none';
-  let target = q === 'custom' ? +$('#l4-auc').value / 100 : task[q]; $('#l4-aucv').textContent = (+$('#l4-auc').value / 100).toFixed(2);
-  const real = App.data.scores && App.data.scores[task.id]; setBadge('#l4-badge', real);
-  const sc = real ? {normal: real.normal, abnormal: real.abnormal} : synthScores(task.id, target);
-  if (own) target = rocOf(sc.normal, sc.abnormal).auc;   // real scores: the target is simply the measured AUC
+  const tsel = $('#l4-task'), ids = Object.keys(App.data.scores || {});   // real scores of our own GPT-2 model only: the paper publishes no per-sample scores
+  const ownLabel = id => T(`GPT-2 (ours) · ${id === 'GPT2-OOD' ? 'OOD: original vs garbled text' : 'HAL: its own TruthfulQA answers, judged true vs false'}`, `GPT-2（自己的模型）· ${id === 'GPT2-OOD' ? 'OOD：原文 vs 亂碼' : 'HAL：自己回答 TruthfulQA，判為真 vs 假'}`);
+  setBadge('#l4-badge', ids.length);
+  if (!ids.length) { ['#l4-hist', '#l4-roc', '#l4-scores'].forEach(s => $(s).innerHTML = ''); $('#l4-note').innerHTML = T('No score data loaded (luna-data.js / luna-data.json).', '沒有載入分數資料（luna-data.js／luna-data.json）。'); return; }
+  if (!tsel._ready || tsel._lang !== lang || tsel._own !== ids.join()) { const cur = tsel.value; tsel._own = ids.join(); fillSelect(tsel, ids.map(id => [id, ownLabel(id)])); tsel.value = ids.includes(cur) ? cur : ids.includes('GPT2-TQA') ? 'GPT2-TQA' : ids[0]; tsel._ready = true; tsel._lang = lang; }
+  const task = {id: tsel.value}, sc = App.data.scores[task.id];
   const roc = rocOf(sc.normal, sc.abnormal), th = +$('#l4-th').value / 100; $('#l4-thv').textContent = th.toFixed(2);
   const TPR = sc.abnormal.filter(v => v <= th).length / sc.abnormal.length, FPR = sc.normal.filter(v => v <= th).length / sc.normal.length;
   const tp = TPR * sc.abnormal.length, fp = FPR * sc.normal.length, prec = tp + fp ? tp / (tp + fp) : NaN, acc = (tp + (sc.normal.length - fp)) / (sc.normal.length + sc.abnormal.length);
@@ -1111,34 +1092,28 @@ function lab4(){
   g += `<path d="${roc.pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]) + ' ' + Y(p[1])).join(' ')} L${X(1)} ${Y(1)} L${X(1)} ${Y(0)} Z" fill="#8CB8FF" opacity=".12"/><path d="${roc.pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]) + ' ' + Y(p[1])).join(' ')}" fill="none" stroke="#8CB8FF" stroke-width="2.2"/>`;
   g += `<circle cx="${X(FPR)}" cy="${Y(TPR)}" r="6" fill="#F4C26B" stroke="#080B12" stroke-width="2"/><text x="${X(.5)}" y="${RH - 2}" font-size="10.5" fill="#7C869C" text-anchor="middle">FPR</text><text x="12" y="${Y(.5)}" font-size="10.5" fill="#7C869C" transform="rotate(-90 12 ${Y(.5)})" text-anchor="middle">TPR</text><text x="${X(.98)}" y="${Y(.08)}" text-anchor="end" font-size="20" font-weight="700" fill="#8CB8FF">AUC ${roc.auc.toFixed(3)}</text>`;
   $('#l4-roc').innerHTML = g;
-  $('#l4-scores').innerHTML = [['ROC AUC', f3(roc.auc), real ? T('empirical', '實測') : `${T('target', '目標')} ${target.toFixed(2)}`], ['TPR', f2(TPR), T('abnormal caught', '異常抓到')], ['FPR', f2(FPR), T('normal flagged', '正常誤判')], [T('Precision', '精確率'), f2(prec), `${T('acc', '準確率')} ${f2(acc)}`]]
+  $('#l4-scores').innerHTML = [['ROC AUC', f3(roc.auc), T('empirical', '實測')], ['TPR', f2(TPR), T('abnormal caught', '異常抓到')], ['FPR', f2(FPR), T('normal flagged', '正常誤判')], [T('Precision', '精確率'), f2(prec), `${T('acc', '準確率')} ${f2(acc)}`]]
     .map(x => `<div class="score"><p class="score-k">${x[0]}</p><p class="score-v">${x[1]}</p><p class="score-n">${x[2]}</p></div>`).join('');
-  $('#l4-note').innerHTML = own ? T(`<b>${ownLabel(task.id)}:</b> real scores of our own GPT-2 model on the ${sc.normal.length} held-out test questions (never used to fit PCA / KMeans / DTMC). ${task.id === 'GPT2-OOD' ? 'Score = mean transition probability on the answer tokens.' : 'Score = mean abstract semantics θ̄ on the answer tokens.'} This is not one of the paper's 10 tasks.`,
-    `<b>${ownLabel(task.id)}：</b>我們自己的 GPT-2 模型在 ${sc.normal.length} 題保留測試題上的真實分數（這些題沒有用來訓練 PCA／KMeans／DTMC）。${task.id === 'GPT2-OOD' ? '分數＝答案 token 的平均轉移機率。' : '分數＝答案 token 的平均抽象語意 θ̄。'}這不是論文 10 個任務之一。`) : T(`<b>${taskLabel(task)}:</b> the paper reports mean ${task.mean.toFixed(2)}, median ${task.med.toFixed(2)}, max ${task.max.toFixed(2)} (min ${task.min.toFixed(2)}) over 180 settings. At AUC ${target.toFixed(2)}, equal-variance separation is d′ = ${(Math.SQRT2 * invPhi(clamp(target, .5, .999))).toFixed(2)}σ.`,
-    `<b>${taskLabel(task)}：</b>論文報告 180 種設定的平均 ${task.mean.toFixed(2)}、中位 ${task.med.toFixed(2)}、最大 ${task.max.toFixed(2)}（最小 ${task.min.toFixed(2)}）。AUC ${target.toFixed(2)} 對應等變異數分離度 d′ = ${(Math.SQRT2 * invPhi(clamp(target, .5, .999))).toFixed(2)}σ。`);
-  const nAb = sc.abnormal.length, nNo = sc.normal.length, dp = Math.SQRT2 * invPhi(clamp(target, .5, .999));
+  const nQ = task.id === 'GPT2-OOD' ? sc.normal.length : sc.normal.length + sc.abnormal.length;   // OOD: one original + one garbled text per question; HAL: one answer per question
+  $('#l4-note').innerHTML = T(`<b>${ownLabel(task.id)}:</b> real scores of our own GPT-2 model on ${nQ} held-out test questions (never used to fit PCA / clustering / DTMC)${task.id === 'GPT2-OOD' ? '' : `: ${sc.normal.length} answers judged true, ${sc.abnormal.length} judged false`}. ${task.id === 'GPT2-OOD' ? 'Score = mean transition probability on the answer tokens.' : 'Normal = answers GPT-2 generated itself that the Gemini judge rated true, abnormal = rated false; score = mean abstract semantics θ̄ over the whole generated trace (as in the authors’ code).'} This is not one of the paper's 10 tasks.`,
+    `<b>${ownLabel(task.id)}：</b>我們自己的 GPT-2 模型在 ${nQ} 題保留測試題上的真實分數（這些題沒有用來訓練 PCA／分群／DTMC）${task.id === 'GPT2-OOD' ? '' : `：${sc.normal.length} 題判為真話、${sc.abnormal.length} 題判為假話`}。${task.id === 'GPT2-OOD' ? '分數＝答案 token 的平均轉移機率。' : '正常＝GPT-2 自己生成、被 Gemini 評審判為真話的答案，異常＝判為假話；分數＝整條生成軌跡的平均抽象語意 θ̄（同作者程式）。'}這不是論文 10 個任務之一。`);
+  const nAb = sc.abnormal.length, nNo = sc.normal.length;
   setFx('l4-hist', [
-    FX(['ROC AUC', 'ROC AUC'], real ? `\\mathrm{AUC}=\\int_0^1\\mathrm{TPR}\\,d\\mathrm{FPR}=${f3(roc.auc)}` : `\\begin{aligned}\\mathrm{AUC}&=\\Pr[\\text{normal}>\\text{abnormal}]=\\Phi\\!\\Big(\\dfrac{d'}{\\sqrt2}\\Big)\\\\ &=\\Phi\\!\\Big(\\dfrac{${dp.toFixed(2)}}{1.414}\\Big)=${f3(roc.auc)}\\end{aligned}`,
+    FX(['ROC AUC', 'ROC AUC'], `\\mathrm{AUC}=\\int_0^1\\mathrm{TPR}\\,d\\mathrm{FPR}=${f3(roc.auc)}`,
       ['The chance that a random normal sample scores higher than a random abnormal one. 0.5 = coin flip, 1.0 = perfectly separated. It does not depend on any single threshold.', '隨機抽一個正常樣本、一個異常樣本，正常分數較高的機率。0.5＝擲硬幣，1.0＝完全分開；它不依賴單一門檻。']),
     FX(['TPR and FPR at this threshold', '此門檻下的 TPR 與 FPR'], `\\begin{aligned}\\mathrm{TPR}&=\\dfrac{TP}{TP+FN}=\\dfrac{${Math.round(tp)}}{${nAb}}=${f3(TPR)}\\\\ \\mathrm{FPR}&=\\dfrac{FP}{FP+TN}=\\dfrac{${Math.round(fp)}}{${nNo}}=${f3(FPR)}\\end{aligned}`,
       ['TPR = fraction of abnormal samples you catch; FPR = fraction of normal samples you wrongly flag. Rule: score ≤ threshold ⇒ flagged abnormal.', 'TPR＝抓到的異常比例；FPR＝被誤判為異常的正常比例。規則：分數 ≤ 門檻 ⇒ 判為異常。'])
   ]);
 }
-['l4-task','l4-q','l4-auc','l4-th'].forEach(id => $('#' + id).addEventListener('input', lab4));
+['l4-task','l4-th'].forEach(id => $('#' + id).addEventListener('input', lab4));
 
-/* ============================ 07 formulas ============================ */
-const CORE_EQ = [
- {tex:'\\max_\\theta \\sum_{t=1}^{T}\\log p(w_t\\mid w_{1:t-1};\\theta)', en:'(1) Next-token training objective', zh:'(1) 下一 token 預測訓練目標'},
- {tex:'g(x)=\\begin{cases}\\text{in}&P_X(x)\\ge\\lambda\\\\ \\text{out}&P_X(x)<\\lambda\\end{cases}', en:'(2) OOD decision rule with density estimate P_X and threshold λ', zh:'(2) 以密度估計 P_X 與門檻 λ 的 OOD 判定'},
- {tex:'p(y_1,\\dots,y_T)=\\prod_{t=1}^{T}p(y_t\\mid y_{<t})', en:'(3) Autoregressive generation as a stochastic process', zh:'(3) 自迴歸生成的隨機過程'},
- {tex:'\\bar P(\\bar s,\\bar s\')=\\dfrac{\\#\\{s\\to s\' : s\\in\\bar s,\\ s\'\\in\\bar s\'\\}}{\\#\\{\\text{outgoing transitions of }\\bar s\\}}', en:'Abstract transition probability (DTMC estimation)', zh:'抽象轉移機率（DTMC 估計）'},
- {tex:'\\bar\\theta(\\bar s)=\\dfrac1{|\\bar s|}\\sum_{s\\in\\bar s}\\theta(s)\\qquad \\text{score}=\\operatorname{AVG}\\big(\\bar\\theta(\\bar s_i)\\big)', en:'Semantics abstraction and the trace-level semantic score', zh:'語意抽象與軌跡層級語意分數'}
-];
+/* ============================ metric metadata (used by §08's dropdown and the glossary; the full
+   core equations + 12-metric reference cards now live in concepts.html#metrics) ============================ */
 const METRICS = [
  {k:'SUC', fam:'model', en:'Succinctness', zh:'簡潔性', tex:'\\mathrm{SUC}=\\dfrac{|\\bar S|}{|S|}', dEn:'Lower is better, but keep enough information (a 1-state model is perfectly succinct and useless).', dZh:'越低越好，但需保留足夠資訊（單一狀態的模型最簡潔卻無用）。', pEn:'State reduction rate (transition reduction rate is analogous).', pZh:'狀態縮減率（轉移縮減率同理）。'},
  {k:'COV', fam:'model', en:'Coverage', zh:'覆蓋率', tex:'\\mathrm{COV}=\\dfrac{|\\bar S_{\\text{unseen}}|}{|\\bar S|},\\quad \\bar S_{\\text{unseen}}=\\{s\\mid\\lVert s-c_i\\rVert>d\\}', dEn:'Lower is better. Grid: cells outside the grid; cluster: farther than d = max train distance to the center.', dZh:'越低越好。網格：落在網格外；分群：距中心大於 d（訓練最大距離）。', pEn:'Share of test states/transitions not seen in the abstract model.', pZh:'測試狀態／轉移中未在抽象模型出現者的比例。'},
  {k:'SEN', fam:'model', en:'Sensitivity', zh:'敏感度', tex:'\\mathrm{SEN}=\\dfrac{|\\{s\\in S_{\\text{test}}\\mid \\bar s\\ne\\bar s\',\\ \\lVert s-s\'\\rVert<\\epsilon\\}|}{|S_{\\text{test}}|}', dEn:'Lower is better (robust to tiny perturbations).', dZh:'越低越好（對微小擾動穩健）。', pEn:'Fraction of states whose abstract state changes under an ε-perturbation.', pZh:'ε 擾動後所屬抽象狀態改變的比例。'},
- {k:'SS', fam:'model', en:'State classification (sink)', zh:'狀態分類（匯點）', tex:'s_i\\ \\text{is a sink}\\iff p_{ii}=1', dEn:'Reveals bias toward certain responses. Also checks source and recurrent states.', dZh:'可揭示模型是否偏向特定回應；另可檢查 source 與 recurrent 狀態。', pEn:'How often an abstract state has only a probability-1 self-loop.', pZh:'抽象狀態只剩機率 1 自迴圈的頻率。'},
+ {k:'SS', fam:'model', en:'State Classification (sink state)', zh:'狀態分類（匯點狀態）', tex:'s_i\\ \\text{is a sink}\\iff p_{ii}=1', dEn:'Reveals bias toward certain responses. Also checks source and recurrent states.', dZh:'可揭示模型是否偏向特定回應；另可檢查 source 與 recurrent 狀態。', pEn:'How often an abstract state has only a probability-1 self-loop.', pZh:'抽象狀態只剩機率 1 自迴圈的頻率。'},
  {k:'SDE', fam:'model', en:'Stationary Distribution Entropy', zh:'穩態分布熵', tex:'\\mathrm{SDE}=-\\sum_{i=1}^{n}\\pi_i\\Big(\\sum_{j=1}^{n}p_{ij}\\log p_{ij}\\Big),\\ \\ \\pi P=\\pi', dEn:'Reported value = distance from the mid-point of the stable bound (p_ii = 0.95) and the stochastic bound (p_ij ≈ 1/n).', dZh:'報告值＝與「穩定界（p_ii = 0.95）與隨機界（p_ij ≈ 1/n）中點」的距離。', pEn:'Balance between predictability and randomness of transitions.', pZh:'轉移在可預測性與隨機性之間的平衡。'},
  {k:'PERP', fam:'model', en:'Perplexity', zh:'困惑度', tex:'\\mathrm{PERP}=\\sqrt[N]{\\prod_{i=1}^{N}\\dfrac{1}{P(w_i\\mid w_1\\cdots w_{i-1})}}', dEn:'Good states should be < 100. Reported value = KL divergence between normal-data and abnormal-data perplexity.', dZh:'好狀態應 < 100。報告值＝正常與異常資料困惑度之間的 KL 散度。', pEn:'Fit to the training distribution; the most broadly predictive model-wise metric.', pZh:'對訓練分布的擬合度；最廣用的模型層級預測指標。'},
  {k:'PRE', fam:'sem', en:'Semantics Preciseness', zh:'語意精確度', tex:'\\mathrm{PRE}=\\mathrm{MEAN}\\Big\\{\\theta(\\tau^k)-\\mathbb E\\big[\\bar\\theta(\\bar\\tau^k)\\big]\\Big\\}', dEn:'Paper text: higher is better. Strongest and most consistent correlate of AUC (Pearson 0.81–1.00).', dZh:'原文：越高越好。與 AUC 最強且最一致相關（Pearson 0.81–1.00）。', pEn:'Mean (and max) semantics error of abstract vs. concrete semantics.', pZh:'抽象語意與具體語意之平均（與最大）誤差。'},
@@ -1148,32 +1123,7 @@ const METRICS = [
  {k:'NDT', fam:'sem', en:'n-gram Derivative Trend', zh:'n-gram 導數趨勢', tex:'\\begin{aligned}\\mathrm{Inc}&=\\max_{i=n}^{k}\\sum_{j=i-n+1}^{i}\\mathrm{lds}(\\theta(\\tau_{t_j}))\\\\ \\mathrm{Dec}&=\\min_{i=n}^{k}\\sum_{j=i-n+1}^{i}\\mathrm{lds}(\\theta(\\tau_{t_j}))\\\\ \\mathrm{NDT}&=|\\mathrm{Inc}-\\mathrm{Dec}|\\end{aligned}', dEn:'lds = left-derivative sign. Larger difference ⇒ a "purer" semantic trend. Report mean of normal and abnormal traces.', dZh:'lds＝左導數符號。差距越大 ⇒ 語意趨勢越「純」。回報正常與異常軌跡的平均。', pEn:'Richness of how semantics rise and fall across tokens.', pZh:'語意隨 token 上升與下降的豐富程度。'},
  {k:'SL', fam:'sem', en:'Surprise Level', zh:'意外程度', tex:'\\begin{aligned}\\mathrm{post}&=\\dfrac{\\mathbb P(\\theta(\\tau^{l+1})\\!=\\!g\\mid\\theta(\\tau^{l})\\!=\\!g)\\,\\mathbb P(\\theta(\\tau^{l})\\!=\\!g)}{\\mathbb P(\\theta(\\tau^{l+1})\\!=\\!g)}\\\\ \\mathrm{SL}&=\\operatorname{mean}D_{KL}(\\mathrm{post}\\Vert\\mathrm{prior})\\end{aligned}', dEn:'Binary semantics (g = good). Thresholds: high surprise = random matrix + random semantics; low = p_ii = 0.95.', dZh:'二元語意（g = good）。閾值：高意外＝隨機矩陣＋隨機語意；低意外＝p_ii = 0.95。', pEn:'Bayesian surprise of semantic change between successive sequences.', pZh:'相鄰序列間語意變化的貝氏意外程度。'}
 ];
-/* where each formula comes alive + a one-line answer for the Q&A */
-const CORE_EXTRA = [
- {lab:'#s2'},
- {lab:'#s5'},
- {lab:'#s4'},
- {lab:'#s4'},
- {lab:'#s5'}
-];
-const METRIC_EXTRA = {
- SUC:{lab:'#s3'},
- COV:{lab:'#s3'},
- SEN:{lab:'#s3'},
- SS:{lab:'#s4'},
- SDE:{lab:'#s4'},
- PERP:{lab:'#s8'},
- PRE:{lab:'#s8'},
- ENT:{lab:'#s8'},
- IVT:{lab:'#s5'},
- NVT:{lab:'#s5'},
- NDT:{lab:'#s5'},
- SL:{lab:'#s5'}
-};
 const secNo = h => h.slice(2).padStart(2, '0');
-const extraHtml = x => x ? `<a class="try" href="${x.lab}">${T('see it in §' + secNo(x.lab) + ' →', '到第' + secNo(x.lab) + '節看它怎麼動 →')}</a>` : '';
-/* formulas that are worked through with live numbers in sections 03-04 get the darker "in-lab" card style */
-const IN_LAB = {SUC: '#s3', COV: '#s3', SEN: '#s3', SS: '#s4', SDE: '#s4'}, CORE_IN_LAB = [3, 4];
 
 /* ============================ hover explanations for formula symbols ============================
    SYMS[ctx][key] = [en, zh]. ctx = data-ctx of the formula (falls back to SYMS._ for shared symbols).
@@ -1181,6 +1131,9 @@ const IN_LAB = {SUC: '#s3', COV: '#s3', SEN: '#s3', SS: '#s4', SDE: '#s4'}, CORE
 const SYMS = {_: {}};
 const symClean = s => (s || '').replace(/[​\s]/g, '');
 function symKeys(el){
+  /* the hat / bar glyph of an accent (θ̄, P̂) explains the same thing as the letter under it */
+  const ab = el.closest('.accent-body');
+  if (ab) { const acc = ab.closest('.accent'), b = acc && [...acc.querySelectorAll('span')].find(s => !s.children.length && !s.closest('.accent-body') && symClean(s.textContent)); return b ? symKeys(b) : []; }
   const t = symClean(el.textContent); if (!t) return [];
   const K = []; let base = t;
   const acc = el.closest('.accent');
@@ -1259,10 +1212,10 @@ G('l2-graph', {
   'P̂': ['estimated transition probability from state i to state j: a count divided by a count', '從狀態 i 到 j 的估計轉移機率：一個次數除以一個次數'], 's_0': ['abstract state 0', '抽象狀態 0'], 's_1': ['abstract state 1', '抽象狀態 1'], 's_i': ['abstract state i (the one we leave)', '抽象狀態 i（出發的）'], 's_i+1': ['the next abstract state on the path', '路徑上的下一個抽象狀態'],
   'outof': ['all transitions that leave that state', '離開該狀態的所有轉移'], 'H': ['entropy: how unpredictable the next step is, averaged over the long run', '熵：下一步平均有多難預測（以長期比例加權）'], 'π_i': ['long-run share of time in state i', '狀態 i 的長期停留比例'], 'p_ij': ['estimated probability of going from i to j', '估計的 i 走到 j 的機率'],
   'stable': ['stable bound: a chain that mostly stays put', '穩定界：大多待在原地的鏈'], 'random': ['stochastic bound: a chain that jumps uniformly', '隨機界：均勻亂跳的鏈'], 'SDE': ['distance between the model\'s entropy and the midpoint of the two bounds', '模型的熵與兩個界中點的距離'],
-  'AVG': ['average of the transition probabilities along the path = the OOD semantic score', '路徑上各轉移機率的平均＝OOD 語意分數'], 'score': ['OOD semantic score of the path', '這條路徑的 OOD 語意分數']
+  'AVG': ['average of the transition probabilities along the path = the OOD semantic score', '路徑上各轉移機率的平均＝OOD 語意分數'], '→': ['moves to: a transition from the state on the left to the state on the right', '轉移到：從左邊的狀態走到右邊的狀態'], 'score': ['OOD semantic score of the path', '這條路徑的 OOD 語意分數']
 });
 G('l3-chart', {
-  'th': ['the threshold you set with the slider', '你用滑桿設定的門檻'], 'i_*': ['index of the first state whose semantics drops below the threshold: where the model starts going wrong', '第一個語意低於門檻的狀態的編號：模型從這裡開始出錯'], '∅': ['empty set: no state fell below the threshold', '空集合：沒有任何狀態低於門檻'],
+  'th': ['the threshold you set with the slider', '你用滑桿設定的門檻'], 'i_*': ['index of the first state whose semantics drops below the threshold: where the model starts going wrong', '第一個語意低於門檻的狀態的編號：模型從這裡開始出錯'], 'i_∗': ['index of the first state whose semantics drops below the threshold: where the model starts going wrong', '第一個語意低於門檻的狀態的編號：模型從這裡開始出錯'], '∅': ['empty set: no state fell below the threshold', '空集合：沒有任何狀態低於門檻'],
   'min': ['the smallest index that satisfies the condition', '滿足條件的最小編號'], 's̄_i': ['the i-th abstract state on the trace', '軌跡上第 i 個抽象狀態'], 'token': ['the token at that position', '該位置的 token']
 });
 G('l4-hist', {
@@ -1293,7 +1246,7 @@ G('NVT', {'θ': ['semantics along the trace', '軌跡上的語意值'], 'τ_tj':
 G('NDT', {'Inc': ['strongest rising trend over any n consecutive steps', '任何連續 n 步中最強的上升趨勢'], 'Dec': ['strongest falling trend over any n consecutive steps', '任何連續 n 步中最強的下降趨勢'], 'lds': ['left-derivative sign: +1 if the curve went up, −1 if it went down at that step', '左導數符號：該步曲線上升為 +1、下降為 −1'], 'θ': ['semantics along the trace', '軌跡上的語意值'], 'τ_tj': ['the trace at simulation step j', '第 j 個模擬步的軌跡'], 'n': ['window length', '視窗長度'], 'max': ['largest over all windows', '所有視窗中最大的'], 'min': ['smallest over all windows', '所有視窗中最小的'], '∣': ['absolute value', '絕對值']});
 G('SL', {'post': ['posterior: belief about the earlier sequence after seeing the later one', '後驗：看過後一個序列之後，對前一個序列的信念'], 'prior': ['prior: belief before seeing it', '先驗：看到之前的信念'], 'D_KL': ['KL divergence: how far the posterior is from the prior', 'KL 散度：後驗離先驗多遠'], 'P': ['probability', '機率'], 'g': ['“good” semantics (binary semantics)', '「好」的語意（二元語意）'], 'τ_l': ['the l-th sequence', '第 l 條序列'], 'τ_l+1': ['the next sequence', '下一條序列'], 'mean': ['average', '平均'], 'θ': ['semantics of a sequence', '序列的語意'], '∣': ['given', '在…的條件下'], '∥': ['“relative to”', '「相對於」']});
 
-G('_', {'g': ['logarithm (log)', '對數（log）'], 'lo': ['logarithm (log)', '對數（log）'], '′': ['prime: marks the state after the move or the perturbation', '撇號：標記移動或擾動「之後」的狀態'], '-noise': ['a tiny random perturbation', '微小的隨機擾動'], 'Σ': ['the sum of all the listed values', '所有列出數值的總和'], 'w': ['a token (word)', '一個 token（詞）'], 'ij': ['from state i to state j', '從狀態 i 到狀態 j'], 'p̂': ['estimated transition probability from state i to state j', '估計的「狀態 i 走到 j」的機率']});
+G('_', {'g': ['logarithm (log)', '對數（log）'], '': ['not equal: the slash KaTeX draws over = to make ≠', '不等於：KaTeX 在 = 上畫的斜線，合起來是 ≠'], 'lo': ['logarithm (log)', '對數（log）'], '′': ['prime: marks the state after the move or the perturbation', '撇號：標記移動或擾動「之後」的狀態'], '-noise': ['a tiny random perturbation', '微小的隨機擾動'], 'Σ': ['the sum of all the listed values', '所有列出數值的總和'], 'w': ['a token (word)', '一個 token（詞）'], 'ij': ['from state i to state j', '從狀態 i 到狀態 j'], 'p̂': ['estimated transition probability from state i to state j', '估計的「狀態 i 走到 j」的機率']});
 G('PRE', {'τ': ['a test trace (a run of consecutive states)', '一條測試軌跡（連續的一串狀態）'], 'τ̄': ['the matching abstract trace', '對應的抽象軌跡']});
 G('SS', {'isasink': ['“is a sink”: a state that can never be left', '「是匯點」：一旦進入就出不來的狀態']});
 
@@ -1333,15 +1286,6 @@ function drawFx(anchor){
   el.querySelectorAll('.fx-tab').forEach(b => b.addEventListener('click', () => { FXS[anchor] = +b.dataset.i; drawFx(anchor); }));
   renderTexIn(el);
 }
-function renderFormulas(){
-  const tag = h => h ? `<span class="lab-tag">${secNo(h)}</span>` : '';
-  $('#core-eq').innerHTML = CORE_EQ.map((e, i) => { const lab = CORE_IN_LAB.includes(i) ? CORE_EXTRA[i].lab : ''; return `<div class="mathblock${lab ? ' in-lab' : ''}">${tag(lab)}<span class="tex" data-display="1" data-ctx="core${i}" data-tex="${esc(e.tex)}"></span><div class="sec-sub" style="font-size:13px">${esc(T(e.en, e.zh))}</div>${extraHtml(CORE_EXTRA[i])}</div>`; }).join('');
-  $('#metric-grid').innerHTML = METRICS.filter(m => m.fam === metricFam).map(m => `<div class="metric${IN_LAB[m.k] ? ' in-lab' : ''}">${tag(IN_LAB[m.k])}<h3><span class="ab">${m.k}</span>${esc(T(m.en, m.zh))}</h3><p>${esc(T(m.pEn, m.pZh))}</p><span class="tex" data-display="1" data-ctx="${m.k}" data-tex="${esc(m.tex)}"></span><p class="dir">${esc(T(m.dEn, m.dZh))}</p>${extraHtml(METRIC_EXTRA[m.k])}</div>`).join('');
-  $('#mt-model').setAttribute('aria-pressed', metricFam === 'model'); $('#mt-sem').setAttribute('aria-pressed', metricFam === 'sem'); renderTex();
-}
-$('#mt-model').addEventListener('click', () => { metricFam = 'model'; renderFormulas(); });
-$('#mt-sem').addEventListener('click', () => { metricFam = 'sem'; renderFormulas(); });
-
 /* ============================ §08 widget ============================ */
 const L5 = {pin: null};
 const partColor = p => p === 'grid' ? '#F4C26B' : p === 'GMM' ? '#C2B4FF' : '#5FD3A0';
@@ -1385,14 +1329,6 @@ function lab5(){
   groups.forEach(([p, m], i) => { const y = 10 + i * 29, v = vals[i], w = isNaN(v) ? 0 : (v - lo) / (hi - lo) * 400;
     b += `<text x="8" y="${y + 14}" font-size="11" fill="#AEB7CA">${p} · ${m}</text><rect x="130" y="${y}" width="${w}" height="20" rx="3" fill="${partColor(p)}" opacity="${m === 'DTMC' ? .85 : .4}"/><text x="${136 + w}" y="${y + 14}" font-size="11" fill="#E7EBF3">${isNaN(v) ? '—' : v.toFixed(3)}</text>`; });
   $('#l5-bars').innerHTML = b;
-  const md = METRICS.find(m => m.k === key);
-  setFx('l5-sc', [
-    FX([`${key} · ${T(md.en, md.zh)}`, `${key} · ${md.zh}`], md.tex, [md.pEn, md.pZh], key),
-    FX(['Pearson correlation r', 'Pearson 相關係數 r'], `r=\\dfrac{\\sum_i(x_i-\\bar x)(y_i-\\bar y)}{\\sqrt{\\sum_i(x_i-\\bar x)^2\\,\\sum_i(y_i-\\bar y)^2}}=${isNaN(rP) ? '\\text{—}' : rP.toFixed(2)}`,
-      ['x = the metric you picked, y = ROC AUC. r near +1 or −1 means the metric moves together with detection quality, so you can rank configurations by it without labelled abnormal data.', 'x＝你選的指標，y＝ROC AUC。r 接近 +1 或 −1，代表該指標與偵測品質同步變化，因此不需異常標註也能用它替設定排序。']),
-    FX(['Kendall rank correlation τ', 'Kendall 秩相關 τ'], `\\tau=\\dfrac{C-D}{\\binom{n}{2}}=${isNaN(tK) ? '\\text{—}' : tK.toFixed(2)}`,
-      ['C / D = pairs of configurations ranked in the same / opposite order by the metric and by AUC. It only cares about ranking, not the exact values.', 'C／D＝依指標排序與依 AUC 排序「順序相同／相反」的設定配對數。它只看排名，不看數值大小。'])
-  ]);
 }
 ['l5-task','l5-metric','l5-dtmc','l5-hmm','l5-grid','l5-gmm','l5-km'].forEach(id => $('#' + id).addEventListener('input', () => { if (id === 'l5-task') L5.pin = null; lab5(); }));
 
@@ -1430,12 +1366,13 @@ function renderVersions(){
   const how = v => v.version === 'last' ? T('output of the last decoder block (what the authors’ released code does)', '最後一個 decoder block 的輸出（作者釋出程式碼的做法）') : T('outputs of all decoder blocks joined end-to-end (our reading of “32 blocks × 4,096”; the paper does not say how)', '所有 decoder block 的輸出頭尾接起來（我們對「32 個區塊 × 4,096」的解讀；論文沒說怎麼組合）');
   const part = v => (v.partition === 'grid' ? 'Grid' : 'KMeans') + ' · PCA ' + v.pca + ' · ' + v.states + ' ' + T('states', '個狀態');
   const f = x => x.toFixed(3);
-  el.innerHTML = `<div class="tablewrap"><table><thead><tr><th>${T('Version', '版本')}</th><th>${T('Hidden state per token', '每個 token 的隱藏狀態')}</th><th>${T('Best setting (picked on validation)', '最佳設定（以驗證集挑選）')}</th><th>${T('Validation AUC plaus. / truth.', '驗證集 AUC 合理性／真實性')}</th><th>${T('Test AUC plaus. / truth.', '測試集 AUC 合理性／真實性')}</th><th></th></tr></thead><tbody>` +
-    V.map(v => `<tr${v.selected ? ' style="background:var(--accent-soft)"' : ''}><td style="font-weight:600;color:var(--ink)">${esc(name(v))}</td><td>${esc(how(v))}<br><span style="color:var(--muted)">${v.dimsPerToken} ${T('numbers', '個數字')}</span></td><td>${esc(part(v))}</td><td class="num">${f(v.valPlaus)} / ${f(v.valTruth)}</td><td class="num">${f(v.testPlaus)} / ${f(v.testTruth)}</td><td>${v.selected ? '<b>' + T('used below', '下方使用') + '</b>' : ''}</td></tr>`).join('') + `</tbody></table></div>` +
-    `<p class="note">${T(`Chosen by the higher mean of the two <em>validation</em> AUCs; the test AUCs (${m.testQuestions} held-out questions, noise about ±0.03) are only reported. “Plausibility” = original vs garbled text (our own OOD test); “truthfulness” = TruthfulQA reference true vs false answer. Not comparable with the paper’s Llama-7b results.`, `以兩個<em>驗證集</em> AUC 的平均較高者為準；測試集 AUC（${m.testQuestions} 題保留題，誤差約 ±0.03）只用來呈現。「合理性」＝原文 vs 亂碼（我們自己做的 OOD 測試）；「真實性」＝TruthfulQA 標準答案 vs 錯誤答案。不能和論文 Llama-7b 的結果直接比。`)}</p>`;
+  const task = v => v.task === 'ood' ? T('Plausibility (OOD)', '合理性（OOD）') : T('Truthfulness (hallucination)', '真實性（幻覺）');
+  el.innerHTML = `<div class="tablewrap"><table><thead><tr><th>${T('Task', '任務')}</th><th>${T('Version', '版本')}</th><th>${T('Hidden state per token', '每個 token 的隱藏狀態')}</th><th>${T('Best setting (picked on validation)', '最佳設定（以驗證集挑選）')}</th><th>${T('Validation AUC', '驗證集 AUC')}</th><th>${T('Test AUC', '測試集 AUC')}</th><th></th></tr></thead><tbody>` +
+    V.map(v => `<tr${v.selected ? ' style="background:var(--accent-soft)"' : ''}><td>${esc(task(v))}</td><td style="font-weight:600;color:var(--ink)">${esc(name(v))}</td><td>${esc(how(v))}<br><span style="color:var(--muted)">${v.dimsPerToken} ${T('numbers', '個數字')}</span></td><td>${esc(part(v))}</td><td class="num">${f(v.val)}</td><td class="num">${f(v.test)}</td><td>${v.selected ? '<b>' + T('used below', '下方使用') + '</b>' : ''}</td></tr>`).join('') + `</tbody></table></div>` +
+    `<p class="note">${T(`The two tasks are separate models; each uses the version with the higher <em>validation</em> AUC, and the test AUCs are only reported. “Plausibility” = original vs garbled text (our own OOD test; ${m.ood.testQuestions} held-out questions, noise about ±0.03). “Truthfulness” = GPT-2’s own TruthfulQA answers, generated with the authors’ prompt and judged true/false by Gemini (${m.hal.testQuestions} held-out questions: ${m.hal.testTrue} true / ${m.hal.testFalse} false, noise about ±0.04). Not comparable one-to-one with the paper’s 7B-model results.`, `兩個任務是各自獨立的模型，各用<em>驗證集</em> AUC 較高的版本；測試集 AUC 只用來呈現。「合理性」＝原文 vs 亂碼（我們自己做的 OOD 測試；${m.ood.testQuestions} 題保留題，誤差約 ±0.03）。「真實性」＝GPT-2 用作者的 prompt 自己回答 TruthfulQA，再由 Gemini 判斷真假（${m.hal.testQuestions} 題保留題：${m.hal.testTrue} 題真、${m.hal.testFalse} 題假，誤差約 ±0.04）。不能和論文 7B 模型的結果一對一比較。`)}</p>`;
 }
 function renderAll(){
-  renderBackground(); renderVersions(); renderPipeline(); setupLab1(); lab1(); lab2(); lab3(); lab4(); renderFormulas(); lab5(); renderResults();
+  renderBackground(); renderVersions(); renderPipeline(); setupLab1(); lab1(); lab2(); lab3(); lab4(); lab5(); renderResults();
 }
 function setLang(l){
   lang = l; document.documentElement.setAttribute('data-lang', l); document.documentElement.lang = l === 'zh' ? 'zh-Hant' : 'en';
@@ -1445,6 +1382,10 @@ function setLang(l){
 }
 $('#lang-en').addEventListener('click', () => setLang('en'));
 $('#lang-zh').addEventListener('click', () => setLang('zh'));
+addEventListener('keydown', e => {   // ` toggles EN / 中文 (e.code so it also works with a Chinese IME active), except while typing in a field
+  if (e.code !== 'Backquote' || e.ctrlKey || e.metaKey || e.altKey || e.isComposing || e.target.closest('textarea, [contenteditable]') || (e.target.tagName === 'INPUT' && !/^(range|checkbox|radio|button)$/.test(e.target.type))) return;
+  e.preventDefault(); setLang(lang === 'zh' ? 'en' : 'zh');
+});
 
 /* ============================ custom video scrubber ============================
    Binds a play button + draggable seek bar to a <video>, setting video.currentTime on every
@@ -1484,6 +1425,7 @@ function bindVideoScrubber(video, el){
 }
 bindVideoScrubber($('#intro-video'), $('#intro-player'));
 bindVideoScrubber($('#trace-video'), $('#trace-player'));
+bindVideoScrubber($('#dtmc-video'), $('#dtmc-player'));
 
 (function init(){
   let saved = 'zh'; try { saved = localStorage.getItem('luna-lang') || 'zh'; } catch (e) {}
@@ -1589,23 +1531,23 @@ bindVideoScrubber($('#trace-video'), $('#trace-player'));
   function render(){
     if (!last) return;
     const r = last, pv = r.plaus_verdict, tv = r.truth_verdict;
-    $('#lv-toks').innerHTML = r.tokens.map((w, i) => `<div class="tok${i === r.first_low ? ' first' : ''}" style="border-color:${col(r.trans[i])}" data-tip="${esc(T('state', '狀態'))} s${r.states[i]}\nP = ${f2(r.trans[i])}\nθ̄ = ${f2(r.theta[i])}"><div class="w">${esc(w.replace(/ /g, '␣')) || '·'}</div><div class="s">s${r.states[i]}</div><div class="v" style="color:${col(r.trans[i])}">${f2(r.trans[i])}</div></div>`).join('');
+    $('#lv-toks').innerHTML = r.tokens.map((w, i) => `<div class="tok${i === r.first_low ? ' first' : ''}" style="border-color:${col(r.trans[i])}" data-tip="${esc(T('state', '狀態'))} s${r.states[i]}\nP = ${f2(r.trans[i])}"><div class="w">${esc(w.replace(/ /g, '␣')) || '·'}</div><div class="s">s${r.states[i]}</div><div class="v" style="color:${col(r.trans[i])}">${f2(r.trans[i])}</div></div>`).join('');
     const pl = {normal: ['v-good', T('plausible', '合理')], borderline: ['v-bad', T('borderline', '有點怪')], abnormal: ['v-bad', T('abnormal', '異常')]}[pv];
     const tl = tv === 'ok' ? ['v-good', T('no red flag', '無明顯警訊')] : ['v-bad', T('suspect', '可疑')];
     $('#lv-scores').innerHTML =
       `<div class="score"><p class="score-k">${T('Plausibility', '合理性（OOD）')}</p><p class="score-v"><span class="verdict ${pl[0]}">${pl[1]}</span></p><p class="score-n">${T('mean transition prob', '平均轉移機率')} ${f2(r.plaus)} · ${T('normal-percentile', '正常樣本百分位')} ${(r.plaus_pct * 100).toFixed(0)}%</p></div>` +
       `<div class="score"><p class="score-k">${T('Truthfulness', '真實性（幻覺）')}</p><p class="score-v"><span class="verdict ${tl[0]}">${tl[1]}</span></p><p class="score-n">${T('mean θ̄', '平均 θ̄')} ${f2(r.truth)} · ${T('percentile', '百分位')} ${(r.truth_pct * 100).toFixed(0)}%</p></div>`;
-    const a0 = r.answer_start || 0, pa = r.trans.slice(a0).filter(x => x != null), ta = r.theta.slice(a0);
+    const a0 = r.answer_start || 0, pa = r.trans.slice(a0).filter(x => x != null), ta = r.theta;   // theta: truthfulness model's own token sequence (truth_tokens), all of it is the answer trace
     setFx('lv-toks', [
       FX(['Plausibility score (OOD)', '合理性分數（OOD）'], `\\text{plaus}=\\operatorname{AVG}\\,\\hat P(s_i\\!\\to\\! s_{i+1})=\\dfrac{${sumTex(pa)}}{${pa.length}}=${f2(r.plaus)},\\ \\ \\text{pct}=${(r.plaus_pct * 100).toFixed(0)}\\%`,
         ['Average transition probability over the answer tokens, then ranked against normal training answers. Below the 5th percentile ⇒ abnormal, below the 20th ⇒ borderline.', '對回答部分的 token 取平均轉移機率，再與正常訓練答案的分數排名比較。低於第 5 百分位 ⇒ 異常，低於第 20 百分位 ⇒ 有點怪。']),
       FX(['Truthfulness score (hallucination)', '真實性分數（幻覺）'], `\\text{truth}=\\operatorname{AVG}\\,\\bar\\theta(\\bar s_i)=\\dfrac{${sumTex(ta)}}{${ta.length}}=${f2(r.truth)},\\ \\ \\text{pct}=${(r.truth_pct * 100).toFixed(0)}\\%`,
-        ['Each state\'s θ̄ is the share of truthful answers among training tokens that landed there; the answer\'s score is their average. Below the 30th percentile ⇒ suspect.', '每個狀態的 θ̄，是落在該狀態的訓練 token 中屬於「真實答案」的比例；答案分數為其平均。低於第 30 百分位 ⇒ 可疑。'])
+        ['Your answer is re-run as if GPT-2 had written it after the authors\' prompt (a separate model from plausibility, with its own states). Each state\'s θ̄ is the share of training tokens there that came from answers judged true; the score is their average over the whole trace. Below the 30th percentile of training answers judged true ⇒ suspect.', '你的回答會被當成 GPT-2 在作者的 prompt 後自己寫出來的，重新跑一次（這是和合理性不同的另一個模型，狀態也不同）。每個狀態的 θ̄，是落在該狀態的訓練 token 中來自「被判為真話的答案」的比例；分數為整條軌跡的平均。低於訓練集真話答案的第 30 百分位 ⇒ 可疑。'])
     ]);
     const fl = r.first_low;
     $('#lv-note').innerHTML = T(
-      `<b>Reading it.</b> Plausibility is reliable here (held-out AUC ${f2(r.auc_plaus)} for normal vs. garbled text). Truthfulness is <b>moderate</b> (AUC ${f2(r.auc_truth)}; 0.5 = coin flip) and is measured on the dataset’s reference right/wrong answers, not on the model’s own generations (unlike the paper). GPT-2 small cannot really know facts, so treat it as a small-scale demo, not a fact-checker.` + (fl != null ? ` The first near-unseen transition is at token “${esc(r.tokens[fl])}”.` : ''),
-      `<b>怎麼讀：</b>合理性可信（正常 vs. 亂碼的留出集 AUC ${f2(r.auc_plaus)}）。真實性<b>中等</b>（AUC ${f2(r.auc_truth)}，0.5 = 擲硬幣），且評的是資料集的標準答案與錯誤答案，不是模型自己生成的答案（與論文不同）。GPT-2 small 並不真的懂事實，這只是小規模示範，不是事實查核器。` + (fl != null ? `第一個近乎未見的轉移出現在 token「${esc(r.tokens[fl])}」。` : ''));
+      `<b>Reading it.</b> Plausibility is reliable here (held-out AUC ${f2(r.auc_plaus)} for normal vs. garbled text). Truthfulness is <b>weak</b> (AUC ${f2(r.auc_truth)}; 0.5 = coin flip). As in the paper it is trained on the model’s own answers, but GPT-2 small mostly rambles: the answers judged true are largely vague or off-topic, so the score separates “no false claim” from “a concrete false claim” rather than right from wrong. Treat it as a small-scale demo, not a fact-checker.` + (fl != null ? ` The first near-unseen transition is at token “${esc(r.tokens[fl])}”.` : ''),
+      `<b>怎麼讀：</b>合理性可信（正常 vs. 亂碼的留出集 AUC ${f2(r.auc_plaus)}）。真實性<b>偏弱</b>（AUC ${f2(r.auc_truth)}，0.5 = 擲硬幣）。它和論文一樣是用模型自己生成的答案訓練的，但 GPT-2 small 大多在亂講，被判為真話的答案多半是含糊或答非所問，所以這個分數分的是「沒說假話」與「說了具體的假話」，而不是答對與答錯。這只是小規模示範，不是事實查核器。` + (fl != null ? `第一個近乎未見的轉移出現在 token「${esc(r.tokens[fl])}」。` : ''));
   }
 
   async function run(){

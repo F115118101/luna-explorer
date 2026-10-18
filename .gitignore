@@ -2,6 +2,7 @@
 live/luna_model.pkl
 live/luna_model_concat.pkl
 live/luna_model_last.pkl
+live/luna_model_gen.pkl
 live/TruthfulQA.csv
 live/tune_run.log
 live/truthfulqa_hf_generation.parquet
