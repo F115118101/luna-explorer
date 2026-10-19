@@ -3,7 +3,7 @@
 Usage:  python live/tune_luna.py     (writes luna_model.pkl, which server.py and export_luna_data.py load)
 
 Uses the 790 questions of TruthfulQA.csv only as a source of normal text ("Q: ...\nA: <Best Answer>"); abnormal = the same
-text shuffled with junk words inserted. Split by question: 60% train / 20% val / 20% test. Configs are picked on VAL;
+question with only the ANSWER shuffled and junk words inserted, so both are scored on answer tokens only. Split by question: 60% train / 20% val / 20% test. Configs are picked on VAL;
 TEST is scored once at the end. Truthfulness (hallucination) is a separate model: tune_luna_gen.py.
 """
 import csv, itertools, json, os, pickle, random, shutil, time, urllib.request
@@ -81,7 +81,7 @@ t0 = time.time()
 for split, rs in parts.items():
     for r in rs:
         items = [("true", qa(r["Question"], r["Best Answer"]))]
-        if split != "train": items.append(("garb", garble(items[0][1])))
+        if split != "train": items.append(("garb", qa(r["Question"], garble(r["Best Answer"]))))
         for kind, text in items:
             tokens, h = embed(text)
             traces.append(dict(split=split, kind=kind, h=h, start=answer_start(tokens)))

@@ -23,9 +23,9 @@
    "dims_per_token": 9216,
    "partition": "kmeans",
    "pca": 2048,
-   "states": 400,
-   "val": 0.9253,
-   "test": 0.8993,
+   "states": 600,
+   "val": 0.8689,
+   "test": 0.9086,
    "selected": true
   },
   {
@@ -37,8 +37,8 @@
    "partition": "kmeans",
    "pca": 96,
    "states": 200,
-   "val": 0.799,
-   "test": 0.8048,
+   "val": 0.7886,
+   "test": 0.8303,
    "selected": false
   }
  ]

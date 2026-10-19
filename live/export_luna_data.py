@@ -72,10 +72,10 @@ n = len(rows); a, b = int(n * 0.6), int(n * 0.8)
 train, val, test = rows[:a], rows[a:b], rows[b:]
 qa = lambda q, ans: f"Q: {q}\nA: {ans}"
 for r in val:                          # consume the random stream exactly as tune_luna.py did
-    garble(qa(r["Question"], r["Best Answer"]))
+    garble(r["Best Answer"])
 test_items = []
 for r in test:
-    t = qa(r["Question"], r["Best Answer"]); test_items.append(dict(q=r["Question"], true=t, garb=garble(t)))
+    test_items.append(dict(q=r["Question"], a=r["Best Answer"], true=qa(r["Question"], r["Best Answer"]), garb=qa(r["Question"], garble(r["Best Answer"]))))
 print("OOD:", len(train), len(val), len(test), "questions (train/val/test)")
 
 P = M["P"]
@@ -154,9 +154,12 @@ cand.sort(key=lambda x: -x[0])
 for k, (g, it, why) in enumerate([(g, it, "clear") for g, it in cand[:N_GOOD]] + [(g, it, "counter-example") for g, it in cand[-1:]]):
     print(f"OOD {why:16s} gap {g:+.3f}  {it['q'][:60]}")
     for kind, lab, nm in (("true", "normal", "normal"), ("garb", "abnormal", "garbled text")):
-        r = by[(it["q"], kind)]; s = r["s"]
-        traces.append({"id": f"OOD {why} #{k + 1} · {nm}", "mode": "transition", "label": lab, "prompt": r["text"], "tokens": [clean(x) for x in r["tokens"]],
-                       "states": [f"s{int(x)}" for x in s], "semantics": [None] + [round(float(P[a_, b_]), 4) for a_, b_ in zip(s[:-1], s[1:])]})
+        r = by[(it["q"], kind)]; s, st = r["s"], r["start"]
+        sem = [None] + [round(float(P[a_, b_]), 4) for a_, b_ in zip(s[:-1], s[1:])]   # sem[i] = transition INTO token i
+        sem = [None if i < st else v for i, v in enumerate(sem)]                          # only answer tokens, exactly what plaus() averages
+        traces.append({"id": f"OOD {why} #{k + 1} · {nm}", "mode": "transition", "label": lab, "prompt": f"Q: {it['q']}",
+                       "answer": r["text"].split("\nA: ", 1)[1], "tokens": [clean(x) for x in r["tokens"]],
+                       "states": [f"s{int(x)}" for x in s], "semantics": sem, "answerStart": int(st)})
 # HAL: one answer per question (GPT-2's own), so normal and abnormal examples come from different questions.
 # clear = highest-scoring true answers / lowest-scoring false answers; counter-example = lowest true / highest false.
 hal_ok = [r for r in hal if r["retokenized_ok"]]
@@ -165,8 +168,10 @@ abn = sorted([r for r in hal_ok if r["label"] == 0], key=lambda r: r["score"])
 for k, (rn, ra, why) in enumerate([(nor[j], abn[j], "clear") for j in range(N_GOOD)] + [(nor[-1], abn[-1], "counter-example")]):
     print(f"HAL {why:16s} true {rn['score']:.3f} / false {ra['score']:.3f}")
     for r, lab, nm in ((rn, "normal", "judged true"), (ra, "abnormal", "judged false")):
-        traces.append({"id": f"HAL {why} #{k + 1} · {nm}", "mode": "state", "label": lab, "prompt": f"Q: {r['q']}", "tokens": [clean(x) for x in r["tokens"]],
-                       "states": [f"s{int(x)}" for x in r["s"]], "semantics": [round(float(theta[x]), 4) for x in r["s"]]})
+        g = gen[r["idx"]]["generated"]
+        traces.append({"id": f"HAL {why} #{k + 1} · {nm}", "mode": "state", "label": lab, "prompt": f"Q: {r['q']}", "answer": g.split("A: ", 1)[1] if "A: " in g else g,
+                       "tokens": [clean(x) for x in r["tokens"]], "states": [f"s{int(x)}" for x in r["s"]],
+                       "semantics": [round(float(theta[x]), 4) for x in r["s"]], "answerStart": 1})   # token 0 = last question token (generation step 0)
 
 # ---- Lab 4: per-sample semantic scores on the whole test split ----
 r4 = lambda v: [round(float(x), 4) for x in v]

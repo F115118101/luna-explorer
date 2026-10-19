@@ -157,6 +157,8 @@ td.num{font-family:var(--mono);white-space:nowrap}
 .tok .s{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:1px}
 .tok .v{font-family:var(--mono);font-size:11px;margin-top:2px}
 .tok.first{outline:2px solid var(--bad);outline-offset:2px}
+.tok.pre{opacity:.5;border-style:dashed}   /* prompt tokens before the answer (§05 trace inspector) */
+.tok-box{max-height:230px;overflow-y:auto}  /* long traces (HAL answers are 100 tokens) scroll inside instead of pushing the chart down */
 /* pre-rendered intro animation (baked with Manim, not driven by JS) */
 .intro-video{width:100%;max-width:100ch;display:block;border-radius:7px 7px 0 0;background:#05070c;border:1px solid var(--rule);border-bottom:0;cursor:pointer}
 /* custom video scrubber — native <video controls> only seeks on mouse-up in most browsers;
@@ -258,6 +260,8 @@ footer{border-top:1px solid var(--rule);padding-block:30px 48px;font-size:12.5px
 }
 .stack.two{grid-template-columns:1fr 1fr}
 @media(max-width:900px){.stack.two{grid-template-columns:1fr}}
+.stack.three{grid-template-columns:repeat(3,1fr)}
+@media(max-width:900px){.stack.three{grid-template-columns:1fr}}
 
 /* ---- scrollbars matching the theme ---- */
 *{scrollbar-width:thin;scrollbar-color:#2F3A50 transparent}
@@ -300,8 +304,8 @@ html::-webkit-scrollbar-track{background:var(--ground)}
     <a href="#s4">04 <span lang="en">DTMC</span><span lang="zh">DTMC</span></a>
     <a href="#s5">05 <span lang="en">Semantics</span><span lang="zh">語意綁定</span></a>
     <a href="#s6">06 <span lang="en">ROC</span><span lang="zh">ROC</span></a>
-    <a href="#s7">07 <span lang="en">180 configs</span><span lang="zh">180 設定</span></a>
-    <a href="#s8">08 <span lang="en">Results</span><span lang="zh">結果</span></a>
+    <a href="#s7">07 <span lang="en">Results</span><span lang="zh">結果</span></a>
+    <a href="#s8">08 <span lang="en">180 configs</span><span lang="zh">180 設定</span></a>
     <a href="#s9">09 <span lang="en">Implementation</span><span lang="zh">實作</span></a>
   </nav>
 </div>
@@ -333,7 +337,7 @@ html::-webkit-scrollbar-track{background:var(--ground)}
 <section id="s1">
   <div class="sec-head"><span class="sec-num">01</span><div>
     <h2><span lang="en">Why LLMs need a new kind of analysis</span><span lang="zh">為什麼 LLM 需要新的分析方法</span></h2>
-    <p class="sec-sub"><span lang="en">Four ways an autoregressive model differs from the classifiers QA research grew up on</span><span lang="zh">自迴歸模型與過去 QA 研究所針對的分類器有四點不同</span></p></div></div>
+    <p class="sec-sub"><span lang="en">Three features the paper says set LLMs apart from the CNNs and RNNs that DNN quality analysis was built for</span><span lang="zh">論文指出 LLM 與 CNN／RNN 的三點不同</span></p></div></div>
   <p style="margin-top:-6px"><span lang="en">For how a decoder-only LLM writes one token step by step, see the <a href="concepts.html#llm" target="_blank" rel="noopener">generation loop on the Concepts page</a>.</span><span lang="zh">decoder-only LLM 如何一步步寫出一個 token，見<a href="concepts.html#llm" target="_blank" rel="noopener">補充頁面的生成迴圈</a>。</span></p>
   <div class="figure" style="margin-bottom:22px">
     <div class="fig-head"><p class="fig-title"><span lang="en">How LLMs are analysed today</span><span lang="zh">目前如何分析 LLM</span></p></div>
@@ -342,17 +346,13 @@ html::-webkit-scrollbar-track{background:var(--ground)}
       <div id="bg-table"></div>
     </div>
   </div>
-  <div>
-    <div class="stack two">
-      <div class="item"><span class="item-n">01</span><div><h3><span lang="en">Scale and opacity</span><span lang="zh">規模與黑箱</span></h3>
-        <p><span lang="en">One Llama-7b token carries 32 decoder blocks × 4,096 dimensions = 131,072 numbers. Nobody can inspect that directly.</span><span lang="zh">Llama-7b 的單一 token 有 32 個解碼器區塊 × 4,096 維 = 131,072 個數字，無法直接檢視。</span></p></div></div>
-      <div class="item"><span class="item-n">02</span><div><h3><span lang="en">Generation is a stateful stochastic process</span><span lang="zh">生成是有狀態的隨機過程</span></h3>
-        <p><span lang="en">Each token depends on every previous one, so quality is a property of the whole trajectory, not of one output. A classifier emits one label; an LLM emits a path.</span><span lang="zh">每個 token 依賴之前所有 token，品質是整條軌跡的性質，而非單一輸出。分類器輸出一個標籤，LLM 輸出的是一條路徑。</span></p></div></div>
-      <div class="item"><span class="item-n">03</span><div><h3><span lang="en">Trust failures are diverse</span><span lang="zh">可信賴性問題多樣</span></h3>
-        <p><span lang="en">Hallucination, OOD inputs and adversarial perturbations look different but share one need: know when the model is in an unhealthy internal state.</span><span lang="zh">幻覺、OOD 輸入、對抗擾動看起來不同，卻共享同一需求：知道模型何時處於不健康的內部狀態。</span></p></div></div>
-      <div class="item"><span class="item-n">04</span><div><h3><span lang="en">Existing model-based analysis targeted RNN classifiers</span><span lang="zh">既有的模型化分析針對 RNN 分類器</span></h3>
-        <p><span lang="en">DeepStellar, DeepMemory, RNNRepair and friends abstract RNN states into automata. Whether that carries over to Transformers was an open question — LUNA is the exploratory answer.</span><span lang="zh">DeepStellar、DeepMemory、RNNRepair 等把 RNN 狀態抽象成自動機；能否延伸到 Transformer 原本未知，LUNA 是探索性的回答。</span></p></div></div>
-    </div>
+  <div class="stack three">
+    <div class="item"><span class="item-n">01</span><div><h3><span lang="en">Self-attention, not recurrence</span><span lang="zh">Self-attention，不是遞迴</span></h3>
+      <p><span lang="en">An RNN carries one hidden state h<sub>t</sub> from step to step, so it already is a state machine. A Transformer has no such state: every token attends directly to all earlier tokens. LUNA therefore has to choose what a "state" is (a token's decoder-block output) and assume it is roughly Markov (<a href="concepts.html#rnn" target="_blank" rel="noopener">why this is an approximation</a>).</span><span lang="zh">RNN 每一步把一個隱藏狀態 h<sub>t</sub> 傳給下一步，本身就是狀態機。Transformer 沒有這種狀態，每個 token 直接透過 attention 看前面所有 token。所以 LUNA 必須自己定義「狀態」（token 的 decoder block 輸出），並假設它近似 Markov（<a href="concepts.html#rnn" target="_blank" rel="noopener">為什麼這是近似</a>）。</span></p></div></div>
+    <div class="item"><span class="item-n">02</span><div><h3><span lang="en">Very large scale</span><span lang="zh">規模龐大</span></h3>
+      <p><span lang="en">LLaMA models have 6.7 to 65.2 billion parameters, and one Llama-7b token carries 32 decoder blocks × 4,096 dimensions = 131,072 numbers. States this high-dimensional and sparse cannot be partitioned directly, so LUNA first reduces them with PCA.</span><span lang="zh">LLaMA 系列有 67 億到 652 億個參數；Llama-7b 的單一 token 就有 32 個區塊 × 4,096 維 = 131,072 個數字。這麼高維又稀疏的狀態無法直接分群，所以 LUNA 先用 PCA 降維。</span></p></div></div>
+    <div class="item"><span class="item-n">03</span><div><h3><span lang="en">Generative output</span><span lang="zh">生成式輸出</span></h3>
+      <p><span lang="en">A classifier emits one label you can check against ground truth. An LLM emits a path of tokens, each depending on the ones before and on a wide range of user inputs, so there is no single label to check. LUNA instead binds a quality value to each state and scores the whole trajectory.</span><span lang="zh">分類器輸出一個標籤，和標準答案比對即可。LLM 輸出的是一串 token，每個都依賴前面的內容與各式各樣的使用者輸入，沒有單一標籤可比。所以 LUNA 把品質值綁到每個狀態上，再替整條軌跡打分。</span></p></div></div>
   </div>
 </section>
 
@@ -489,7 +489,7 @@ html::-webkit-scrollbar-track{background:var(--ground)}
       <div class="demo-vis">
         <p class="vis-label"><span lang="en">Prompt &amp; answer tokens → abstract state → semantics θ̄</span><span lang="zh">提示與回答 token → 抽象狀態 → 語意 θ̄</span></p>
         <div id="l3-prompt" class="note" style="margin-bottom:10px"></div>
-        <div class="vis-box" style="padding:10px"><div class="tok-row" id="l3-toks"></div></div>
+        <div class="vis-box tok-box" style="padding:10px"><div class="tok-row" id="l3-toks"></div></div>
         <p class="vis-label" style="margin-top:14px"><span lang="en">Semantics along the trace</span><span lang="zh">沿軌跡的語意值</span></p>
         <div class="vis-box"><svg class="stage" id="l3-chart" viewBox="0 0 620 220"></svg></div>
       </div>
@@ -512,7 +512,7 @@ html::-webkit-scrollbar-track{background:var(--ground)}
     <h2><span lang="en">From scores to ROC AUC</span><span lang="zh">從分數到 ROC AUC</span></h2>
     <p class="sec-sub"><span lang="en">The paper's headline metric, shown on our own GPT-2 model's real scores</span><span lang="zh">論文的主要指標，用我們自己 GPT-2 模型的真實分數呈現</span></p></div></div>
   <div class="col" style="margin-bottom:24px">
-    <p><span lang="en">Detection quality is summarized by ROC AUC: the probability that a random normal sample scores higher than a random abnormal one (0.5 = coin flip, 1.0 = perfectly separated). The paper publishes only aggregated AUCs, not per-sample scores, so its score distributions cannot be drawn; its AUCs are in section 08. The figure below uses the real test-set scores of our own GPT-2 model. Step-by-step ROC construction: <a href="concepts.html#roc">concepts → ROC</a>.</span><span lang="zh">偵測品質以 ROC AUC 概括：隨機一個正常樣本分數高於隨機一個異常樣本的機率（0.5 = 擲硬幣，1.0 = 完全分開）。論文只公開彙總後的 AUC，沒有逐樣本分數，因此畫不出它的分數分布；論文的 AUC 見第 08 節。下圖使用我們自己 GPT-2 模型在測試集上的真實分數。ROC 怎麼一步一步建出來：<a href="concepts.html#roc">觀念頁 → ROC</a>。</span></p>
+    <p><span lang="en">Detection quality is summarized by ROC AUC: the probability that a random normal sample scores higher than a random abnormal one (0.5 = coin flip, 1.0 = perfectly separated). The paper publishes only aggregated AUCs, not per-sample scores, so its score distributions cannot be drawn; its AUCs are in section 07. The figure below uses the real test-set scores of our own GPT-2 model. Step-by-step ROC construction: <a href="concepts.html#roc">concepts → ROC</a>.</span><span lang="zh">偵測品質以 ROC AUC 概括：隨機一個正常樣本分數高於隨機一個異常樣本的機率（0.5 = 擲硬幣，1.0 = 完全分開）。論文只公開彙總後的 AUC，沒有逐樣本分數，因此畫不出它的分數分布；論文的 AUC 見第 07 節。下圖使用我們自己 GPT-2 模型在測試集上的真實分數。ROC 怎麼一步一步建出來：<a href="concepts.html#roc">觀念頁 → ROC</a>。</span></p>
     <p><span lang="en">Where the labels come from (hallucination, TruthfulQA): in the authors' released code, the judge's continuous <code>truth_prob</code> is first cut at 0.5 into a 0/1 label (<code>luna/data_loader.py</code>). That 0/1 label is both the normal/abnormal ground truth for the ROC and the value each training token carries into its state — so the <code>θ̄</code> used for the reported AUC is the fraction of a state's tokens that came from true answers, <code>pos / (pos + neg)</code> (<code>construct_dtmc_state_model</code>). This is the same averaging as in section 05, just applied to 0/1 instead of the raw probability; the continuous-probability average appears only in the authors' online-monitor demo (<code>get_semantic_state_model</code>).</span><span lang="zh">標籤從哪來（幻覺任務，TruthfulQA）：作者公開的程式會先把評審模型給的連續值 <code>truth_prob</code> 以 0.5 為門檻切成 0／1 標籤（<code>luna/data_loader.py</code>）。這個 0／1 標籤既是 ROC 的正常／異常答案，也是每個訓練 token 帶進所屬狀態的值。因此論文 AUC 所用的 <code>θ̄</code>，是該狀態的 token 中來自真話答案的比例，即 <code>pos / (pos + neg)</code>（<code>construct_dtmc_state_model</code>）。這和第 05 節的平均是同一套做法，只是平均的對象是 0／1 而不是原始機率；以連續機率取平均的版本只出現在作者的線上監測示範（<code>get_semantic_state_model</code>）。</span></p>
   </div>
   <div class="figure">
@@ -537,13 +537,56 @@ html::-webkit-scrollbar-track{background:var(--ground)}
   </div>
 </section>
 
-<!-- ================= 07 LAB5 ================= -->
+<!-- ================= 07 RESULTS ================= -->
 <section id="s7" class="sec-wide">
   <div class="sec-head"><span class="sec-num">07</span><div>
+    <h2><span lang="en">Results from the paper</span><span lang="zh">論文實驗結果</span></h2>
+    <p class="sec-sub"><span lang="en">Transcribed directly from Tables IV and V — this figure does not depend on simulation</span><span lang="zh">直接轉錄自表 IV 與表 V——此圖不依賴模擬</span></p></div></div>
+  <div class="split">
+  <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">Detection performance across 10 tasks</span><span lang="zh">10 個任務的偵測效能</span></p><p class="fig-note"><span lang="en">Each row aggregates 180 configurations.</span><span lang="zh">每列彙整 180 種設定。</span></p><span class="badge-paper">PAPER</span></div>
+    <div style="padding:16px 20px">
+      <div class="seg tabs"><button id="rs-auc" type="button" aria-pressed="true"><span lang="en">ROC AUC range</span><span lang="zh">ROC AUC 範圍</span></button><button id="rs-sig" type="button" aria-pressed="false"><span lang="en">RQ1 significant proportion</span><span lang="zh">RQ1 顯著比例</span></button></div>
+      <div class="vis-box"><svg class="stage" id="rs-svg" viewBox="0 0 900 400"></svg></div>
+    </div>
+  </div>
+  <div>
+    <div class="cards">
+      <div class="card"><span class="tag">RQ1</span><h3><span lang="en">Can it tell normal from abnormal?</span><span lang="zh">能區分正常與異常嗎？</span></h3><p><span lang="en">Yes. Normal-train and normal-test transition distributions coincide; abnormal ones differ (all tasks except TL-CodeSum). 20 %–64 % of all 180 models are individually significant (Mann-Whitney U, p &lt; 0.05).</span><span lang="zh">可以。正常訓練與測試的轉移分布重合，異常則不同（除了 TL-CodeSum，其他任務都看得出來）。180 個模型中 20%–64% 各自達顯著（Mann-Whitney U，p &lt; 0.05）。</span></p></div>
+      <div class="card"><span class="tag">RQ2</span><h3><span lang="en">What shapes model quality?</span><span lang="zh">什麼影響模型品質？</span></h3><p><span lang="en">More PCA components ⇒ better perplexity &amp; coverage but worse sensitivity &amp; SDE. Clustering ⇒ compact and well-covered; grid ⇒ better distribution/transition fidelity. DTMC ≥ HMM on most metrics.</span><span lang="zh">PCA 成分越多 ⇒ 困惑度與覆蓋率較佳，但敏感度與 SDE 較差。分群 ⇒ 精簡且覆蓋好；網格 ⇒ 分布／轉移保真較佳。多數指標上 DTMC ≥ HMM。</span></p></div>
+      <div class="card"><span class="tag">RQ3</span><h3><span lang="en">Which metrics predict AUC?</span><span lang="zh">哪些指標預測 AUC？</span></h3><p><span lang="en">Semantic preciseness (PRE) correlates strongly everywhere (Pearson 0.81–1.00); perplexity is the broadly useful model-wise metric. Others flip sign across tasks — combine several. (<a href="concepts.html#metrics">what these metrics mean →</a>)</span><span lang="zh">語意精確度（PRE）處處強相關（Pearson 0.81–1.00）；困惑度是最廣用的模型層級指標。其他指標跨任務正負不一——需組合使用。（<a href="concepts.html#metrics">這些指標是什麼意思 →</a>）</span></p></div>
+      <div class="card"><span class="tag"><span lang="en">Caveat</span><span lang="zh">限制</span></span><h3><span lang="en">Honest reading</span><span lang="zh">誠實解讀</span></h3><p><span lang="en">Most mean AUCs sit at 0.55–0.70; the 0.83–0.90 headline numbers are best-of-180 configurations. White-box only, three 7–13B models, and results are configuration-sensitive.</span><span lang="zh">多數平均 AUC 落在 0.55–0.70；0.83–0.90 的亮眼數字是 180 種設定中的最佳者。僅限白箱、僅 3 個 7–13B 模型，且結果對設定敏感。</span></p></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ================= 08 LAB5 ================= -->
+<section id="s8" class="sec-wide">
+  <div class="sec-head"><span class="sec-num">08</span><div>
     <h2><span lang="en">The 180-configuration space</span><span lang="zh">180 種設定空間</span></h2>
     <p class="sec-sub"><span lang="en">Which quality metric predicts detection performance? Explore it per task</span><span lang="zh">哪個品質指標能預測偵測效能？逐任務探索</span></p></div></div>
   <div class="col" style="margin-bottom:24px">
-    <p><span lang="en">Table III enumerates 180 hyper-parameter settings (27 + 81 + 18 + 54). Each dot below is one setting: x is a quality metric, y is its ROC AUC. If a metric tracks AUC, you can rank settings by that metric <em>without</em> labeled abnormal data — the paper's practitioner recipe. The simulated cloud is generated so its Pearson correlations match the paper's Tables VII/VIII; the Kendall τ and the shape of the cloud are computed live.</span><span lang="zh">表 III 列舉 180 種超參數設定（27 + 81 + 18 + 54）。下圖每個點是一種設定：x 是品質指標、y 是其 ROC AUC。若某指標與 AUC 同步，就能<em>不需</em>異常標註資料、僅憑該指標對設定排序——這是論文給實務者的做法。模擬點雲的 Pearson 相關係數依論文表 VII/VIII 設計；Kendall τ 與點雲形狀則為即時計算。</span></p>
+    <p><span lang="en">The 180 settings are not sampled: they are every combination of the hyper-parameter values in Table III below (a grid search). Each combination builds its own abstract model, and every task runs detection with all of them, giving one ROC AUC per setting.</span><span lang="zh">這 180 種設定不是抽樣來的，而是下方表 III 各超參數取值的所有組合（網格搜尋）。每一種組合各建一個抽象模型，每個任務都用全部模型跑一次偵測，每種設定得到一個 ROC AUC。</span></p>
+  </div>
+  <div class="figure" style="margin-bottom:24px">
+    <div class="fig-head"><p class="fig-title"><span lang="en">Table III — the hyper-parameter grid</span><span lang="zh">表 III：超參數組合</span></p><p class="fig-note"><span lang="en">Transcribed from the paper.</span><span lang="zh">轉錄自論文。</span></p><span class="badge-paper">PAPER</span></div>
+    <div style="padding:16px 18px">
+      <div class="tablewrap"><table>
+        <thead><tr><th><span lang="en">Partition</span><span lang="zh">劃分</span></th><th><span lang="en">Model</span><span lang="zh">模型</span></th><th><span lang="en">PCA components</span><span lang="zh">PCA 成分</span></th><th><span lang="en">#States†</span><span lang="zh">#狀態†</span></th><th><span lang="en">Additional parameters</span><span lang="zh">額外參數</span></th><th><span lang="en">#Settings</span><span lang="zh">設定數</span></th></tr></thead>
+        <tbody>
+          <tr><td>Grid</td><td>DTMC</td><td class="num">{3, 5, 10}</td><td class="num">{5, 10, 15}</td><td>History Step {1, 2, 3}</td><td class="num">3×3×3 = 27</td></tr>
+          <tr><td>Grid</td><td>HMM</td><td class="num">{3, 5, 10}</td><td class="num">{5, 10, 15}</td><td>History Step {1, 2, 3}; HMM Comp {100, 200, 400}</td><td class="num">3×3×3×3 = 81</td></tr>
+          <tr><td>Cluster</td><td>DTMC</td><td class="num">{512, 1024, 2048}</td><td class="num">{200, 400, 600}</td><td>Cluster {GMM, KMeans}</td><td class="num">3×3×2 = 18</td></tr>
+          <tr><td>Cluster</td><td>HMM</td><td class="num">{512, 1024, 2048}</td><td class="num">{200, 400, 600}</td><td>Cluster {GMM, KMeans}; HMM Comp {100, 200, 400}</td><td class="num">3×3×2×3 = 54</td></tr>
+          <tr><td colspan="5" style="color:var(--ink);font-weight:600"><span lang="en">Total</span><span lang="zh">合計</span></td><td class="num" style="color:var(--ink);font-weight:600">180</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note" style="margin-top:12px"><span lang="en">† For Grid, #States is cells per dimension; the real state count is that number to the power of the PCA components (15 cells in 10 dimensions = 15¹⁰), which is why Grid only uses 3–10 dimensions. History Step merges that many consecutive steps into one state; HMM Comp is the number of HMM hidden states. The paper treats the two PCA sets as low / medium / high levels, not comparable numbers.</span><span lang="zh">† Grid 的 #狀態是每一維切幾格，實際狀態數是它的 PCA 成分數次方（每維 15 格、10 維 = 15¹⁰），所以 Grid 只用 3～10 維。History Step 是把相鄰幾步合成一個狀態；HMM Comp 是 HMM 的隱藏狀態數。論文把兩組 PCA 數字當成「低、中、高」三個等級，不能直接比大小。</span></p>
+      <p class="note" style="margin:6px 0 0"><span lang="en">The authors' released result files contain only 61–144 of the 180 settings per task, and none for ADV-A, so the explorer below shows fewer than 180 dots.</span><span lang="zh">作者公開的結果檔每個任務只有 61～144 種設定，ADV-A 則完全沒有，所以下方探索器的點少於 180 個。</span></p>
+    </div>
+  </div>
+  <div class="col" style="margin-bottom:24px">
+    <p><span lang="en">Each dot below is one setting: x is a quality metric, y is its ROC AUC. If a metric tracks AUC, you can rank settings by that metric <em>without</em> labeled abnormal data — the paper's practitioner recipe. Dots come from the authors' released per-setting results (badge <code>REAL DATA</code>); ADV-A has no released file, so it falls back to a simulated cloud whose Pearson correlations follow the paper's Tables VII/VIII (badge <code>SIMULATED</code>). AUC and PRE below 0.5 are flipped to 1 − value, as in the authors' notebook.</span><span lang="zh">下圖每個點是一種設定：x 是品質指標、y 是其 ROC AUC。若某指標與 AUC 同步，就能<em>不需</em>異常標註資料、僅憑該指標對設定排序——這是論文給實務者的做法。點來自作者公開的逐設定結果（標籤 <code>REAL DATA</code>）；ADV-A 沒有公開檔案，改用依論文表 VII/VIII 相關係數產生的模擬點雲（標籤 <code>SIMULATED</code>）。AUC 與 PRE 低於 0.5 時換成 1 − 值，與作者 notebook 的做法相同。</span></p>
     <p class="note" style="margin:0"><span lang="en">Not sure what a metric like PERP or PRE means, or want the core equations behind this page? See </span><span lang="zh">不確定 PERP、PRE 這類指標的意思，或想看這整頁背後的核心公式？請見 </span><a href="concepts.html#metrics"><span lang="en">the mathematics &amp; the 12 metrics →</span><span lang="zh">數學與 12 個指標 →</span></a></p>
   </div>
   <div class="figure">
@@ -577,29 +620,6 @@ html::-webkit-scrollbar-track{background:var(--ground)}
       <span><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#AEB7CA"/></svg>DTMC</span><span><svg width="12" height="12"><path d="M6 1L11 6L6 11L1 6Z" fill="#AEB7CA"/></svg>HMM</span>
     </div>
   </div>
-</section>
-
-<!-- ================= 08 RESULTS ================= -->
-<section id="s8" class="sec-wide">
-  <div class="sec-head"><span class="sec-num">08</span><div>
-    <h2><span lang="en">Results from the paper</span><span lang="zh">論文實驗結果</span></h2>
-    <p class="sec-sub"><span lang="en">Transcribed directly from Tables IV and V — this figure does not depend on simulation</span><span lang="zh">直接轉錄自表 IV 與表 V——此圖不依賴模擬</span></p></div></div>
-  <div class="split">
-  <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">Detection performance across 10 tasks</span><span lang="zh">10 個任務的偵測效能</span></p><p class="fig-note"><span lang="en">Each row aggregates 180 configurations.</span><span lang="zh">每列彙整 180 種設定。</span></p><span class="badge-paper">PAPER</span></div>
-    <div style="padding:16px 20px">
-      <div class="seg tabs"><button id="rs-auc" type="button" aria-pressed="true"><span lang="en">ROC AUC range</span><span lang="zh">ROC AUC 範圍</span></button><button id="rs-sig" type="button" aria-pressed="false"><span lang="en">RQ1 significant proportion</span><span lang="zh">RQ1 顯著比例</span></button></div>
-      <div class="vis-box"><svg class="stage" id="rs-svg" viewBox="0 0 900 400"></svg></div>
-    </div>
-  </div>
-  <div>
-    <div class="cards">
-      <div class="card"><span class="tag">RQ1</span><h3><span lang="en">Can it tell normal from abnormal?</span><span lang="zh">能區分正常與異常嗎？</span></h3><p><span lang="en">Yes. Normal-train and normal-test transition distributions coincide; abnormal ones differ (6 of 7 tasks visibly). 20 %–64 % of all 180 models are individually significant (Mann-Whitney U, p &lt; 0.05).</span><span lang="zh">可以。正常訓練與測試的轉移分布重合，異常則不同（7 個任務中 6 個明顯）。180 個模型中 20%–64% 各自達顯著（Mann-Whitney U，p &lt; 0.05）。</span></p></div>
-      <div class="card"><span class="tag">RQ2</span><h3><span lang="en">What shapes model quality?</span><span lang="zh">什麼影響模型品質？</span></h3><p><span lang="en">More PCA components ⇒ better perplexity &amp; coverage but worse sensitivity &amp; SDE. Clustering ⇒ compact and well-covered; grid ⇒ better distribution/transition fidelity. DTMC ≥ HMM on most metrics.</span><span lang="zh">PCA 成分越多 ⇒ 困惑度與覆蓋率較佳，但敏感度與 SDE 較差。分群 ⇒ 精簡且覆蓋好；網格 ⇒ 分布／轉移保真較佳。多數指標上 DTMC ≥ HMM。</span></p></div>
-      <div class="card"><span class="tag">RQ3</span><h3><span lang="en">Which metrics predict AUC?</span><span lang="zh">哪些指標預測 AUC？</span></h3><p><span lang="en">Semantic preciseness (PRE) correlates strongly everywhere (Pearson 0.81–1.00); perplexity is the broadly useful model-wise metric. Others flip sign across tasks — combine several. (<a href="concepts.html#metrics">what these metrics mean →</a>)</span><span lang="zh">語意精確度（PRE）處處強相關（Pearson 0.81–1.00）；困惑度是最廣用的模型層級指標。其他指標跨任務正負不一——需組合使用。（<a href="concepts.html#metrics">這些指標是什麼意思 →</a>）</span></p></div>
-      <div class="card"><span class="tag"><span lang="en">Caveat</span><span lang="zh">限制</span></span><h3><span lang="en">Honest reading</span><span lang="zh">誠實解讀</span></h3><p><span lang="en">Most mean AUCs sit at 0.55–0.70; the 0.83–0.90 headline numbers are best-of-180 configurations. White-box only, three 7–13B models, and results are configuration-sensitive.</span><span lang="zh">多數平均 AUC 落在 0.55–0.70；0.83–0.90 的亮眼數字是 180 種設定中的最佳者。僅限白箱、僅 3 個 7–13B 模型，且結果對設定敏感。</span></p></div>
-    </div>
-  </div></div>
 </section>
 
 
@@ -837,7 +857,7 @@ const STAGES = [
  {n:'03', en:'Model quality assessment', zh:'模型品質評估', sec:'III-D',
   inEn:['Semantics-bound abstract model'], inZh:['已綁定語意的抽象模型'],
   outEn:['6 abstract-model-wise + 6 semantics-wise metrics'], outZh:['6 個抽象模型層級 + 6 個語意層級指標'],
-  knobEn:['Which metrics to trust for which task','Rank the 180 configs without abnormal labels'], knobZh:['哪個任務信任哪些指標','不需異常標註即可對 180 設定排序'], lab:'#s7'},
+  knobEn:['Which metrics to trust for which task','Rank the 180 configs without abnormal labels'], knobZh:['哪個任務信任哪些指標','不需異常標註即可對 180 設定排序'], lab:'#s8'},
  {n:'04', en:'Practical application', zh:'實際應用', sec:'III-E',
   inEn:['New prompt + generated answer'], inZh:['新的提示與生成答案'],
   outEn:['Semantic score = AVG θ̄ → normal / abnormal','First low state localizes the fault'], outZh:['語意分數 = AVG θ̄ → 正常／異常','第一個低分狀態可定位錯誤'],
@@ -1036,8 +1056,13 @@ function lab3(){
   const vals = t.semantics.filter(v => v != null), score = mean(vals), abn = score < th, first = t.semantics.findIndex(v => v != null && v < th);
   setBadge('#l3-badge', App.loaded.traces);
   $('#l3-pick').innerHTML = App.loaded.traces ? T('<b>Note:</b> these examples are hand-picked by a fixed rule to make the method readable — not a random sample. OOD: the questions with the largest original-vs-garbled score gap. HAL: GPT-2’s own answers (all 100 generated tokens, judged true/false by Gemini), the highest-scoring true and lowest-scoring false ones; normal and abnormal therefore come from different questions. Each task also gets one counter-example. The default threshold is the best one on the test scores. For the overall result see §06.', '<b>注意：</b>這些範例是依固定規則挑選的，目的是讓方法容易看懂，不是隨機抽樣。OOD：原文與亂碼分數差距最大的題目。HAL：GPT-2 自己生成的答案（完整 100 個生成 token，由 Gemini 判斷真假），挑分數最高的真話與分數最低的假話，所以正常與異常範例來自不同題目。每種任務另加一個反例。預設門檻是測試分數上的最佳門檻。整體效果請看第06節。') : '';
-  $('#l3-prompt').innerHTML = `<b>${T('Prompt', '提示')}:</b> ${esc(t.prompt)}<br><b>${T('Semantics bound to', '語意綁定於')}:</b> ${t.mode === 'transition' ? T('transitions (OOD / adversarial): θ̄(⟨s̄ᵢ, s̄ᵢ₊₁⟩) = transition probability', '轉移（OOD／對抗）：θ̄(⟨s̄ᵢ, s̄ᵢ₊₁⟩) = 轉移機率') : T('states (hallucination): θ̄(s̄ᵢ) = truthfulness', '狀態（幻覺）：θ̄(s̄ᵢ) = 真實性')}`;
-  $('#l3-toks').innerHTML = t.tokens.map((w, i) => { const v = t.semantics[i]; return `<div class="tok ${i === first ? 'first' : ''}" style="background:${semColor(v)}" title="θ̄=${v == null ? 'n/a' : v}"><div class="w">${esc(w)}</div><div class="s">${esc(t.states[i] || '')}</div><div class="v">${v == null ? '—' : v.toFixed(2)}</div></div>`; }).join('');
+  const a0 = t.answerStart || 0;
+  const preNote = !a0 ? '' : t.mode === 'transition'
+    ? T('Dimmed chips = the question part of the text: it goes through GPT-2 too, but only transitions into answer tokens are scored.', '虛線淡色方塊＝文字中的問題部分：它也會經過 GPT-2，但只有落在回答 token 上的轉移才計分。')
+    : T('Dimmed first chip = the last token of the question: the trace starts at generation step 0, whose state is that token’s (as in the authors’ code); everything after it, including “↵A:”, was written by GPT-2.', '第一個虛線淡色方塊＝問題的最後一個 token：軌跡從生成第 0 步開始，那一步的狀態就是這個 token 的（同作者程式）；之後的全部，包括「↵A:」，都是 GPT-2 自己寫的。');
+  const ansLab = t.mode === 'transition' && t.label === 'abnormal' ? T('Answer (garbled)', '回答（打亂）') : T('Answer', '回答');
+  $('#l3-prompt').innerHTML = `<b>${T('Prompt', '提示')}:</b> ${esc(t.prompt)}` + (t.answer != null ? `<br><b>${ansLab}:</b> ${esc(t.answer).replace(/\n/g, '<br>')}` : '') + `<br><b>${T('Semantics bound to', '語意綁定於')}:</b> ${t.mode === 'transition' ? T('transitions (OOD / adversarial): θ̄(⟨s̄ᵢ, s̄ᵢ₊₁⟩) = transition probability', '轉移（OOD／對抗）：θ̄(⟨s̄ᵢ, s̄ᵢ₊₁⟩) = 轉移機率') : T('states (hallucination): θ̄(s̄ᵢ) = truthfulness', '狀態（幻覺）：θ̄(s̄ᵢ) = 真實性')}` + (preNote ? `<br><span style="opacity:.8">${preNote}</span>` : '');
+  $('#l3-toks').innerHTML = t.tokens.map((w, i) => { const v = t.semantics[i]; return `<div class="tok ${i === first ? 'first' : ''}${i < a0 ? ' pre' : ''}" style="background:${semColor(v)}" title="θ̄=${v == null ? 'n/a' : v}"><div class="w">${esc(w)}</div><div class="s">${esc(t.states[i] || '')}</div><div class="v">${v == null ? '—' : v.toFixed(2)}</div></div>`; }).join('');
   const W = 620, H = 220, l = 40, r = 14, tp = 16, bt = 34, n = t.tokens.length, X = i => l + (n === 1 ? .5 : i / (n - 1)) * (W - l - r), Y = v => tp + (1 - v) * (H - tp - bt);
   let s = ''; [0, .25, .5, .75, 1].forEach(v => { s += `<path d="M${l} ${Y(v)} H${W - r}" stroke="#232B3B"/><text x="${l - 6}" y="${Y(v) + 3}" font-size="10" fill="#7C869C" text-anchor="end">${v.toFixed(2)}</text>`; });
   s += `<path d="M${l} ${Y(th)} H${W - r}" stroke="#F4C26B" stroke-dasharray="5 4" stroke-width="1.4"/><text x="${W - r}" y="${Y(th) - 5}" font-size="10" fill="#F4C26B" text-anchor="end">${T('threshold', '門檻')} ${th.toFixed(2)}</text>`;
@@ -1364,12 +1389,14 @@ function renderVersions(){
   const m = App.data && App.data.meta && App.data.meta.ownModel, V = m && m.versions;
   if (!V || !V.length) { el.innerHTML = ''; return; }
   const name = v => v.version === 'last' ? T('Last block only', '只取最後一個區塊') : T('All blocks concatenated', '所有區塊串接');
-  const how = v => v.version === 'last' ? T('output of the last decoder block (what the authors’ released code does)', '最後一個 decoder block 的輸出（作者釋出程式碼的做法）') : T('outputs of all decoder blocks joined end-to-end (our reading of “32 blocks × 4,096”; the paper does not say how)', '所有 decoder block 的輸出頭尾接起來（我們對「32 個區塊 × 4,096」的解讀；論文沒說怎麼組合）');
+  const nb = v => Math.round(v.dimsPerToken / 768);   // GPT-2 small: 768 numbers per decoder block
+  const how = v => nb(v) > 1 ? `${nb(v)} × 768 = ${v.dimsPerToken.toLocaleString()}` : `${v.dimsPerToken}`;
   const part = v => (v.partition === 'grid' ? 'Grid' : 'KMeans') + ' · PCA ' + v.pca + ' · ' + v.states + ' ' + T('states', '個狀態');
   const f = x => x.toFixed(3);
   const task = v => v.task === 'ood' ? T('Plausibility (OOD)', '合理性（OOD）') : T('Truthfulness (hallucination)', '真實性（幻覺）');
   el.innerHTML = `<div class="tablewrap"><table><thead><tr><th>${T('Task', '任務')}</th><th>${T('Version', '版本')}</th><th>${T('Hidden state per token', '每個 token 的隱藏狀態')}</th><th>${T('Best setting (picked on validation)', '最佳設定（以驗證集挑選）')}</th><th>${T('Validation AUC', '驗證集 AUC')}</th><th>${T('Test AUC', '測試集 AUC')}</th><th></th></tr></thead><tbody>` +
-    V.map(v => `<tr${v.selected ? ' style="background:var(--accent-soft)"' : ''}><td>${esc(task(v))}</td><td style="font-weight:600;color:var(--ink)">${esc(name(v))}</td><td>${esc(how(v))}<br><span style="color:var(--muted)">${v.dimsPerToken} ${T('numbers', '個數字')}</span></td><td>${esc(part(v))}</td><td class="num">${f(v.val)}</td><td class="num">${f(v.test)}</td><td>${v.selected ? '<b>' + T('used below', '下方使用') + '</b>' : ''}</td></tr>`).join('') + `</tbody></table></div>` +
+    V.map(v => `<tr${v.selected ? ' style="background:var(--accent-soft)"' : ''}><td>${esc(task(v))}</td><td style="font-weight:600;color:var(--ink)">${esc(name(v))}</td><td class="num">${esc(how(v))}</td><td>${esc(part(v))}</td><td class="num">${f(v.val)}</td><td class="num">${f(v.test)}</td><td>${v.selected ? '<b>' + T('used below', '下方使用') + '</b>' : ''}</td></tr>`).join('') + `</tbody></table></div>` +
+    `<p class="note">${T(`<b>Versions.</b> “All blocks concatenated” joins the outputs of all decoder blocks end-to-end — our reading of the paper’s “32 blocks × 4,096”, since the paper does not say how the blocks are combined. “Last block only” takes the output of the last decoder block, which is what the authors’ released code does.`, `<b>版本：</b>「所有區塊串接」是把每個 decoder block 的輸出頭尾接起來，這是我們對論文「32 個區塊 × 4,096」的解讀（論文沒說各區塊怎麼組合）；「只取最後一個區塊」只用最後一個 decoder block 的輸出，是作者釋出程式碼的做法。`)}</p>` +
     `<p class="note">${T(`The two tasks are separate models; each uses the version with the higher <em>validation</em> AUC, and the test AUCs are only reported. “Plausibility” = original vs garbled text (our own OOD test; ${m.ood.testQuestions} held-out questions, noise about ±0.03). “Truthfulness” = GPT-2’s own TruthfulQA answers, generated with the authors’ prompt and judged true/false by Gemini (${m.hal.testQuestions} held-out questions: ${m.hal.testTrue} true / ${m.hal.testFalse} false, noise about ±0.04). Not comparable one-to-one with the paper’s 7B-model results.`, `兩個任務是各自獨立的模型，各用<em>驗證集</em> AUC 較高的版本；測試集 AUC 只用來呈現。「合理性」＝原文 vs 亂碼（我們自己做的 OOD 測試；${m.ood.testQuestions} 題保留題，誤差約 ±0.03）。「真實性」＝GPT-2 用作者的 prompt 自己回答 TruthfulQA，再由 Gemini 判斷真假（${m.hal.testQuestions} 題保留題：${m.hal.testTrue} 題真、${m.hal.testFalse} 題假，誤差約 ±0.04）。不能和論文 7B 模型的結果一對一比較。`)}</p>`;
 }
 function renderAll(){
