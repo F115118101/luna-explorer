@@ -918,11 +918,15 @@ function lab1(){
   const W = 620, H = 440, m = 14;
   const vx0 = Math.min(...D.map(p => p.x)) - .3, vx1 = Math.max(...D.map(p => p.x)) + .3, vy0 = Math.min(...D.map(p => p.y)) - .3, vy1 = Math.max(...D.map(p => p.y)) + .3;
   const X = x => m + (x - vx0) / (vx1 - vx0) * (W - 2 * m), Y = y => H - m - (y - vy0) / (vy1 - vy0) * (H - 2 * m);
-  let assign, nStates, extra = '', unseenFn;
+  let assign, nStates, occ = null, extra = '', unseenFn;
   const eps = 0.08 * (x1 - x0), rp = rng(7);
   if (part === 'grid') {
     const cell = p => { if (p.x < x0 || p.x > x1 || p.y < y0 || p.y > y1) return -1; const i = Math.min(n - 1, Math.floor((p.x - x0) / (x1 - x0) * n)), j = Math.min(n - 1, Math.floor((p.y - y0) / (y1 - y0) * n)); return i * n + j; };
-    assign = cell; const seen = new Set(tr.map(cell)); nStates = seen.size; unseenFn = p => { const c = cell(p); return c < 0 || !seen.has(c); };
+    assign = cell; const seen = new Set(tr.map(cell)); nStates = n * n; occ = seen.size;
+    // paper appendix + authors' code: unseen = outside the training min/max box (the drawn grid keeps the 0.4 padding the section-04 animation was rendered with)
+    const bx0 = x0 + pad, bx1 = x1 - pad, by0 = y0 + pad, by1 = y1 - pad;
+    unseenFn = p => p.x < bx0 || p.x > bx1 || p.y < by0 || p.y > by1;
+    extra += `<rect x="${X(bx0)}" y="${Y(by1)}" width="${X(bx1) - X(bx0)}" height="${Y(by0) - Y(by1)}" fill="none" stroke="#E7EBF3" stroke-width=".9" stroke-dasharray="4 3" opacity=".55"/>`;
     for (let i = 0; i <= n; i++) { const gx = x0 + (x1 - x0) * i / n, gy = y0 + (y1 - y0) * i / n;
       extra += `<path d="M${X(gx)} ${Y(y0)} V${Y(y1)} M${X(x0)} ${Y(gy)} H${X(x1)}" stroke="#2F3A50" stroke-width=".7"/>`; }
     for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (!seen.has(i * n + j)) extra += `<rect x="${X(x0 + (x1 - x0) * i / n)}" y="${Y(y0 + (y1 - y0) * (j + 1) / n)}" width="${(X(x1) - X(x0)) / n}" height="${(Y(y0) - Y(y1)) / n}" fill="#FF7B8B" opacity=".07"/>`;
@@ -945,21 +949,21 @@ function lab1(){
   $('#l1-svg').innerHTML = s;
   const total = tr.length;
   $('#l1-scores').innerHTML = [
-    [T('States |S̄|', '狀態數 |S̄|'), nStates, `${T('of', '／')} ${total} ${T('concrete', '具體')}`],
+    [T('States |S̄|', '狀態數 |S̄|'), nStates, (occ === null ? '' : `${occ} ${T('with data', '有資料')} · `) + `${T('of', '／')} ${total} ${T('concrete', '具體')}`],
     ['SUC', f3(nStates / total), T('lower = more compact', '越低越精簡')],
     ['COV·normal', (covN * 100).toFixed(1) + '%', T('unseen test states', '未見測試狀態')],
     ['COV·abnormal', (covA * 100).toFixed(1) + '%', T('unseen test states', '未見測試狀態')],
     ['SEN', (sen * 100).toFixed(1) + '%', T('flip under ε-noise', 'ε 擾動後換狀態')]
   ].map(x => `<div class="score"><p class="score-k">${x[0]}</p><p class="score-v">${x[1]}</p><p class="score-n">${x[2]}</p></div>`).join('');
   const gap = covA - covN;
-  $('#l1-note').innerHTML = T(`<b>Reading:</b> abnormal inputs are unseen ${(covA * 100).toFixed(0)}% of the time vs ${(covN * 100).toFixed(0)}% for normal ones (gap ${(gap * 100).toFixed(0)} pts). ` + (part === 'grid' ? 'Grid cells with no training data (red tint) inflate |S̄| without adding information.' : 'Dashed circles are the max training radius d of each state; anything outside is "unseen".'),
-    `<b>解讀：</b>異常輸入有 ${(covA * 100).toFixed(0)}% 落在未見區域，正常輸入僅 ${(covN * 100).toFixed(0)}%（差距 ${(gap * 100).toFixed(0)} 個百分點）。` + (part === 'grid' ? '沒有訓練資料的網格（紅色底）會增加 |S̄| 卻沒有資訊。' : '虛線圓是每個狀態的訓練最大半徑 d，圓外即「未見」。'));
+  $('#l1-note').innerHTML = T(`<b>Reading:</b> abnormal inputs are unseen ${(covA * 100).toFixed(0)}% of the time vs ${(covN * 100).toFixed(0)}% for normal ones (gap ${(gap * 100).toFixed(0)} pts). ` + (part === 'grid' ? 'Grid cells with no training data (red tint) inflate |S̄| without adding information. Under the paper\'s definition they still count as seen: only points outside the dashed box (the training data\'s min/max) are unseen.' : 'Dashed circles are the max training radius d of each state; anything outside is "unseen".'),
+    `<b>解讀：</b>異常輸入有 ${(covA * 100).toFixed(0)}% 落在未見區域，正常輸入僅 ${(covN * 100).toFixed(0)}%（差距 ${(gap * 100).toFixed(0)} 個百分點）。` + (part === 'grid' ? '沒有訓練資料的網格（紅色底）會增加 |S̄| 卻沒有資訊。照論文的定義它們仍算見過，只有落在虛線框（訓練資料的最小值到最大值）外的點才算未見。' : '虛線圓是每個狀態的訓練最大半徑 d，圓外即「未見」。'));
   const uN = Math.round(covN * te.length), uA = Math.round(covA * ab.length);
   setFx('l1-svg', [
     FX(['Succinctness · SUC', '簡潔性 · SUC'], `\\mathrm{SUC}=\\dfrac{|\\bar S|}{|S|}=\\dfrac{${nStates}}{${total}}=${f3(nStates / total)}`,
-      ['How compact the abstraction is: fewer abstract states for the same concrete states is better, as long as information survives.', '抽象後模型有多精簡：同樣的具體狀態用越少抽象狀態表示越好，但不能簡到失去資訊。']),
+      ['How compact the abstraction is: fewer abstract states for the same concrete states is better, as long as information survives.' + (part === 'grid' ? ` For Grid, |S̄| counts every cell (n × n = ${nStates}), empty ones included, as in the paper; only ${occ} hold training data. (The authors' code uses the per-dimension cell count n as |S̄| instead.)` : ''), '抽象後模型有多精簡：同樣的具體狀態用越少抽象狀態表示越好，但不能簡到失去資訊。' + (part === 'grid' ? `Grid 照論文把所有格子都算進 |S̄|（n × n = ${nStates}），包含空格子；其中只有 ${occ} 格有訓練資料。（作者程式碼的 |S̄| 則直接用每維格數 n。）` : '')]),
     FX(['Coverage · COV', '覆蓋率 · COV'], `\\begin{aligned}\\mathrm{COV}&=\\dfrac{\\#\\,\\text{unseen}}{\\#\\,\\text{test}}\\\\ &=\\dfrac{${uN}}{${te.length}}=${f3(covN)}\\ (\\text{normal}),\\quad \\dfrac{${uA}}{${ab.length}}=${f3(covA)}\\ (\\text{abnormal})\\end{aligned}`,
-      ['Share of test states that fall where no training state was — the model has never seen that situation. (The paper divides by |S̄|; this widget uses the test-point count so the number is easy to read.)', '測試狀態中落在「訓練從沒到過」之處的比例，代表模型沒見過這種情況。（論文以 |S̄| 為分母，本元件改用測試點數，比較好讀。）']),
+      ['Share of test states that fall where no training state was — the model has never seen that situation. (The paper divides by |S̄|; this widget uses the test-point count so the number is easy to read.)' + (part === 'grid' ? ' For Grid, “unseen” means outside the grid\'s range, i.e. beyond the training data\'s min or max (the dashed box), as in the paper\'s Appendix A and the authors\' code; a test point in an empty cell still counts as seen. (The paper\'s RQ2 explanation, that empty cells hurt Grid\'s coverage, only fits a looser reading; see concepts.html#errata.)' : ''), '測試狀態中落在「訓練從沒到過」之處的比例，代表模型沒見過這種情況。（論文以 |S̄| 為分母，本元件改用測試點數，比較好讀。）' + (part === 'grid' ? 'Grid 的「未見」是指超出網格範圍，也就是超出訓練資料的最小值或最大值（虛線框），照論文附錄 A 和作者程式碼；落在空格子裡的測試點仍算見過。（論文在 RQ2 說「空格子讓 Grid 覆蓋率變差」，這只有用比較寬鬆的解讀才說得通，見 concepts.html#errata。）' : '')]),
     FX(['Sensitivity · SEN', '敏感度 · SEN'], `\\begin{aligned}\\mathrm{SEN}&=\\dfrac{\\#\\{\\bar s\\neq\\bar s'\\ \\text{after }\\epsilon\\text{-noise}\\}}{|S_{test}|}\\\\ &=${f3(sen)}\\end{aligned}`,
       ['If you nudge a state by a tiny ε, does it jump to a different abstract state? Lower means the abstraction is robust.', '把狀態微微擾動 ε，會不會跳到別的抽象狀態？越低代表抽象越穩健。'])
   ]);
@@ -984,10 +988,10 @@ function l2Model(){
   const cnt = Array.from({length: N}, () => new Array(N).fill(0)); for (let k = 0; k < M; k++) for (let t = 0; t < 14; t++) cnt[traces[k][t]][traces[k][t + 1]]++;
   const Ph = cnt.map((row, i) => { const s = row.reduce((a, b) => a + b, 0); return s ? row.map(x => x / s) : row.map(() => 1 / N); });
   let pi = new Array(N).fill(1 / N); for (let it = 0; it < 400; it++) { const nx = new Array(N).fill(0); for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) nx[j] += pi[i] * Ph[i][j]; pi = nx; }
-  const H = -pi.reduce((a, p, i) => a + p * Ph[i].reduce((b, q) => b + (q > 0 ? q * Math.log(q) : 0), 0), 0);
+  const Hi = Ph.map(row => -row.reduce((b, q) => b + (q > 0 ? q * Math.log(q) : 0), 0)), H = pi.reduce((a, p, i) => a + p * Hi[i], 0);
   const stable = -(0.95 * Math.log(0.95) + 0.05 * Math.log(0.05 / (N - 1))), stoch = Math.log(N);
   const sinks = Ph.filter((row, i) => row[i] > 0.999).length, err = mean(Ph.flat().map((v, i) => Math.abs(v - P[Math.floor(i / N)][i % N])));
-  return {N, M, P, Ph, cnt, pi, H, stable, stoch, sinks, err};
+  return {N, M, P, Ph, cnt, pi, Hi, H, stable, stoch, sinks, err};
 }
 function lab2(){
   const m = l2Model(), N = m.N; $('#l2-nv').textContent = N; $('#l2-mv').textContent = m.M; $('#l2-dv').textContent = $('#l2-d').value + '%';
@@ -1011,7 +1015,7 @@ function lab2(){
   const msvg = $('#l2-mat'); msvg.setAttribute('viewBox', `0 0 ${ox + N * cs + 4} ${oy + N * cs + 8}`); msvg.innerHTML = mt; bindTips(msvg);
   // scores
   const mid = (m.stable + m.stoch) / 2, sdeVal = Math.abs(mid - m.H);
-  $('#l2-scores').innerHTML = [['SDE', f3(m.H), T('raw entropy (nats)', '原始熵（nats）')], [T('SDE value', 'SDE 值'), f3(sdeVal), T('|mid-bound − H|', '|中間界 − H|')], [T('Sink states', '匯點狀態'), m.sinks, 'p_ii = 1'], [T('Mean |P̂−P|', '平均 |P̂−P|'), f3(m.err), T('vs hidden truth', '對隱藏真值')]]
+  $('#l2-scores').innerHTML = [[T('Entropy H', '熵 H'), f3(m.H), T('low = predictable, high = random', '低＝好預測，高＝亂跳')], [T('SDE value', 'SDE 值'), f3(sdeVal), T('|mid-bound − H|, lower = more balanced', '|中間界 − H|，越低越平衡')], [T('Sink states', '匯點狀態'), m.sinks, 'p_ii = 1'], [T('Mean |P̂−P|', '平均 |P̂−P|'), f3(m.err), T('vs hidden truth', '對隱藏真值')]]
     .map(x => `<div class="score"><p class="score-k">${x[0]}</p><p class="score-v">${x[1]}</p><p class="score-n">${x[2]}</p></div>`).join('');
   const gx = v => 30 + (v - m.stable) / (m.stoch - m.stable) * 460;
   $('#l2-gauge').innerHTML = `<path d="M30 30 H490" stroke="#2F3A50" stroke-width="6" stroke-linecap="round"/><path d="M${gx(Math.min(m.H, m.stoch))} 30 H${gx(mid)}" stroke="#8CB8FF" stroke-width="2" opacity=".5"/>
@@ -1032,8 +1036,8 @@ function lab2(){
       ['A DTMC is just counting: how often does state i go to j, divided by how often it leaves i. Every row of the matrix sums to 1. (Shown for the last edge of your path, or the strongest edge out of s0.)', 'DTMC 其實就是數次數：狀態 i 走到 j 的次數，除以 i 往外走的總次數，矩陣每一列加總為 1。（顯示你路徑最後一條邊，未選時顯示 s0 最強的邊。）']),
     FX(['Path score = OOD semantic score', '路徑分數 = OOD 語意分數'], pa.length >= 2 ? `\\text{score}=\\operatorname{AVG}\\,\\hat P(s_i\\!\\to\\! s_{i+1})=\\dfrac{${sumTex(ps2)}}{${ps2.length}}=${f3(mean(ps2))}` : `\\text{score}=\\operatorname{AVG}\\,\\hat P(s_i\\!\\to\\! s_{i+1})`,
       ['Average the transition probabilities along a path. A path made of transitions the model rarely makes scores low ⇒ looks out-of-distribution.', '把路徑上每一步的轉移機率取平均。若路徑充滿模型很少走的轉移，分數就低 ⇒ 看起來像分布外（OOD）。']),
-    FX(['Stationary entropy · SDE', '穩態分布熵 · SDE'], `\\begin{aligned}H&=-\\sum_i\\pi_i\\sum_j\\hat p_{ij}\\ln\\hat p_{ij}=${f3(m.H)}\\\\ \\mathrm{SDE}&=\\Big|\\dfrac{${f3(m.stable)}+${f3(m.stoch)}}{2}-H\\Big|=${f3(sdeVal)}\\end{aligned}`,
-      ['π is where the chain spends its time in the long run (π P̂ = π). H measures how random the next step is on average. Too low = stuck repeating, too high = jumping randomly; SDE is the distance from the middle of those two bounds.', 'π 是長期下來模型停留在各狀態的比例（π P̂ = π）。H 衡量下一步平均有多隨機：太低＝一直重複、太高＝亂跳；SDE 是它與這兩個極端「正中間」的距離。'])
+    FX(['Stationary entropy · SDE', '穩態分布熵 · SDE'], `\\begin{aligned}H&=-\\sum_i\\pi_i\\sum_j\\hat p_{ij}\\ln\\hat p_{ij}=\\sum_i\\pi_i H_i=${(t => t.length <= 5 ? t.join('+') : t.slice(0, 3).join('+') + '+\\cdots+' + t[t.length - 1])(m.pi.map((p, i) => `${f2(p)}\\cdot ${f2(m.Hi[i])}`))}=${f3(m.H)}\\\\ \\text{stable}&=-\\Big[0.95\\ln 0.95+${N - 1}\\cdot\\tfrac{0.05}{${N - 1}}\\ln\\tfrac{0.05}{${N - 1}}\\Big]=${f3(m.stable)}\\\\ \\text{random}&=-${N}\\cdot\\tfrac{1}{${N}}\\ln\\tfrac{1}{${N}}=\\ln ${N}=${f3(m.stoch)}\\\\ \\mathrm{SDE}&=\\Big|\\dfrac{\\text{stable}+\\text{random}}{2}-H\\Big|=\\Big|\\dfrac{${f3(m.stable)}+${f3(m.stoch)}}{2}-${f3(m.H)}\\Big|=${f3(sdeVal)}\\end{aligned}`,
+      [`π is where the chain spends its time in the long run (π P̂ = π); H_i is the entropy of row i of the counted matrix P̂ in this section, i.e. how unpredictable the next step is from s_i. H is their π-weighted average. The two bounds are the entropies of two imaginary chains with the same ${N} states (from the paper's reference [142]): “stable” stays put with probability 0.95 and spreads the other 0.05 evenly over the ${N - 1} other states; “random” jumps to each state with probability 1/${N}. Too low = stuck repeating, too high = jumping randomly; SDE is the distance from the middle of those two bounds.`, `π 是長期下來模型停留在各狀態的比例（π P̂ = π）；H_i 是本節計數矩陣 P̂ 第 i 列的熵，也就是從 s_i 出發，下一步有多難預測。H 是它們依 π 加權的平均。兩個界是兩條想像出來、同樣有 ${N} 個狀態的鏈的熵（取自論文的參考文獻 [142]）：「穩定界」有 0.95 的機率留在原地，剩下的 0.05 平均分給其他 ${N - 1} 個狀態；「隨機界」以 1/${N} 的機率跳到任何一個狀態。太低＝一直重複、太高＝亂跳；SDE 是它與這兩個極端「正中間」的距離。`])
   ]);
 }
 function l2Preset(kind){ const m = L2.m, N = m.N; const path = [Math.floor(N / 2)];
