@@ -23,7 +23,7 @@
   --mono:ui-monospace,"SFMono-Regular",Consolas,"Courier New",monospace;
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:70px}
+html{scroll-behavior:auto;scroll-padding-top:70px}
 body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased}
 :root[data-lang="zh"] body{line-height:1.85}
 :root[data-lang="zh"] [lang="en"]{display:none}
@@ -33,7 +33,7 @@ strong{font-weight:600;color:var(--ink)}
 code{font-family:var(--mono);font-size:.86em;background:var(--surface-2);padding:1px 5px;border-radius:4px}
 p{margin:0 0 16px}
 /* bar */
-.bar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--ground) 86%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--rule)}
+.bar{position:sticky;top:0;z-index:50;background:var(--ground);border-bottom:1px solid var(--rule)}
 .bar-in{max-width:1500px;margin:0 auto;padding:9px clamp(16px,3vw,40px);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .mark{font-weight:700;font-size:15px;display:flex;align-items:center;gap:9px;margin-right:auto}
 .btn{font-family:var(--sans);font-size:12px;font-weight:600;padding:5px 12px;border:1px solid var(--rule);border-radius:999px;background:var(--surface);color:var(--ink-2);cursor:pointer;text-decoration:none;display:inline-block;line-height:1.5}
@@ -128,7 +128,7 @@ select{font-family:var(--sans);font-size:12.5px;background:var(--surface-2);colo
 .fx-body.stack{grid-template-columns:1fr}
 @media(max-width:900px){.fx-body{grid-template-columns:1fr}}
 .fx-item{background:var(--surface-2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:8px 14px;min-width:0;overflow-x:auto}
-.fx-item.pulse{animation:pulse .8s ease}
+.fx-item.pulse{animation:none}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(244,194,107,0)}30%{box-shadow:0 0 0 3px rgba(244,194,107,.55)}100%{box-shadow:0 0 0 0 rgba(244,194,107,0)}}
 .fx-role{min-width:0}
 .fx-role p{margin:3px 0 0;font-size:14.5px;line-height:1.7;color:var(--ink-2)}
@@ -292,6 +292,204 @@ footer{border-top:1px solid var(--rule);padding-block:28px 48px;font-size:12.5px
 .math-piece{display:inline-block;max-width:100%;min-width:0}
 .tex .katex-display{max-width:100%}
 @media(max-width:900px){.figure[data-fx]{grid-template-columns:minmax(0,1fr)}}
+/* A compact computation diagram beside the algebra, not a symbol glossary. */
+.formula-flow{margin:0;padding:10px 0}
+.flow-caption{font-size:11px;color:var(--muted);margin:0 0 8px}
+.flow-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;list-style:none;padding:0;margin:0}
+.flow-steps>li{position:relative;min-width:0;display:flex}
+.flow-steps>li:not(:last-child)::after{content:'→';position:absolute;right:-14px;top:24px;color:var(--accent);font-size:16px}
+.flow-step{width:100%;min-width:0;text-align:left;padding:10px;background:var(--sunk);border:1px solid var(--rule);border-radius:7px;color:var(--ink);font-family:var(--sans);display:flex;flex-direction:column;gap:5px;line-height:1.45}
+.flow-step[data-link]{cursor:pointer;border-color:#7A6230}
+.flow-step[data-link]:hover,.flow-step.hot,.flow-step:focus-visible{outline:2px solid var(--warm);outline-offset:1px}
+.flow-step b{font-family:var(--mono);font-size:14px;color:var(--accent);overflow-wrap:anywhere}
+.flow-step small{font-size:12px;color:var(--ink-2)}
+.flow-steps>li:last-child .flow-step{background:var(--accent-soft)}
+.flow-branches{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}
+.flow-branch{text-align:center;font:12px var(--mono);color:var(--good);padding:6px;background:var(--surface-2);border-radius:4px}
+@media(max-width:520px){.flow-steps{gap:12px}.flow-step{padding:8px}.flow-step b{font-size:12px}.flow-step small{font-size:11px}.flow-steps>li:not(:last-child)::after{right:-11px}}
+/* Read the story before the notation; keep prose at a comfortable line length. */
+.shell{max-width:1180px}
+.col{max-width:100%}
+.section-intro{max-width:100%;margin:0 0 22px;font-size:17px;line-height:1.8;color:var(--ink-2)}
+.section-intro p{margin:0}
+.io-continuity{grid-column:1/-1;margin:0;padding:0 2px 7px;border-bottom:1px solid var(--rule);font-size:13px;color:var(--ink-2)}
+.io-continuity a{font-weight:600;text-decoration:none}
+.io-continuity .tex{display:inline;padding:0 4px;color:var(--warm)}
+@media(max-width:700px){.section-intro{font-size:16px}}
+/* One visual hierarchy: connected calculation, active formula, then evidence. */
+section{padding-block:44px}
+.figure{margin:18px 0 24px}
+.fig-head{align-items:center}
+.fig-note{flex-basis:100%;order:3;margin-top:-5px}
+.io{display:block;padding:14px 16px;margin-bottom:20px}
+.io-flow{display:grid;grid-template-columns:minmax(0,1fr) 22px minmax(0,1.3fr) 22px minmax(0,1fr);gap:8px;align-items:stretch}
+.io-col{padding:11px 12px;overflow:hidden}
+.io-col .tex{max-width:100%;overflow-x:auto}
+.io-col.op .tex{font-size:1.05em}
+.io-arrow{font-size:19px;justify-self:center;padding:0}
+.io-continuity{padding-bottom:10px;margin-bottom:12px}
+.io .equation-reading{display:block;margin:12px 0 0;padding:8px 2px 0;border:0;border-top:1px solid var(--rule);background:none}
+.equation-reading summary,.formula-details summary{cursor:pointer;color:var(--accent);font-size:12px;font-weight:600;list-style-position:inside}
+.io .equation-reading p{margin:9px 0 0;max-width:100%;font-size:13px;line-height:1.7}
+.io .equation-reading .io-note{margin-top:8px;padding-top:8px}
+.figure[data-fx]:not(:fullscreen){display:block}
+.figure[data-fx]:not(:fullscreen)>.fx{display:block;margin:0;padding:16px 18px;border:0;border-bottom:1px solid var(--rule);background:var(--surface)}
+.figure[data-fx]:not(:fullscreen)>.demo{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(290px,.85fr)}
+.figure[data-fx]:not(:fullscreen) .demo-vis{border-right:1px solid var(--rule);border-bottom:0;padding:14px}
+.figure[data-fx]:not(:fullscreen) .demo-side{display:flex;flex-direction:column;gap:10px;padding:14px}
+.figure[data-fx]:not(:fullscreen) .demo-vis svg.stage{max-height:440px}
+.figure[data-fx] .fx-body{display:grid;grid-template-columns:minmax(0,2fr) minmax(200px,1fr);gap:12px;align-items:start}
+.figure[data-fx] .fx-item{padding:12px 15px}
+.figure[data-fx] .fx-role{grid-column:2;grid-row:1;padding:3px 0}
+.figure[data-fx] .fx-role p{font-size:13px;line-height:1.65}
+.formula-details{grid-column:1/-1;border-top:1px dashed var(--rule);padding-top:7px}
+.formula-flow{padding:8px 0 0}
+.flow-step{min-height:66px}
+@media(max-width:900px){
+  .io-flow{grid-template-columns:minmax(0,1fr)}
+  .io-arrow{font-size:0;line-height:1}
+  .io-arrow::after{content:'↓';font-size:18px}
+  .figure[data-fx]:not(:fullscreen)>.demo{grid-template-columns:minmax(0,1fr)}
+  .figure[data-fx]:not(:fullscreen) .demo-vis{border-right:0;border-bottom:1px solid var(--rule)}
+}
+@media(max-width:700px){
+  .figure[data-fx] .fx-body{grid-template-columns:minmax(0,1fr)}
+  .figure[data-fx] .fx-role{grid-column:1;grid-row:2}
+  .formula-details{grid-row:3}
+  .figure[data-fx]:not(:fullscreen)>.fx{padding:14px}
+}
+.figure[data-fx] .fx-body.stack{grid-template-columns:minmax(0,1fr)}
+.figure[data-fx] .fx-body.stack .fx-role{grid-column:1;grid-row:2}
+.figure[data-fx] .fx-body.stack .formula-details{grid-row:3}
+.figure[data-fx] .fx-item{overflow-x:auto}
+.hero-example{max-width:100%;border-left:3px solid var(--warm);padding:13px 16px;margin:18px 0 0}
+.setup-details{border-top:1px solid var(--rule);padding:12px 2px 0;margin-top:16px}
+.setup-details>summary{cursor:pointer;color:var(--accent);font-size:13px;font-weight:600}
+.setup-details[open]>summary{margin-bottom:16px}
+.setup-details .cfg{margin-top:16px}
+/* Formulas read from top to bottom at every viewport width. */
+.io-flow{grid-template-columns:minmax(0,1fr);gap:7px}
+.io-col{overflow:visible}
+.io-col .tex{overflow:visible}
+.io-arrow{font-size:0;line-height:1}
+.io-arrow::after{content:'↓';font-size:18px}
+.figure[data-fx] .fx-body,.figure[data-fx] .fx-body.stack{grid-template-columns:minmax(0,1fr)}
+.figure[data-fx] .fx-role,.figure[data-fx] .fx-body.stack .fx-role{grid-column:1;grid-row:2}
+.formula-details,.figure[data-fx] .fx-body.stack .formula-details{grid-column:1;grid-row:3}
+.figure[data-fx] .fx-item{overflow:visible}
+.flow-steps{grid-template-columns:minmax(0,1fr);gap:16px}
+.flow-steps>li:not(:last-child)::after{content:'↓';top:auto;right:auto;bottom:-15px;left:50%;transform:translateX(-50%)}
+.flow-step{display:grid;grid-template-columns:minmax(100px,190px) minmax(0,1fr);gap:10px;align-items:center;min-height:0}
+@media(max-width:700px){.flow-step{grid-template-columns:minmax(0,1fr);gap:3px}}
+.fx-list{display:flex;flex-direction:column}
+.figure[data-fx] .fx-step{display:flex;flex-direction:column;gap:8px;padding:15px 0 18px 12px;border-bottom:1px solid var(--rule);border-left:3px solid transparent}
+.figure[data-fx] .fx-step:last-child{border-bottom:0;padding-bottom:0}
+.figure[data-fx] .fx-step.active{border-left-color:var(--accent)}
+.fx-step-title{display:flex;align-items:baseline;gap:10px;margin:0;color:var(--ink);font-size:13px;font-weight:650}
+.fx-step-title span{font:12px var(--mono);color:var(--accent)}
+.figure[data-fx] .fx-step .fx-item{width:100%;min-width:0}
+.figure[data-fx] .fx-step .fx-role{padding:0 3px}
+.figure[data-fx] .fx-step .fx-role p{margin:0}
+.figure[data-fx] .fx-step .formula-details{width:100%;margin-top:2px}
+/* One math type scale for the route, I/O cards, and every formula step. */
+:root{--math-size:clamp(18px,2vw,21px)}
+.tex,.tex-fallback,.io-ex .tex{font-size:var(--math-fit-size,var(--math-size))!important;font-weight:400}
+.tex .katex{font-size:1em!important;color:var(--ink)}
+.tex .katex-display{text-align:left}
+.fx-h{font-size:12px}
+.figure[data-fx] .fx-step{display:grid;grid-template-columns:minmax(0,2.8fr) minmax(220px,1fr);gap:5px 14px;align-items:start;padding:9px 0 10px 10px}
+.figure[data-fx] .fx-step .fx-step-title{grid-column:1/-1;font-size:16px}
+.figure[data-fx] .fx-step .fx-step-title span{font-size:14px}
+.figure[data-fx] .fx-step .fx-item{grid-column:1;grid-row:2;padding:10px 12px}
+.figure[data-fx] .fx-step .fx-role{grid-column:2;grid-row:2;padding:7px 4px}
+.figure[data-fx] .fx-step .fx-role p{font-size:15px;line-height:1.6}
+.figure[data-fx] .fx-step .formula-details{grid-column:1/-1;grid-row:3;padding-top:4px}
+.figure[data-fx] .fx-step .katex-display{margin:0}
+.figure[data-fx] .fx-step.wide{grid-template-columns:minmax(0,1fr)}
+.figure[data-fx] .fx-step.wide .fx-role{grid-column:1;grid-row:3;padding:0 4px}
+.figure[data-fx] .fx-step.wide .formula-details{grid-row:4}
+@media(max-width:1000px){
+  .figure[data-fx] .fx-step{grid-template-columns:minmax(0,1fr)}
+  .figure[data-fx] .fx-step .fx-role{grid-column:1;grid-row:3;padding:0 4px}
+  .figure[data-fx] .fx-step .formula-details{grid-row:4}
+}
+/* Data-flow rail: one vertical line down the left margin. Dots are data (output of the unit above = input of the unit
+   below), the labels between them are the units; hovering a dot shows the toy values the widgets currently hold. */
+.rail{font-size:12.5px;line-height:1.35}
+.rail-h{margin:0 0 4px;font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.rail-eg{margin:0 0 10px;font-size:12px;line-height:1.55;color:var(--ink-2)}
+.rail-eg b{font-family:var(--mono);color:var(--warm);font-weight:600}
+.rail-list{list-style:none;margin:0;padding:0 0 0 22px}
+.rail-list li{position:relative;min-height:22px;display:flex;align-items:center;flex-wrap:wrap;gap:0 4px}
+.rail-list li::before{content:'';position:absolute;left:-16px;top:0;bottom:0;width:2px;background:var(--rule)}
+.rail-list li.rail-top::before{display:none}
+.rail-list li.rail-start::before{top:50%}
+.rail-list li.rail-end::before{bottom:50%}
+.rail-list li:has(>.rail-unit.on)::before{background:var(--accent)}
+.rail-d{min-height:26px!important}
+.rail-d::after{content:'';position:absolute;left:-20px;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;box-sizing:border-box;background:var(--ground);border:2px solid var(--warm)}
+.rail-d:has(>.is-in)::after{background:var(--accent);border-color:var(--accent)}
+.rail-d:has(>.is-out)::after{background:var(--warm)}
+.rail-br::after{content:'';position:absolute;left:-15px;top:50%;width:12px;height:2px;margin-top:-1px;background:var(--rule)}
+.rail-grp{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:5px 0 2px}
+.rail-grp>span{padding:0 6px}
+.rail-node{flex:1;display:flex;align-items:baseline;gap:8px;min-width:0;padding:3px 6px;border-radius:5px;color:var(--ink);text-decoration:none;cursor:help}
+.rail-br .rail-node{flex:0 1 auto;align-items:center;gap:5px}
+.rail-br .rail-node::before{content:'';flex:none;width:9px;height:9px;border-radius:50%;box-sizing:border-box;border:2px solid var(--warm)}
+.rail-br .rail-node.is-out::before{background:var(--warm)}
+.rail-node:hover,.rail-node:focus-visible{background:var(--surface-2);outline:none;box-shadow:0 0 0 1px var(--warm)}
+.rail-sym{white-space:nowrap}
+.rail-sym .katex{font-size:1.08em}
+.rail-shape{font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap}
+.rail-arrow{color:var(--muted)}
+.rail-tag{margin-left:auto;font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.is-in>.rail-tag::after{content:attr(data-in);color:var(--accent);border:1px solid var(--accent);border-radius:3px;padding:0 4px}
+.is-out>.rail-tag::after{content:attr(data-out);color:var(--warm);border:1px solid var(--warm);border-radius:3px;padding:0 4px}
+.rail-unit{display:inline-flex;align-items:baseline;gap:6px;padding:1px 6px;border:1px solid transparent;border-radius:5px;color:var(--muted);text-decoration:none;font-size:12px;letter-spacing:0;text-transform:none;font-weight:400}
+.rail-unit b{font:600 10.5px var(--mono);color:var(--accent)}
+.rail-unit:hover{color:var(--ink)}
+.rail-unit.on{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+#rail-slot .rail{margin:22px 0 0;padding:14px 16px;max-width:440px;background:var(--surface);border:1px solid var(--rule);border-radius:9px}
+@media(min-width:1320px){
+  .shell{display:grid;grid-template-columns:236px minmax(0,1fr);gap:36px;max-width:1520px}
+  .shell>.rail{position:sticky;top:calc(var(--bar-h,56px) + 6px);align-self:start;max-height:calc(100vh - var(--bar-h,56px) - 12px);overflow-y:auto;padding:20px 4px 20px 0}
+  .toc{display:none}
+}
+/* One formula at a time, picked by the widget's controls. Every step sits in the same grid cell, so the panel keeps
+   the height of its tallest formula and the widget below never jumps while a slider is being dragged. */
+.fx-list{display:grid;grid-template-columns:minmax(0,1fr)}
+.figure[data-fx] .fx-list>.fx-step{grid-area:1/1;visibility:hidden;border:0;padding:0}
+.figure[data-fx] .fx-list>.fx-step.active{visibility:visible}
+.figure[data-fx] .fx-step .fx-step-title{display:none}
+.figure[data-fx] .fx-step .fx-item,.figure[data-fx] .fx-step .fx-role{grid-row:1}
+.figure[data-fx] .fx-step .formula-details{grid-row:2}
+.figure[data-fx] .fx-step.wide .fx-role{grid-row:2}
+.figure[data-fx] .fx-step.wide .formula-details{grid-row:3}
+@media(max-width:1000px){.figure[data-fx] .fx-step .fx-role{grid-row:2}.figure[data-fx] .fx-step .formula-details{grid-row:3}}
+.fx-top{margin-bottom:10px}
+.fx-h{color:var(--warm)}
+.fx-tab{display:inline-flex;align-items:baseline;gap:6px}
+.fx-tab b{font:600 10.5px var(--mono);opacity:.75}
+/* I/O of a unit: one line by default, the three formula cards on demand. */
+.io{padding:0}
+.io-more>summary{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;padding:10px 16px;cursor:pointer;list-style:none}
+.io-more>summary::-webkit-details-marker{display:none}
+.io-more[open]>summary{border-bottom:1px solid var(--rule)}
+.io-sig{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;min-width:0}
+.io-sig .tex{display:inline-block;padding:0;font-size:16px!important}
+.io-sig b{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.io-sig .io-in{color:var(--accent)}
+.io-sig .io-out{color:var(--warm)}
+.io-sig-op{font-size:13px;color:var(--ink-2)}
+.io-toggle{margin-left:auto;font-size:12px;font-weight:600;color:var(--accent);white-space:nowrap}
+.io-toggle::before{content:'▸ '}
+.io-more[open] .io-toggle::before{content:'▾ '}
+.io-body{padding:14px 16px}
+#tip.wide{max-width:min(460px,calc(100vw - 16px));font-size:12px;padding:9px 12px}
+.tt-h{color:var(--warm);font-weight:600;margin-bottom:4px}
+.tt-v{white-space:pre-wrap;overflow-wrap:anywhere}
+.tt-v b{color:var(--warm);font-weight:600}
+.tt-n{margin-top:6px;padding-top:5px;border-top:1px dashed var(--rule);font-family:var(--sans);font-size:11.5px;color:var(--ink-2)}
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js" onload="window.__katexReady&&window.__katexReady()"></script>
@@ -327,13 +525,18 @@ footer{border-top:1px solid var(--rule);padding-block:28px 48px;font-size:12.5px
 
 <div class="shell">
 
+<aside class="rail" id="rail" aria-label="Data flow"></aside>
+
 <main>
 
 <!-- ============================ 00 hero ============================ -->
 <section class="hero" id="top">
   <p class="eyebrow"><span lang="en">LUNA guide · v2 · one example all the way through</span><span lang="zh">LUNA 導讀 · 第二版 · 一條例子走到底</span></p>
   <h1><span lang="en">From LLM to LUNA,<br>following one sentence</span><span lang="zh">從 LLM 到 LUNA，<br>跟著一句話走一遍</span></h1>
-  <p class="lede"><span lang="en">This page starts from how an LLM reads and writes text and ends with how LUNA decides whether an answer is a hallucination. Every unit has a small interactive widget with a formula and symbol explanations before the figure. The numbers in the formulas follow the widget, and the <b style="color:var(--warm)">amber</b> terms are linked to it: hover one and the matching part of the figure lights up (and the other way round). The whole page follows <strong>one experimental setting</strong> from the paper and <strong>one answer</strong>.</span><span lang="zh">這一頁從「LLM 怎麼讀字、寫字」開始，一路走到 LUNA 怎麼判斷一句回答是不是幻覺。每個單元都有一個可以操作的小工具，先讀公式與符號解釋，再看圖表。公式裡的數字跟著小工具變，<b style="color:var(--warm)">琥珀色</b>的項和圖是連動的：滑鼠移上去，圖上對應的部分會亮起來（反過來也可以）。整頁都跟著論文裡的<strong>同一組實驗設定</strong>和<strong>同一句回答</strong>走。</span></p>
+  <p class="lede"><span lang="en">Follow one false answer from the words the model generates to LUNA's hallucination score. The same answer runs through every stage, so you can see what each stage receives and passes on.</span><span lang="zh">跟著同一句錯誤回答，從模型生成的文字一路走到 LUNA 的幻覺分數。每一步都接著上一個結果，讓你看清楚它收到什麼、又交出什麼。</span></p>
+  <p class="note hero-example"><span lang="en"><b>The example (paper, Fig. 4):</b> asked “Which is denser, water vapor or air?”, the model answers “Water vapor is denser than air.” That is false (water vapor is lighter), so this is a <b>hallucination</b>. Every unit below uses this answer.</span><span lang="zh"><b>例句（論文圖 4）：</b>問「Which is denser, water vapor or air?」，模型答「Water vapor is denser than air.」——這是錯的（水蒸氣比空氣輕），所以它是一個<b>幻覺</b>樣本。下面每個單元都用這句話。</span></p>
+  <div id="rail-slot"></div>
+  <details class="setup-details"><summary><span lang="en">Experiment settings and data sources</span><span lang="zh">展開實驗設定與資料來源</span></summary>
   <div class="col">
     <p><span lang="en">The setting is the <strong>Llama2-7b, TruthfulQA hallucination</strong> row of the paper's Table IX (the configurations picked with its metrics): PCA down to 3 dimensions, 5 cells per dimension (so 5³ = 125 abstract states), a DTMC model, ROC AUC 0.65. It was chosen because 3 dimensions and 125 cells are small enough to draw. The example answer is the question from the paper's Figure 4.</span><span lang="zh">選的是論文表 IX（用指標挑出的建議設定）裡 <strong>Llama2-7b 在 TruthfulQA 上做幻覺偵測</strong>那一列：PCA 降到 3 維、每一維切 5 格（所以有 5³ = 125 個抽象狀態）、用 DTMC 建模，ROC AUC 0.65。選它是因為 3 維、125 格小到畫得出來；例句則是論文圖 4 的那一題。</span></p>
   </div>
@@ -348,9 +551,9 @@ footer{border-top:1px solid var(--rule);padding-block:28px 48px;font-size:12.5px
     <a href="#roc"><p class="k"><span lang="en">Paper ROC AUC</span><span lang="zh">論文 ROC AUC</span></p><p class="v"><b>0.65</b> <span lang="en">(Table IX)</span><span lang="zh">（表 IX）</span></p></a>
   </div>
   <div class="col" style="margin-top:22px">
-    <p class="note"><span lang="en"><b>The example (paper, Fig. 4):</b> asked “Which is denser, water vapor or air?”, the model answers “Water vapor is denser than air.” That is false (water vapor is lighter), so this is a <b>hallucination</b>. Every unit below uses this answer.</span><span lang="zh"><b>例句（論文圖 4）：</b>問「Which is denser, water vapor or air?」，模型答「Water vapor is denser than air.」——這是錯的（水蒸氣比空氣輕），所以它是一個<b>幻覺</b>樣本。下面每個單元都用這句話。</span></p>
-    <p class="note" style="margin-top:12px"><span lang="en"><b>About the data:</b> nobody can run Llama-2-7b inside a web page, so every figure uses <b>toy data</b> made up to show the mechanism (badge <code>TOY</code>). Llama-2's architecture numbers (4,096 dimensions, 32 layers, 32,000 tokens…) are real; the paper's setting and AUC are real. Units 08–13 share one toy dataset that is run through the algorithm of <a href="https://github.com/dasong-sd/LUNA-LLM-Model-Based-Analysis">the authors' released code</a>, so their numbers agree with each other, but they are not Llama measurements.</span><span lang="zh"><b>關於資料：</b>沒有人能在網頁裡跑 Llama-2-7b，所以每張圖都是為了說明機制而編的<b>玩具資料</b>（標示 <code>TOY</code>）。Llama-2 的架構數字（4,096 維、32 層、32,000 個詞……）是真的；論文的設定與 AUC 是真的；第 08–13 單元共用同一份玩具資料集，並照<a href="https://github.com/dasong-sd/LUNA-LLM-Model-Based-Analysis">作者釋出的程式碼</a>的演算法實際計算，所以那幾單元的數字彼此一致，但不是 Llama 的量測值。</span></p>
+    <p class="note"><span lang="en"><b>About the data:</b> nobody can run Llama-2-7b inside a web page, so every figure uses <b>toy data</b> made up to show the mechanism (badge <code>TOY</code>). Llama-2's architecture numbers (4,096 dimensions, 32 layers, 32,000 tokens…) are real; the paper's setting and AUC are real. Units 08–13 share one toy dataset that is run through the algorithm of <a href="https://github.com/dasong-sd/LUNA-LLM-Model-Based-Analysis">the authors' released code</a>, so their numbers agree with each other, but they are not Llama measurements.</span><span lang="zh"><b>關於資料：</b>沒有人能在網頁裡跑 Llama-2-7b，所以每張圖都是為了說明機制而編的<b>玩具資料</b>（標示 <code>TOY</code>）。Llama-2 的架構數字（4,096 維、32 層、32,000 個詞……）是真的；論文的設定與 AUC 是真的；第 08–13 單元共用同一份玩具資料集，並照<a href="https://github.com/dasong-sd/LUNA-LLM-Model-Based-Analysis">作者釋出的程式碼</a>的演算法實際計算，所以那幾單元的數字彼此一致，但不是 Llama 的量測值。</span></p>
   </div>
+  </details>
 </section>
 
 <!-- ============================ 01 LLM ============================ -->
@@ -363,7 +566,7 @@ footer{border-top:1px solid var(--rule);padding-block:28px 48px;font-size:12.5px
   </div>
   <div class="figure">
     <div class="fig-head"><p class="fig-title"><span lang="en">Page map: how Llama-2 writes, where LUNA takes over</span><span lang="zh">整頁地圖：Llama-2 怎麼寫字，LUNA 從哪裡接手</span></p><p class="fig-note"><span lang="en">Click a box to jump. The purple dashed line is the autoregressive loop.</span><span lang="zh">點方塊跳到對應單元。紫色虛線是自迴歸迴圈。</span></p></div>
-    <div style="padding:12px 14px 6px"><svg class="stage pipe" id="pipe" viewBox="0 0 1000 250" role="img" aria-label="LLM and LUNA pipeline"></svg></div>
+    <div style="padding:12px 14px 6px"><svg class="stage pipe" id="pipe" viewBox="0 0 1000 320" role="img" aria-label="LLM and LUNA pipeline"></svg></div>
   </div>
   <div class="figure">
     <div class="fig-head"><p class="fig-title"><span lang="en">Generating the example one token at a time</span><span lang="zh">一個 token 一個 token 生成例句</span></p><p class="fig-note"><span lang="en">Press “next”: the model lists candidates with probabilities and appends the most likely one. Watch step 5. Hover a generated token to find its factor in the product.</span><span lang="zh">按「下一步」：模型列出候選與機率，挑最高的接上去。注意第 5 步。滑到已生成的 token 上，可以在連乘式裡找到它那一項。</span></p><span class="badge">TOY</span></div>
@@ -791,73 +994,144 @@ const Tx = (en, zh) => `\\text{${T(en, zh)}}`;
 
 /* ============================ formulas (KaTeX) ============================ */
 const KOPT = {throwOnError: false, strict: false, trust: c => c.command === '\\htmlData'};
+function fitTex(el){
+  el.style.removeProperty('--math-fit-size');
+  const natural = el.querySelector('.katex-html')?.getBoundingClientRect().width || 0;
+  const available = el.clientWidth - 6;
+  if (!natural || available <= 0 || natural <= available) return;
+  const base = parseFloat(getComputedStyle(el).fontSize);
+  el.style.setProperty('--math-fit-size', `${base * available / natural}px`);
+}
+function layoutFormulaStep(step){
+  const tex = step.querySelector('.fx-item > .tex'); if (!tex) return;
+  tex.style.removeProperty('--math-fit-size');
+  step.classList.remove('wide');
+  const natural = tex.querySelector('.katex-html')?.getBoundingClientRect().width || 0;
+  if (natural && innerWidth > 1000 && natural > tex.clientWidth - 6) step.classList.add('wide');
+  fitTex(tex);
+}
 function renderTexIn(root){ root.querySelectorAll('.tex').forEach(el => { const tex = el.dataset.tex, disp = el.dataset.display === '1';
-  if (window.katex) { try { el.classList.remove('math-wrap'); katex.render(tex, el, Object.assign({displayMode: disp}, KOPT)); el.classList.remove('tex-fallback'); fitEquation(el); watchEquation(el); return; } catch (e) {} }
-  el.textContent = tex; el.classList.add('tex-fallback'); }); annotateSyms(root); fitFxIn(root); reHot(); }
-window.__katexReady = () => { Object.keys(FXI).forEach(drawFx); Object.keys(IOC).forEach(k => delete IOC[k]); queueIO(); };
-function fitFxBody(body){ const item = body.querySelector('.fx-item'); if (!item) return; const t = item.querySelector('.katex') || item.querySelector('.tex'); if (!t) return;
-  body.classList.remove('stack'); const cs = getComputedStyle(item), pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
-  if (t.scrollWidth > item.clientWidth - pad + 1) body.classList.add('stack'); }
-function fitFxIn(root){ root.querySelectorAll('.fx-body').forEach(fitFxBody); }
-/* Never split inside fractions, matrices, linked terms, or paired delimiters. */
-function equationParts(tex){
-  const parts = []; let start = 0, braces = 0, environment = 0, delimiters = 0;
-  for (let i = 0; i < tex.length; i++) {
-    if (tex[i] === '\\') {
-      const match = tex.slice(i).match(/^\\([a-zA-Z]+|.)/); if (!match) continue;
-      const command = match[1];
-      if (command === 'begin') environment++;
-      if (command === 'end') environment--;
-      if (['left','bigl','Bigl','biggl','Biggl'].includes(command)) delimiters++;
-      if (['right','bigr','Bigr','biggr','Biggr'].includes(command)) delimiters--;
-      if (!braces && !environment && !delimiters && ['quad','qquad','Rightarrow','Longrightarrow'].includes(command) && i > start) {
-        parts.push(tex.slice(start,i)); start = i;
-      }
-      i += match[0].length - 1; continue;
-    }
-    if (tex[i] === '{') braces++;
-    if (tex[i] === '}') braces--;
-    if (!braces && !environment && !delimiters && ['=','+'].includes(tex[i]) && i > start) {
-      parts.push(tex.slice(start,i)); start = i;
-    }
-  }
-  parts.push(tex.slice(start)); return parts.filter(p => p.trim());
-}
-function fitEquation(el){
-  if (!window.katex || !el.clientWidth) return;
-  const width = el.clientWidth;
-  el.classList.remove('math-wrap');
-  katex.render(el.dataset.tex, el, {...KOPT, displayMode:el.dataset.display === '1'});
-  const math = el.querySelector('.katex-html');
-  if (!math || math.getBoundingClientRect().width <= width - 2) return;
-  const parts = equationParts(el.dataset.tex);
-  el.replaceChildren(); el.classList.add('math-wrap');
-  parts.forEach(part => {
-    const piece = document.createElement('span'); piece.className = 'math-piece'; el.appendChild(piece);
-    katex.render('\\displaystyle ' + part, piece, {...KOPT, displayMode:false});
-    const natural = piece.querySelector('.katex-html').getBoundingClientRect().width;
-    // An indivisible fraction or matrix is scaled only after wrapping was tried.
-    if (natural > width - 2) piece.style.fontSize = `${(width - 2) / natural * 100}%`;
-  });
-}
-const equationWidths = new WeakMap();
-const equationResize = new ResizeObserver(entries => {
-  entries.forEach(({target,contentRect}) => {
-    if (!target.isConnected) { equationResize.unobserve(target); return; }
-    if (Math.abs((equationWidths.get(target) || 0) - contentRect.width) < 1) return;
-    equationWidths.set(target,contentRect.width); fitEquation(target);
-    const container = target.parentElement; if (container) annotateSyms(container);
-  });
-  reHot();
-});
-function watchEquation(el){ equationWidths.set(el,el.clientWidth); equationResize.observe(el); }
-addEventListener('resize', () => fitFxIn(document));
-if (document.fonts) document.fonts.ready.then(() => {
-  document.querySelectorAll('.tex').forEach(el => fitEquation(el)); annotateSyms(document); reHot();
-});
+  if (window.katex) { try {
+    katex.render(tex, el, Object.assign({displayMode: disp}, KOPT));
+    el.classList.remove('tex-fallback');
+    if (!el.closest('.fx-step')) fitTex(el);
+    return;
+  } catch (e) {} }
+  el.textContent = tex; el.classList.add('tex-fallback'); }); annotateSyms(root); reHot(); }
+let mathLayoutFrame = 0;
+function requestMathLayout(){ if (mathLayoutFrame) return; mathLayoutFrame = requestAnimationFrame(() => {
+  mathLayoutFrame = 0;
+  document.querySelectorAll('.fx-step').forEach(layoutFormulaStep);
+  document.querySelectorAll('.io .tex').forEach(fitTex);
+}); }
+addEventListener('resize', requestMathLayout);
+addEventListener('fullscreenchange', requestMathLayout);
+window.__katexReady = () => { rail();Object.keys(FXHTML).forEach(k => delete FXHTML[k]); Object.keys(FXI).forEach(drawFx); Object.keys(IOC).forEach(k => delete IOC[k]); queueIO(); };
 /* FX([en, zh], tex, [en, zh]): one tab of the formula strip under a figure (role text is HTML) */
 const FX = (name, tex, role) => ({name, tex, role});
-const FXS = {}, FXI = {}, FXP = {};
+/* Each diagram describes this exact formula tab: [symbol, English, Chinese, optional link keys]. */
+const FORMULA_FLOWS = {
+  'gen-cands': [
+    [['x, y<t','Read the available context','讀取問題與已生成前文'],['P(yₜ | …)','Predict one token at each step','每一步預測下一個 token','nx'],['∏ Pₜ','Multiply the step probabilities','將各步機率連乘','P']],
+    [['P₁, …, Pₜ','Take each step probability','取得各步機率'],['log Pₜ','Take natural logs','各項取自然對數'],['Σ log Pₜ','Add instead of multiplying','相加得到整句對數機率','lp']]
+  ],
+  'bpe-words': [
+    [['(a,b)','Count adjacent pieces','計算相鄰片段的次數','pair'],['argmax count','Choose the largest count','選出計數最高的一對','cnt'],['ab','Merge into one token','合併成一個 token','pair']],
+    [['V','Start with the current vocabulary','目前的詞彙集合','V'],['+1','Add the newly merged token','加入新合併的 token'],['V′','Vocabulary grows by one','詞彙數增加一個','V']]
+  ],
+  'emb-map': [
+    [['xₜ','Use the token ID as an index','用 token 編號當索引'],['E[xₜ,:]ᵀ','Select and transpose one row','查一列，再轉成欄向量','e'],['eₜ','Obtain the embedding vector','得到嵌入向量','e']],
+    [['e → We+b','Produce one score per word','由向量產生各詞分數','e wy'],['softmax → pᵧ','Find the target probability','正規化並取正確詞機率','y'],['−log pᵧ','Turn confidence into loss','機率越低，損失越大','y']],
+    [['p−y','Compute prediction error','先計算預測誤差'],['Wᵀ(p−y)','Backpropagate to the embedding','傳回嵌入向量的梯度','g'],['e−η∇L','Move against the gradient','沿梯度反方向更新嵌入','e eta']],
+    [['p−y','Use one pre-update snapshot','使用同一份更新前快照'],['∇E, ∇W, ∇b','Compute all three gradients','算出三組參數梯度'],['SGD','Apply learning rate to each group','各組參數都乘學習率再更新','eta']]
+  ],
+  'rope-svg': [
+    [['(q₁,q₂)','Take a pair of coordinates','取出一組二維座標'],['m × θᵢ','Turn position into an angle','位置乘轉速，得到角度','th'],['R(mθᵢ)q','Rotate the coordinate pair','將這組向量旋轉','m']],
+    [['m, n','Locate the two vectors','兩個向量所在的位置','m n'],['n−m','Keep only relative distance','取兩者的相對位置差','nm'],['qᵀR((n−m)θ)k','Compare the rotated alignment','內積衡量旋轉後的對齊','dot']]
+  ],
+  'attn-mat': [
+    [['QKᵀ/√dₖ + M','Score pairs and mask the future','配對打分，再遮住未來','mask'],['softmax → α','Normalize each row to sum to 1','逐列變成總和為 1 的權重','row'],['αV','Mix the value vectors','依權重混合 value 資訊']],
+    [['sᵢⱼ/√dₖ + Mᵢⱼ','Get the selected score','取得選中位置的分數','aq'],['exp / Σexp','Divide by all visible scores','取指數，除以可見項總和','row'],['αᵢⱼ','Read this cell’s weight','得到這一格的注意力權重','aq']],
+    [['j > i ?','Check whether the token is future','檢查是否為未來位置'],['M = −∞ / 0','Block it when masking is on','開啟遮罩時擋住未來','mask'],['exp(−∞)=0','Blocked tokens get zero weight','被遮住的位置權重為零','mask']],
+    [['WQ, WK, WV','Project normalized hidden vectors','用權重投影出 Q、K、V'],['32 × 128','Mix values independently per head','每個頭各自混合 128 維'],['concat → WO','Join heads, project to 4096','串接多頭，再投影回 4096 維']]
+  ],
+  'blk-svg': [
+    [['h² → mean','Measure mean squared magnitude','計算各座標的平均平方','rh'],['√(mean+ε)','Obtain a stable scale','開根號，得到穩定分母','rms'],['(h/scale) ⊙ g','Normalize, then apply learned gain','縮放向量，再乘學得的增益','rn']],
+    [['h','Keep the residual input','保留原本的輸入','rh'],['+ Δa','Add the attention contribution','加上注意力修改量','ra rA'],['+ Δm','Add the feed-forward contribution','再加上前饋修改量','rm ro']],
+    [['W₁x, W₃x','Create two intermediate branches','投影成兩條中間支路'],['SiLU(W₁x) ⊙ W₃x','Use one branch to gate the other','以一條支路閘控另一條'],['W₂(…)','Project back to hidden dimension','投影回原來的隱藏維度','rm']]
+  ],
+  'head-bars': [
+    [['RMSNormfinal(h)','Normalize the final hidden vector','正規化最後區塊向量'],['Wout → z','Produce vocabulary logits','投影成詞彙分數'],['softmax(z/T)','Convert scores to probabilities','調整溫度並轉成機率','T pt']],
+    [['p(correct)','Find the next-token target','找出正確下一詞的機率','pt'],['−log p','Penalize low target probability','正確詞機率越低，懲罰越大','ce'],['mean over tokens','Average for the training objective','對訓練位置取平均']],
+    [['p₁, …, pₙ','Collect sequence probabilities','取得序列各步機率'],['mean(−log p)','Average negative log probability','取平均負對數機率'],['exp(mean loss)','Convert loss to perplexity','取指數得到困惑度']],
+    [['sort p↓','Sort candidates by probability','候選機率由高到低排序'],['cumulative ≥ top-p','Keep the shortest qualifying prefix','累加至門檻，保留最短前綴','P keep'],['renormalize','Sample within the retained set','保留項重新正規化後抽樣','keep']],
+    [['Ltrain','Evaluate the next-token objective','計算下一詞預測損失'],['∇ΘL','Backpropagate to all weights','反向傳播到各層權重'],['AdamW','Update weights using optimizer state','搭配動量與衰減更新參數']]
+  ],
+  'hid-svg': [
+    [['token t','Choose an answer position','選取回答中的位置','st'],['hₜ⁽ˡ⁾','Read the selected layer','讀取指定層的隱藏向量','layer'],['sₜ','Treat this vector as a state','把這個向量當成狀態','st dim']],
+    [['s₁, s₂, …','Read states in token order','依 token 順序取各狀態'],['τ = ⟨s₁,…,sₙ⟩','Join them into one trace','串成這句回答的軌跡','n'],['n × 4096','Keep one vector per position','每個位置保留一個向量','dim']],
+    [['layer outputs','Several layer representations exist','模型可提供多層表示'],['select final block','This implementation selects one layer','此實作只選最後一層','layer'],['4096','Retain one layer’s coordinates','保留單層的 4096 個座標','dim']]
+  ],
+  'pcg-svg': [
+    [['C','Measure variation across coordinates','量出各維如何一起變動'],['max tr(WᵀCW)','Choose orthonormal high-variance axes','找出保留變異最多的正交軸','W'],['top-k eigenvectors','Keep the leading directions','保留前 k 個主成分方向','kept']],
+    [['h−μ','Center the original vector','先減掉平均向量','X'],['Wkᵀ(h−μ)','Project onto the selected axes','投影到選定的主成分軸','W'],['z ∈ ℝᵏ','Keep only k coordinates','只留下 k 個座標','Z k']],
+    [['z','Start with compressed coordinates','從低維座標出發'],['μ + Wkz','Reconstruct the original vector','重建原空間的近似向量','W'],['‖h−ĥ‖²','Measure the lost information','以平方距離量出損失','meas lost']],
+    [['Σ top-k λ','Add retained variances','加總保留方向的變異','kept'],['÷ Σ all λ','Divide by total variance','除以全部變異量','lost'],['share kept','Read the retained fraction','得到保留比例']],
+    [['X−1μᵀ','Center the training matrix','將訓練資料中心化','X'],['U diag(σ) Vᵀ','Factor the centered matrix','進行奇異值分解'],['Wk = V[:,1:k]','Use the first k right directions','取前 k 個右奇異向量','W']],
+    [['4096 dims','Start from hidden states','從隱藏狀態的高維向量出發'],['choose k','Choose the abstraction setting','依抽象方法選擇保留維度'],['Wk: 4096 × k','Fit the projection on training data','用訓練資料擬合投影矩陣']]
+  ],
+  'pca-svg': [
+    [['training h','Use training observations only','只使用訓練觀測'],['μ = mean(h)','Compute and subtract the mean','計算平均並中心化','mu'],['C = covariance','Measure joint coordinate variation','計算共變異數矩陣']],
+    [['C','Start with the covariance matrix','從共變異數矩陣出發'],['Cw = λw','Find directions and their variances','求方向及沿方向的變異'],['λ₁ ≥ λ₂ ≥ …','Sort directions by variance','依變異量由大到小排序']],
+    [['h−μ','Remove the training mean','減去訓練資料平均','mu'],['Wkᵀ','Take coordinates on principal axes','取出各主成分軸上的座標','k'],['z','Locate the projected token','得到圖中的投影位置','z']],
+    [['Σ top-k λ','Sum selected component variances','加總保留成分的變異','k'],['÷ Σ all λ','Compare with all components','與全部成分的變異比較','all'],['retained %','Read how much variation remains','讀出保留的變異比例','cum']]
+  ],
+  'grid-svg': [
+    [['maxᵢ−minᵢ','Measure the training range','取得訓練座標範圍','box'],['÷ m','Split into m equal cells','將範圍均分為 m 格','m'],['uᵢ','Read the width of one cell','得到每格寬度','u1 u2']],
+    [['z̄ᵢ−minᵢ','Measure distance from the origin','量出距離格網起點多遠','zp box'],['÷ uᵢ','Express distance in cell widths','換算成幾個格寬','u1'],['trunc → cᵢ','Truncate toward zero to get the ID','向零截斷，得到格號','c1 c2 c3']],
+    [['c₁, c₂, c₃','Take the three coordinate indices','取得三個維度的格號','c1 c2 c3'],['c₁+c₂m+c₃m²','Combine with positional weights','用各維位權加權相加','m'],['s̄','Obtain one abstract-state ID','合成單一抽象狀態編號','s']],
+    [['N adjacent tokens','Select a history window','取連續 N 個 token 的視窗','N'],['mean(z)','Average coordinates in the window','將視窗內座標取平均'],['z̄ → cell','Assign the averaged point to a cell','平均後再分配格子']],
+    [['m cells / dim','Choose per-dimension granularity','每維選擇 m 個格子','m'],['k dimensions','Combine all dimension choices','組合 k 維的所有選擇'],['mᵏ nominal cells','Count the nominal grid size','計算名義格網大小','tot']]
+  ],
+  'dtmc-svg': [
+    [['#(i→j)','Count this observed transition','數出這個轉移的次數','num'],['÷ #(i→·)','Divide by all departures from i','除以從 i 出發的總次數','row'],['Pᵢⱼ','Estimate the conditional probability','估計此轉移的條件機率','num']],
+    [['states + start','Specify the states and initial state','指定狀態集合與起點'],['transitions','Record which transitions exist','記錄出現過哪些轉移','nT'],['probabilities','Attach transition probabilities','為各轉移附上機率']],
+    [['given s₁','Fix the starting state','先給定第一個狀態'],['P₁₂ × P₂₃ × …','Multiply along successive edges','沿途各邊的機率相乘'],['P(path | s₁)','Obtain conditional path probability','得到條件軌跡機率']]
+  ],
+  'sem-svg': [
+    [['pos, neg','Count visits by answer label','依回答標記計算造訪次數','sel'],['pos / (pos+neg)','Compute the true-answer share','計算真實回答所占比例','sel'],['θ̄(s̄)','Attach this score to the state','把比例綁定到這個狀態','sel']],
+    [['θ̄(s̄₁), …','Read every visited state score','讀取軌跡每一步的狀態分數'],['Σ θ̄ / n','Average across the trace','把整條軌跡的分數平均'],['score','Produce one score per answer','整句回答化成一個分數','sc']],
+    [['score','Read the answer score','取得整句回答分數','sc'],['score < τ ?','Compare with the threshold','和判定門檻比較','tau'],['flag / normal','Flag low-scoring answers','低於門檻則標為幻覺','v']]
+  ],
+  'roc-curve': [
+    [['score < τ','Make predictions at this threshold','依目前門檻產生預測','tau'],['TP / positives; FP / negatives','Count detections and false alarms','計算抓到與誤判的比例','tp fp'],['(FPR, TPR)','Locate the current ROC point','定位目前的 ROC 點','pt']],
+    [['true ↔ false','Compare all true/false answer pairs','把真實與錯誤回答兩兩配對'],['win=1; tie=½','Award one for wins, half for ties','較高算 1，平手算半分'],['mean → AUC','Average the ranking credit','平均得到排序表現 AUC','auc']]
+  ]
+};
+function formulaFlowMarkup(anchor, index, availableKeys, tex=''){
+  let steps = FORMULA_FLOWS[anchor]?.[index]; if (!steps) return '';
+  // The explanation must follow exceptional states, not just the usual case.
+  if (anchor === 'attn-mat' && index === 2 && tex.includes('M_{ij}=0\\quad')) steps = [
+    ['M = 0','Disable the causal mask','因果遮罩已關閉'],['all 9 positions','Include future positions too','包含未來在內的九個位置'],['softmax','Normalize over all positions','對全部位置正規化']
+  ];
+  if (anchor === 'blk-svg' && index === 1 && tex && !tex.includes('\\mathrm{Attn}')) steps = [
+    ['residual off','Remove the additive bypass','關閉殘差加回支路'],['attention → FFN','Pass through the sublayers','依序經過注意力與前饋層','rm'],['h⁽ˡ⁾ = Δm','Keep the feed-forward output only','輸出只保留前饋層結果','ro']
+  ];
+  if (anchor === 'sem-svg' && index === 0 && tex && !tex.includes('\\frac')) steps = [
+    ['pos+neg = 0','No labelled visits exist','訓練時沒有帶標記的造訪'],['unseen state','Do not divide zero by zero','視為未見狀態，不計算 0/0'],['θ̄ = 0','Use the implementation’s default','依實作約定，分數記為零','sel']
+  ];
+  if (anchor === 'dtmc-svg' && index === 0 && tex && !tex.includes('\\frac')) steps = [
+    ['#(i→·) = 0','No outgoing transitions observed','沒有觀測到出發轉移'],['no estimate','Do not divide zero by zero','無法估計比例，不計算 0/0'],['lookup → 0','Use zero as the lookup default','依查表約定回傳零','num']
+  ];
+  const nodes = steps.map(([symbol,en,zh,links='']) => {
+    const keys = links.split(/\s+/).filter(k => availableKeys.includes(k));
+    const tag = keys.length ? 'button' : 'div';
+    return `<li><${tag} class="flow-step"${keys.length ? ` type="button" data-link="${esc(keys.join(' '))}"` : ''}><b>${esc(symbol)}</b><small>${esc(T(en,zh))}</small></${tag}></li>`;
+  }).join('');
+  const branch = anchor === 'emb-map' && index === 3 ? `<div class="flow-branches"><span class="flow-branch">E[xₜ,:]</span><span class="flow-branch">W</span><span class="flow-branch">b</span></div>` : '';
+  return `<details class="formula-details"><summary>${T('Show calculation steps', '展開計算步驟')}</summary><div class="formula-flow"><ol class="flow-steps" aria-label="${T('Equation computation steps','公式計算步驟')}">${nodes}</ol>${branch}</div></details>`;
+}
+const FXS = {}, FXI = {}, FXP = {}, FXHTML = {};
 function setFx(anchor, items){
   let el = document.getElementById(anchor + '-fx');
   if (!el) { const fig = document.getElementById(anchor).closest('.figure'); fig.dataset.fx = anchor; el = document.createElement('div'); el.className = 'fx'; el.id = anchor + '-fx'; fig.insertBefore(el, fig.querySelector('.fig-head').nextSibling); }
@@ -874,7 +1148,7 @@ function setFx(anchor, items){
   const presentButton = figure.querySelector('.present-btn');
   if (presentButton) presentButton.textContent = document.fullscreenElement === figure ? T('Exit presentation', '離開講解模式') : T('Present chart', '單畫面講解');
   figure.querySelectorAll('.demo-side > .note').forEach(note => {
-    const details = document.createElement('details'); details.className = 'note-details';
+    const details = document.createElement('details'); details.className = 'note-details'; details.open = true;
     const summary = document.createElement('summary'); summary.textContent = T('Explanation / observations', '展開補充說明與觀察');
     note.before(details); details.append(summary,note);
   });
@@ -882,25 +1156,43 @@ function setFx(anchor, items){
   FXS[anchor] = Math.min(FXS[anchor] || 0, items.length - 1); FXI[anchor] = items; drawFx(anchor);
 }
 function drawFx(anchor){
-  const el = document.getElementById(anchor + '-fx'), items = FXI[anchor], sel = FXS[anchor], it = items[sel];
-  el.innerHTML = `<div class="fx-top"><p class="fx-h">${T('01 / Read the equation · 02 / Interpret the terms · 03 / Check the figure', '01 / 讀公式 · 02 / 理解各項 · 03 / 對照圖表')}</p>` +
-    `<div class="fx-tabs" role="group">${items.map((x, i) => `<button type="button" class="fx-tab" data-i="${i}" aria-pressed="${i === sel}">${esc(T(x.name[0], x.name[1]))}</button>`).join('')}</div></div>` +
-    `<div class="fx-body"><div class="fx-item${FXP[anchor] ? ' pulse' : ''}"><span class="tex" data-display="1" data-ctx="${anchor}" data-tex="${esc(it.tex)}"></span></div>` +
-    `<div class="fx-role"><p class="fx-name">${esc(T(it.name[0], it.name[1]))}</p><p>${T(it.role[0], it.role[1])}</p></div></div>`;
-  const keys = [...new Set([...it.tex.matchAll(/\\htmlData\{link=([^}]+)\}/g)].map(m => m[1]))];
-  const help = document.createElement('div'); help.className = 'fx-guide';
-  help.innerHTML = `<strong>${T('Equation → figure', '公式 → 圖表')}</strong> · ${T('Start with the equation above and its interpretation. Amber terms highlight the matching values in the interactive figure alongside. Change a control to compare how both the equation and the plot respond; hover a symbol for its definition.', '先讀上方公式與各項的意義，再把琥珀色的項對照到旁邊的互動圖表。調整控制項，觀察公式數值和圖形如何一起變化；滑到符號上可查看定義。')}<div class="fx-links">${keys.map(k => `<button type="button" class="fx-link" data-link="${esc(k)}" aria-label="${esc(T('Highlight in figure: ', '在圖表中標示：') + k)}">${esc(k)} →</button>`).join('')}</div>`;
-  el.appendChild(help);
-  help.querySelectorAll('button').forEach(b => {
-    b.addEventListener('focus', () => setHot(el.closest('.figure'), b.dataset.link));
-    b.addEventListener('blur', () => setHot(null, null));
-    b.addEventListener('click', () => setHot(el.closest('.figure'), b.dataset.link));
+  const el = document.getElementById(anchor + '-fx'), items = FXI[anchor], sel = FXS[anchor];
+  if (!el.querySelector('.fx-list')) {
+    el.innerHTML = '<div class="fx-top"><p class="fx-h"></p><div class="fx-tabs" role="group"></div></div><div class="fx-list"></div>';
+    el.querySelector('.fx-tabs').addEventListener('click', e => { const b = e.target.closest('.fx-tab'); if (!b) return; FXS[anchor] = +b.dataset.i; drawFx(anchor); });
+  }
+  el.querySelector('.fx-h').textContent = T('Formula for what the widget shows now', '目前畫面對應的公式');
+  /* one formula is visible at a time: the widget's controls pick it (data-tab / fxTab), the tabs let the reader override */
+  const tabs = el.querySelector('.fx-tabs'), tabKey = lang + '|' + items.map(it => T(it.name[0], it.name[1])).join('|');
+  if (tabs.dataset.key !== tabKey) { tabs.dataset.key = tabKey; tabs.innerHTML = items.map((it, i) => `<button type="button" class="fx-tab" data-i="${i}"><b>${String(i + 1).padStart(2, '0')}</b>${esc(T(it.name[0], it.name[1]))}</button>`).join(''); }
+  tabs.setAttribute('aria-label', T('Formulas', '公式'));
+  [...tabs.children].forEach((b, i) => b.setAttribute('aria-pressed', i === sel));
+  const list = el.querySelector('.fx-list'), cache = FXHTML[anchor] ||= [];
+  items.forEach((it, i) => {
+    const keys = [...new Set([...it.tex.matchAll(/\\htmlData\{link=([^}]+)\}/g)].map(m => m[1]))];
+    const html = `<p class="fx-step-title"><span>${String(i + 1).padStart(2, '0')}</span>${esc(T(it.name[0], it.name[1]))}</p>`
+      + `<div class="fx-item"><span class="tex" data-display="1" data-ctx="${anchor}" data-tex="${esc(it.tex)}"></span></div>`
+      + `<div class="fx-role"><p>${T(it.role[0], it.role[1])}</p></div>`
+      + formulaFlowMarkup(anchor, i, keys, it.tex);
+    let step = list.children[i];
+    if (!step) { step = document.createElement('div'); step.className = 'fx-body fx-step'; list.appendChild(step); }
+    if (cache[i] !== html) {
+      step.innerHTML = html; cache[i] = html;
+      step.querySelectorAll('.flow-step[data-link]').forEach(button => {
+        const highlight = () => setHot(el.closest('.figure'), button.dataset.link.split(' ')[0]);
+        button.addEventListener('focus', highlight); button.addEventListener('click', highlight);
+        button.addEventListener('blur', () => setHot(null,null));
+      });
+      renderTexIn(step);
+      layoutFormulaStep(step);
+    }
+    step.classList.toggle('active', i === sel);
   });
+  while (list.children.length > items.length) list.lastElementChild.remove();
+  cache.length = items.length;
   FXP[anchor] = false; queueIO();
-  el.querySelectorAll('.fx-tab').forEach(b => b.addEventListener('click', () => { FXS[anchor] = +b.dataset.i; drawFx(anchor); }));
-  renderTexIn(el);
 }
-/* a control inside [data-tab] switches its figure's formula strip before the widget re-renders */
+/* Follow controls until the reader manually selects a formula; then preserve their choice. */
 function tabFrom(e){
   const holder = e.target.closest && e.target.closest('[data-tab]'); if (!holder) return;
   const fig = holder.closest('.figure'), anchor = fig && fig.dataset.fx; if (!anchor || !FXI[anchor]) return;
@@ -930,10 +1222,16 @@ const symClean = s => (s || '').replace(/[​\s]/g, '');
 function symKeys(el){
   const ab = el.closest('.accent-body');
   if (ab) { const acc = ab.closest('.accent'), b = acc && [...acc.querySelectorAll('span')].find(s => !s.children.length && !s.closest('.accent-body') && symClean(s.textContent)); return b ? symKeys(b) : []; }
-  const t = symClean(el.textContent); if (!t) return [];
+  const raw = symClean(el.textContent);
+  // Some renderers expose mathematical bold/italic Unicode characters.
+  const t = raw.replace(/[\u{1D400}-\u{1D7FF}]/gu, glyph => glyph.normalize('NFKC'));
+  if (!t) return [];
   const K = []; let base = t;
   const acc = el.closest('.accent');
-  if (acc && !el.closest('.accent-body')) base = t + '̄';
+  if (acc && !el.closest('.accent-body')) {
+    const mark = acc.querySelector('.accent-body');
+    base = t + (mark && /[ˆ^̂]/.test(mark.textContent) ? '̂' : '̄');
+  }
   if (el.classList.contains('mathcal')) base = 'cal' + t;
   const sub = el.closest('.msupsub');
   if (sub) { const grp = sub.parentElement, first = grp && grp.firstElementChild; const b0 = first && first !== sub ? symClean(first.textContent) : ''; if (b0) K.push(b0 + '_' + symClean(sub.textContent)); }
@@ -941,25 +1239,75 @@ function symKeys(el){
   K.push(base.normalize('NFC')); if (base !== t) K.push(t);
   return K.map(k => k.normalize('NFC'));
 }
-function symFind(ctx, el){ for (const k of symKeys(el)) { const v = (SYMS[ctx] && SYMS[ctx][k]) || SYMS._[k]; if (v) return {k, v}; } return null; }
+function symFind(ctx, el){
+  // KaTeX renders \mathbb R as the text "R" with a mathbb font class,
+  // rather than the Unicode character ℝ. Keep it distinct from rotation R.
+  if (el.closest('.mathbb') && ['R','Z'].includes(symClean(el.textContent))) {
+    const key = symClean(el.textContent) === 'R' ? 'ℝ' : 'ℤ';
+    return {k:key,v:SYMS._[key]};
+  }
+  const local = SYMS[ctx] || {};
+  // KaTeX can split a function name or a base/subscript across several spans.
+  const keys = symKeys(el);
+  let parent = el;
+  for (let depth = 0; parent && depth < 3 && !parent.classList.contains('katex-html'); depth++, parent = parent.parentElement) {
+    const text = symClean(parent.textContent).normalize('NFC');
+    if (text.length <= 32) keys.push(text);
+  }
+  const fold = key => key.replace(/[_{}\s]/g,'').normalize('NFC');
+  // Prefer an entire named function over the meaning of an individual glyph.
+  for (const key of [...keys].sort((a,b) => b.length-a.length)) {
+    if (/^[A-Za-z]{2,}$/.test(key)) {
+      const value = local[key] || SYMS._[key]; if (value) return {k:key,v:value};
+    }
+  }
+  for (const dict of [local, SYMS._]) {
+    for (const key of keys) {
+      if (dict[key]) return {k:key,v:dict[key]};
+      const alias = Object.keys(dict).find(k => fold(k) === fold(key));
+      if (alias) return {k:alias,v:dict[alias]};
+    }
+  }
+  const linked = el.closest('[data-link]');
+  if (linked) {
+    const map = LINK_GLOSS[ctx] || {};
+    for (const key of linked.dataset.link.split(/\s+/)) {
+      const value = map[key] || map[key.replace(/\d+$/, '*')];
+      if (value) return {k:symClean(linked.textContent),v:value};
+    }
+  }
+  const text = symClean(el.textContent);
+  if (/^\d+(\.\d+)?$/.test(text)) return {k:text,v:['Numerical value used in this expression; linked values change with the controls.', '此運算使用的數值；與圖表連動的數值會隨控制項更新。']};
+  if (el.classList.contains('mfrac')) return {k:'a/b',v:['Divide the numerator by the denominator.', '分數：分子除以分母。']};
+  return null;
+}
 const SECTION_CTX = {llm:'gen-cands',token:'bpe-words',embed:'emb-map',rope:'rope-svg',attn:'attn-mat',block:'blk-svg',head:'head-bars',hidden:'hid-svg',pca:'pca-svg',grid:'grid-svg',dtmc:'dtmc-svg',sem:'sem-svg',roc:'roc-curve'};
 function annotateSyms(root){ root.querySelectorAll('.tex').forEach(tex => {
   const section = tex.closest('section');
   const ctx = tex.dataset.ctx || (section && SECTION_CTX[section.id]) || '';
   tex.dataset.ctx = ctx;
   tex.querySelectorAll('.katex-html span').forEach(s => {
-    if (s.children.length) return;
+    if (s.children.length && !s.matches('.mfrac,.sqrt,.mop,.mord.text')) return;
     const f = symFind(ctx, s);
-    if (f) { s.classList.add('symx'); s.title = T(...f.v); }
+    if (f) { s.classList.add('symx'); s.dataset.tooltip = T(...f.v); }
   });
 }); }
 let symShown = false;
 document.addEventListener('mousemove', e => {
   if (e.target.closest && e.target.closest('.katex')) {
-    const el = document.elementsFromPoint(e.clientX, e.clientY).find(n => n.classList && n.classList.contains('symx'));
-    if (el) { const t = el.closest('.tex'), f = symFind(t ? t.dataset.ctx || '' : '', el);
-      if (f) { const p = f.k.split('_'), label = p.length > 1 ? esc(p[0]) + '<sub>' + esc(p.slice(1).join('_')) + '</sub>' : esc(f.k.replace(/^cal/, ''));
-        showTip('<b>' + label + '</b> — ' + esc(T(f.v[0], f.v[1])), e); symShown = true; return; } }
+    const tex = e.target.closest('.tex');
+    const ctx = tex && (tex.dataset.ctx || SECTION_CTX[tex.closest('section')?.id]) || '';
+    // Resolve from the live glyph as well as pre-annotated spans. Resizing and
+    // formula wrapping can replace KaTeX's inner spans between pointer events.
+    let glyph = e.target.closest('.katex-html span');
+    while (glyph && glyph.closest('.katex-html')) {
+      const f = symFind(ctx, glyph);
+      if (f) {
+        const p = f.k.split('_'), label = p.length > 1 ? esc(p[0]) + '<sub>' + esc(p.slice(1).join('_')) + '</sub>' : esc(f.k.replace(/^cal/, ''));
+        showTip('<b>' + label + '</b> — ' + esc(T(f.v[0], f.v[1])), e); symShown = true; return;
+      }
+      glyph = glyph.parentElement;
+    }
   }
   if (symShown) { hideTip(); symShown = false; }
 }, {passive: true});
@@ -968,7 +1316,7 @@ G('_', {
   'e': ['Euler\'s number, about 2.718; e^x turns any score into a positive number', '歐拉數，約 2.718；e^x 把任何分數變成正數'], 'exp': ['exponential function, exp(x) = e^x', '指數函數 exp(x) = e^x'], 'log': ['natural logarithm (inverse of e^x)', '自然對數（e^x 的反函數）'],
   '∑': ['sum over the index below', '連加：把下方指標每個取值的項加起來'], '∏': ['product over every step', '連乘：把每一步的項乘起來'], '∣': ['“given”: conditioned on what is on the right', '「在…的條件下」'], '∥': ['norm: the length of a vector', '範數：向量的長度'],
   '≈': ['approximately equal', '約等於'], '⊤': ['transpose (swap rows and columns)', '轉置（列與行互換）'], '←': ['update: replace the left side with the right side', '更新：用右邊的值取代左邊'], '⊙': ['element-wise product', '逐元素相乘'], '⌊': ['floor (round down)', '向下取整'], '⌋': ['floor (round down)', '向下取整'],
-  'η': ['learning rate: how far each step moves along the gradient', '學習率：每一步沿梯度走多遠'], 'σ': ['sigmoid 1/(1+e^{−x})', 'sigmoid 函數 1/(1+e^{−x})'], 'ℝ': ['real numbers; ℝ^d is a vector of d real numbers', '實數；ℝ^d 是 d 個實數組成的向量']
+  'η': ['learning rate: how far each step moves along the gradient', '學習率：每一步沿梯度走多遠'], 'σ': ['sigmoid 1/(1+e^{−x})', 'sigmoid 函數 1/(1+e^{−x})'], 'ℝ': ['Real-number space. ℝ^d is a d-dimensional real vector; ℝ^(m×n) is an m-row, n-column real matrix. For E ∈ ℝ^(32000×4096), each of 32,000 tokens has 4,096 real coordinates.', '實數空間。ℝ^d 表示 d 維實數向量；ℝ^(m×n) 表示 m 列、n 欄的實數矩陣。例如 E ∈ ℝ^(32000×4096)：32,000 個 token 各有一個包含 4,096 個實數座標的向量。']
 });
 G('gen-cands', {'P': ['probability', '機率'], 'x': ['the prompt (question)', '提示（問題）'], 'y': ['the generated answer (a list of tokens)', '模型生成的回答（一串 token）'], 'y_t': ['the t-th token of the answer', '回答的第 t 個 token'], 'T': ['number of tokens generated so far', '目前生成的 token 數'], 't': ['step number', '第幾步']});
 G('bpe-words', {'a': ['left piece', '左邊的片段'], 'b': ['right piece', '右邊的片段'], 'count': ['how often the two pieces are adjacent in the corpus (times word frequency)', '這兩個片段在語料中相鄰出現的總次數（乘上詞頻）'], 'V': ['the vocabulary (set of all tokens)', '詞彙表（所有 token 的集合）']});
@@ -987,6 +1335,174 @@ G('roc-curve', {'τ': ['threshold', '門檻'], 'P': ['probability', '機率']});
 G('_', {
   '=':['equal to','等於：左右兩邊表示同一個量'], '+':['addition','相加'], '−':['subtraction or a negative sign','相減，或表示負值'], '×':['multiplication','相乘'], '∈':['is an element of','屬於這個集合'], '→':['maps to or leads to','映射成、或流程的下一步'], '…':['continued sequence','省略中間依同樣規律延續的項'], '∞':['infinity','無限大'], '∇':['gradient with respect to the parameter below','梯度：下標參數各方向的變化率'], '∂':['partial derivative','偏微分：其他變數固定時，對指定變數的變化率'], 'softmax':['normalize exponentiated scores to probabilities summing to one','將分數取指數後除以總和，變成總和為 1 的機率'], 'argmax':['the argument giving the largest value','找出使後方數值最大的輸入'], 'max':['largest value','取最大值'], 'min':['smallest value','取最小值'], 'tr':['sum of matrix diagonal entries','矩陣的跡：對角線元素總和'], 'sin':['sine of the rotation angle','角度的正弦'], 'cos':['cosine of the rotation angle','角度的餘弦'], 'i':['index of a coordinate or item; see the equation explanation','座標或項目的索引，具體對象見本節公式讀法'], 'j':['index of a second coordinate or item','另一個座標或項目的索引'], 't':['token or time-step index','token 或時間步的索引']
 });
+/* Additional definitions are scoped: T, N, W, theta and sigma mean different things in different units. */
+const defineSymbols = (ctx, rows) => G(ctx, Object.fromEntries(rows.map(([key,en,zh]) => [key,[en,zh]])));
+defineSymbols('_', [
+  ['<','Strictly less than.','嚴格小於。'], ['>','Strictly greater than.','嚴格大於。'],
+  ['≤','Less than or equal to.','小於或等於。'], ['≥','Greater than or equal to.','大於或等於。'],
+  ['≠','Not equal to.','不等於。'], ['⇒','The left statement implies the right statement.','左邊條件成立，可推出右邊結果。'],
+  ['⟹','Implies the following result.','由前面的條件推出後面的結果。'], ['⟺','Both statements are equivalent.','若且唯若：兩邊條件等價。'],
+  ['⇔','If and only if.','若且唯若：兩邊條件等價。'], ['·','Multiply, or a dot product when between vectors.','相乘；位於兩向量間時表示內積。'],
+  ['√','Square root.','平方根：例如 √4 = 2。'], ['∣','Given the condition on the right; in set notation, such that.','機率中表示「給定右邊條件」；集合中表示「滿足此條件」。'],
+  ['|','Absolute value, or the size of a set when enclosing a set.','包住數值時為絕對值；包住集合時為集合元素個數。'],
+  ['‖','Vector norm; squared Euclidean norm sums squared coordinates.','向量範數；歐氏範數的平方等於各座標平方和。'],
+  ['⋯','Continue the same pattern.','依照相同規律繼續排列中間各項。'], ['⋅','Multiplication; in a condition it can stand for omitted context.','乘法；放在條件的位置時，也可能代表省略的前文條件。'],
+  ['Pr','Probability of the event in parentheses.','括號中事件發生的機率。'], ['arg','With max, returns the input achieving the maximum.','與 max 合用為 argmax，表示找出使目標最大的輸入。'],
+  ['onehot','Vector with one at the selected ID and zero elsewhere.','one-hot 向量：指定編號位置為 1，其餘為 0。'],
+  ['diag','Matrix with the supplied values on its diagonal.','以指定數值作為對角線，其餘位置為零的矩陣。'],
+  ['I','Identity matrix: ones on the diagonal, zeros elsewhere.','單位矩陣：對角線為 1，其餘為 0。'],
+  ['⊂','Subset of a larger set.','是另一個集合的子集合。'], ['∅','Empty set.','空集合：沒有任何元素。'],
+  ['(', 'Start a grouped expression, function argument, or tuple.', '括號：將運算分組，也可表示函數輸入或座標。'],
+  [')', 'End of the grouped expression or function argument.', '結束這組運算、函數輸入或座標。'],
+  ['[','Start an index selection, interval, or matrix.','方括號：可表示索引選取、區間或矩陣。'],
+  [']','End an index selection, interval, or matrix.','結束索引選取、區間或矩陣。']
+]);
+defineSymbols('gen-cands', [
+  ['y_<t','All answer tokens before step t.','第 t 步之前已生成的所有回答 token。'],
+  ['y_t','Answer token at step t; not its numerical probability.','第 t 步的回答 token，不是它的機率數值。'],
+  ['logP','Log probability: replaces multiplication of step probabilities with addition.','對數機率：把每步機率的連乘改成對數相加。']
+]);
+defineSymbols('bpe-words', [
+  ['a*','Left piece of the most frequent adjacent pair.','目前計數最高的相鄰組合中，左邊的片段；星號表示最佳解。'],
+  ['b*','Right piece of the most frequent adjacent pair.','目前計數最高的相鄰組合中，右邊的片段。'],
+  ['*','Marks the maximizing choice, not multiplication here.','這裡的星號表示選出的最佳解，不是乘法。']
+]);
+defineSymbols('emb-map', [
+  ['g','Logit gradient p−y, computed before any parameter updates.','logit 的梯度 p−y，必須在任何參數更新前先算好。'],
+  ['x','Token ID; used to look up a row of E.','token 編號，用來選取嵌入表 E 的一列。'],
+  ['j','Candidate next-word index in the vocabulary.','詞彙表中候選下一詞的索引。'],
+  ['z_y','Logit assigned to the correct next word.','正確下一詞所得到的 logit 分數。'],
+  ['W_j','Output weights associated with candidate word j.','候選詞 j 對應的輸出權重向量。'],
+  ['b_j','Bias for candidate word j.','候選詞 j 的偏差項。'],
+  ['p−y','Prediction probabilities minus the one-hot target: the output error.','預測機率減去正確詞的 one-hot 標記，形成輸出誤差。'],
+  [':','Select all coordinates in the chosen row of E.','選取這一列的全部座標。']
+]);
+defineSymbols('rope-svg', [
+  ['q','Query vector: the features used to look for matching positions.','查詢向量：用來尋找相關位置的特徵；圖只畫其中一組二維座標。'],
+  ['k','Key vector: features compared with the query.','鍵向量：與 query 比對的特徵；這裡 k 不是 PCA 成分數。'],
+  ['n−m','Relative distance between the key and query positions.','key 與 query 的相對位置差。']
+]);
+defineSymbols('attn-mat', [
+  ['W_Q','Learned per-head query projection, 128 × 4096 under column-vector convention.','每個頭學得的 query 投影權重，採欄向量記法時是 128 × 4096。'],
+  ['W_K','Learned per-head key projection.','每個頭學得的 key 投影權重。'],
+  ['W_V','Learned per-head value projection.','每個頭學得的 value 投影權重。'],
+  ['W_O','Learned 4096 × 4096 projection after concatenating 32 attention heads.','將 32 個注意力頭串接後再投影的權重，維度為 4096 × 4096。'],
+  ['o','Single-head output: a 128-dimensional weighted sum of values.','單一頭的輸出：value 的加權和，有 128 個維度。'],
+  ['r','Attention-head index, from 1 to 32.','注意力頭的索引，從 1 到 32。'],
+  ['V','Value matrix: each row is a token’s value vector. Attention weights multiply V to produce weighted information, not probabilities.','Value（值）矩陣：每列是一個 token 的 value 向量。注意力權重乘上 V，得到加權混合的資訊；V 本身不是機率。'],
+  ['v','Value vector for one token, a row of the value matrix V.','單一 token 的 value（值）向量，是矩陣 V 的一列；v_j 表示第 j 個位置要被加權混合的資訊。'],
+  ['v_j','Value vector at position j, multiplied by attention weight α_tj and summed to form the attention output.','位置 j 的 value 向量；乘上注意力權重 α_tj，再對所有可見位置相加，得到注意力輸出。'],
+  ['H','Input hidden-state matrix: one row per token, 4,096 coordinates per row in Llama-2-7b.','輸入隱藏狀態矩陣：每列是一個 token，在 Llama-2-7b 中每列有 4,096 個座標。'],
+  ['h','Hidden vector of one token, used to construct queries, keys and values.','單一 token 的隱藏向量，用來產生 query、key 和 value。'],
+  ['Δ','Change contributed by the attention sublayer, added through the residual connection.','注意力子層產生的增量，經由殘差連接加回原向量。'],
+  ['a','Attention contribution vector; Δa_t is the weighted sum of value vectors for token t.','注意力貢獻向量；Δa_t 是第 t 個 token 對各 value 向量加權求和的結果。'],
+  ['Attn','Attention: use normalized query-key scores to mix value vectors.','注意力：以 query、key 的配對分數產生權重，再加權混合 value。'],
+  ['q','Query vector for the selected token.','選取 token 的 query 向量。'], ['k','Key vector for a candidate position.','被比對位置的 key 向量。'],
+  ['d','Vector dimension; d_k is the key/query dimension per head.','向量維度；d_k 是每個注意力頭的 key／query 維度。'],
+  ['i','Query row: the token doing the attending.','query 的列索引：目前正在查看前文的 token。'],
+  ['j','Key/value column: a position the query may attend to.','key／value 的欄索引：query 可以關注的位置。'],
+  ['α_ij','Normalized attention weight from query i to position j.','query i 分配給位置 j 的注意力權重；同列權重總和為 1。'],
+  ['s_ij','Unnormalized query-key matching score.','query i 與 key j 的配對分數，尚未做 softmax。']
+]);
+defineSymbols('blk-svg', [
+  ['RMSNorm','Normalize by root mean square, then apply learned per-coordinate gain.','以均方根調整尺度，再乘上每個座標學得的增益 g。'],
+  ['FFN','Position-wise feed-forward network; transforms features at each token.','逐位置前饋網路：轉換每個 token 的特徵。'],
+  ['Attn','Attention sublayer mixing information across visible positions.','注意力子層：混合目前可見位置的資訊。'],
+  ['SiLU','Activation u times sigmoid(u).','激活函數 SiLU(u) = u × sigmoid(u)。'],
+  ['ε','Small positive stability constant preventing division by zero.','很小的正數，讓分母穩定並避免除以零。'],
+  ['x','Vector entering the feed-forward network.','送進前饋網路的向量。'], ['u','Scalar activation input.','激活函數的單一數值輸入。'],
+  ['W_1','Projects the hidden vector into the gated intermediate features.','將隱藏向量投影到閘控支路的中間特徵。'],
+  ['W_3','Projects the hidden vector into the second intermediate branch.','將隱藏向量投影到另一條中間支路，與閘控支路逐元素相乘。'],
+  ['W_2','Projects the intermediate features back to hidden dimension.','把中間特徵投影回隱藏向量的維度。'],
+  ['h^(l)','Output hidden vector of decoder block l.','第 l 個解碼器區塊的輸出隱藏向量。']
+]);
+defineSymbols('head-bars', [
+  ['Θ','Collection of all trainable model parameters.','模型所有可訓練參數的集合。'],
+  ['AdamW','Adaptive optimizer using gradient moments and decoupled weight decay.','使用梯度一、二階動量，並將權重衰減解耦處理的自適應最佳化器。'],
+  ['β','Optimizer moment-decay coefficients β₁ and β₂; not model weights.','最佳化器一、二階動量的衰減係數 β₁、β₂，不是模型權重。'],
+  ['ε','Small AdamW denominator stabilizer; distinct from RMSNorm epsilon.','AdamW 分母的微小穩定常數，與 RMSNorm 的 ε 是不同參數。'],
+  ['λ','AdamW weight-decay coefficient, applied according to parameter groups.','AdamW 的權重衰減係數；是否衰減由參數群組決定。'],
+  ['W_out','Learned vocabulary projection after final RMSNorm; Llama-2 uses no bias.','最終 RMSNorm 後，映射到詞彙表的權重；Llama-2 此處沒有偏差項。'],
+  ['g','Learned per-coordinate RMSNorm gains; separate gains for each norm.','RMSNorm 每個座標學得的增益；各正規化層有各自的增益。'],
+  ['E','Trainable token embedding table, separate from output weights.','可訓練的 token 嵌入表，與輸出權重分開。'],
+  ['θ','All learned language-model parameters; not a LUNA state score here.','語言模型所有學得的參數；這裡不是 LUNA 狀態語意分數。'],
+  ['x','Token sequence used for next-token training.','用於下一個 token 預測訓練的 token 序列。'],
+  ['y','Generated answer tokens.','生成回答的 token 序列。'],
+  ['S_p','Smallest high-probability candidate set reaching the top-p threshold.','按機率由高到低累加，首次達到 top-p 門檻的最小候選集合。'],
+  ['i','Vocabulary token index.','詞彙表中 token 的索引。'], ['j','Index summed over all vocabulary candidates.','對所有候選 token 求和時使用的索引。'],
+  ['p_i','Softmax probability assigned to token i.','softmax 分配給 token i 的機率。']
+]);
+defineSymbols('hid-svg', [
+  ['l','Hidden-state layer index.','隱藏狀態所屬的層索引。'],
+  ['s_t','Concrete state: hidden vector at answer token t.','第 t 個回答 token 的具體狀態，也就是它的隱藏向量。'],
+  ['h','Context-dependent hidden vector, not the output token probability.','包含上下文資訊的隱藏向量，不是輸出 token 機率。']
+]);
+for (const context of ['pca-svg','pcg-svg']) defineSymbols(context, [
+  ['W','Projection matrix with orthonormal principal directions as columns.','投影矩陣：各欄是互相正交且長度為 1 的主成分方向。'],
+  ['W_k','Matrix of the k retained principal directions.','由保留的 k 個主成分方向組成的矩陣。'],
+  ['d','Original number of coordinates before PCA.','PCA 前的原始向量維度。'], ['k','Number of retained principal components.','保留的主成分數，也就是投影後的維度。'],
+  ['X','Training data matrix, one observation vector per row.','訓練資料矩陣：每列是一個觀測向量。'],
+  ['Z','Projected data matrix, with k coordinates per observation.','投影後資料矩陣：每個觀測只保留 k 個座標。'],
+  ['1','Vector of ones when multiplying the mean; otherwise a numerical constant.','與平均向量相乘時表示全 1 向量，用來把平均複製到每列；其他位置可能是常數 1。'],
+  ['I_k','k by k identity matrix; W transpose W = I means orthonormal columns.','k × k 單位矩陣；W 的轉置乘 W 等於它，表示各欄正交且長度為 1。'],
+  ['ĥ','Reconstructed original-space vector from retained coordinates.','由保留的低維座標重建回原空間的近似向量。'],
+  ['σ','Singular value of centered data; its square divided by N−1 is an eigenvalue.','中心化資料的奇異值；平方再除以 N−1 得到對應特徵值。'],
+  ['U','Left singular vectors in the SVD of centered observations.','中心化資料做 SVD 所得的左奇異向量矩陣。'],
+  ['V','Right singular vectors; its first k columns give principal directions.','右奇異向量矩陣；前 k 欄就是保留的主成分方向。'],
+  ['n','Index of a training observation in the reconstruction sum.','重建誤差求和中，第幾個訓練觀測的索引。']
+]);
+defineSymbols('grid-svg', [
+  ['trunc','Truncate toward zero: trunc(−0.2)=0, unlike floor(−0.2)=−1. No clipping is applied.','向零截斷：trunc(−0.2)=0，與 floor(−0.2)=−1 不同；此實作不裁切格號。'],
+  ['c','Cell index in one coordinate dimension.','某個座標維度的格號。'], ['z','Projected PCA coordinates before grid assignment.','分配格子前的 PCA 投影座標。'],
+  ['u','Grid cell width in a coordinate dimension.','某個維度每個格子的寬度。'],
+  ['min','Training minimum along this coordinate.','這個座標維度在訓練資料中的最小值。'],
+  ['max','Training maximum along this coordinate.','這個座標維度在訓練資料中的最大值。'],
+  ['n','Number of tokens in the answer trace.','回答軌跡的 token 數。'],
+  ['S̄','Set of possible abstract grid states; bars indicate abstraction.','所有可能抽象格網狀態的集合；上橫線表示抽象化後的量。'],
+  ['s','State index obtained by combining coordinate cell indices.','把各維格號組合後得到的狀態編號。'],
+  ['i','Coordinate index in the grid formula, or window start in averaging.','格網式中是維度索引；多步平均式中是視窗起點索引。'],
+  ['j','Offset within the history window, from 0 to N−1.','歷史視窗內的偏移索引，從 0 到 N−1。']
+]);
+defineSymbols('dtmc-svg', [
+  ['calM','Abstract discrete-time Markov-chain model.','抽象的離散時間馬可夫鏈模型。'],
+  ['S̄','Finite set of abstract states.','有限的抽象狀態集合。'],
+  ['s̄_0','Initial abstract state.','起始抽象狀態。'],
+  ['δ̄','Set of observed abstract state transitions.','觀測到的抽象狀態轉移集合。'],
+  ['P','Transition probability estimated by row-normalized transition counts.','以轉移計數除以該列總次數估計的轉移機率。'],
+  ['s','A state in the transition or trace.','轉移或軌跡中的一個狀態。'],
+  ['n','Number of states along the trace.','這條軌跡中的狀態數。'],
+  ['′','Prime: labels the destination or another state, not a derivative here.','撇號：區分目的狀態或另一個狀態，這裡不是微分。']
+]);
+defineSymbols('sem-svg', [
+  ['pos','Training visits contributed by true-answer traces.','訓練時，真實回答軌跡對這個狀態的造訪次數。'],
+  ['neg','Training visits contributed by false-answer traces.','訓練時，錯誤回答軌跡對這個狀態的造訪次數。'],
+  ['score','Mean state-semantics score over this answer trace; lower suggests hallucination.','這句回答各步狀態語意分數的平均；越低越偏向幻覺。'],
+  ['s̄','Discrete abstract state visited by the trace.','這條軌跡經過的離散抽象狀態。'],
+  ['θ','State semantics: true visits divided by total labelled visits.','狀態語意：真實回答造訪次數除以帶標記的總造訪次數。'],
+  ['hallucination','Flag the answer when its score is below the threshold.','當回答分數低於門檻時，標記為幻覺。']
+]);
+defineSymbols('roc-curve', [
+  ['TPR','Detected hallucinations divided by all hallucinations.','真正率：被抓到的幻覺數，除以所有幻覺數。'],
+  ['FPR','True answers incorrectly flagged, divided by all true answers.','偽正率：被誤判為幻覺的真實回答數，除以所有真實回答數。'],
+  ['AUC','Area under ROC; here, the chance a true answer ranks above a false one, ties half.','ROC 曲線下面積；此處等於真實回答分數高於錯誤回答的配對比例，平手算一半。'],
+  ['score','Answer truthfulness score; below tau is flagged as hallucination.','回答真實性分數；低於 τ 就標記為幻覺。'],
+  ['#','Count answers satisfying the condition; not a transition count here.','計算符合條件的回答數；這裡不是狀態轉移次數。'],
+  ['true','True-answer class, expected to have higher scores.','真實回答類別，期望得到較高分數。'],
+  ['false','False-answer class: the positive class in this ROC.','錯誤回答類別，在本 ROC 中是要偵測的正類。']
+]);
+defineSymbols('_', [['ℤ','Integers, including negative, zero and positive whole numbers.','整數集合，包括負整數、零與正整數。']]);
+const LINK_GLOSS = {
+  'gen-cands': {'g*':['Probability factor for this generated token.','這個已生成 token 對整句機率貢獻的乘數。'],nx:['Next-token probability in the current candidate distribution.','目前候選分布中，下一個被選 token 的機率。']},
+  'emb-map': {e:['Selected embedding or its updated coordinates.','選取詞的嵌入向量，或本步更新後的座標。'],g:['Embedding gradient: direction of increasing loss.','嵌入向量的梯度，指向損失增加的方向；更新時沿反方向移動。'],'w*':['Selected candidate output weights or logit.','選取候選詞的輸出權重或 logit 分數。']},
+  'rope-svg': {dot:['Dot product after rotation; compare arrow alignment.','旋轉後的內積，對照圖中兩箭頭的對齊程度。']},
+  'attn-mat': {aq:['Selected attention score or probability.','選取位置的注意力分數或正規化後權重。'],row:['Softmax denominator: sum of exponentiated row scores.','softmax 的分母：這列所有可見位置的指數分數總和。']},
+  'pcg-svg': {kept:['Variance retained by the selected principal components.','所選主成分保留的變異量。'],lost:['Variance discarded by the omitted components.','未保留主成分所捨棄的變異量。'],meas:['Measured mean squared reconstruction error with N−1 normalization.','以 N−1 正規化計算的重建平方誤差。']},
+  'pca-svg': {cum:['Cumulative fraction of variance retained.','保留主成分的累積變異比例。'],all:['Total variance across all components.','所有主成分的總變異量。']},
+  'grid-svg': {box:['Training coordinate boundary used to define the grid.','用來建立格網的訓練資料座標邊界。'],zp:['Selected projected coordinate before cell assignment.','目前選取、尚未轉成格號的投影座標。'],used:['Number of distinct states observed in training.','訓練資料實際造訪過的不同狀態數。'],tot:['Total possible grid states, m to the power k.','格網所有可能狀態數，也就是 m 的 k 次方。']},
+  'dtmc-svg': {num:['Count or probability of the selected transition.','選取轉移的觀測次數，或正規化後的機率。'],row:['Total outgoing transitions from the selected source state.','從選取來源狀態出發的全部轉移次數。'],nT:['Number of distinct observed transition pairs.','實際觀測到的不同轉移配對數。']},
+  'sem-svg': {'b*':['State truthfulness score for this step in the answer trace.','回答軌跡這一步的狀態真實性分數，對應右側一根長條。'],sel:['Counts or truthfulness score of the selected abstract state.','目前抽象狀態的標記造訪計數，或由此算出的真實性分數。'],sc:['Mean truthfulness score of the entire answer.','整句回答的平均真實性分數。'],v:['Verdict obtained by comparing the answer score with tau.','將回答分數與 τ 比較後的判定結果。']},
+  'roc-curve': {tp:['Hallucinations correctly detected at this threshold.','此門檻下被正確抓出的幻覺數。'],fp:['True answers incorrectly flagged at this threshold.','此門檻下被誤標為幻覺的真實回答數。'],pt:['Current ROC coordinate: FPR on x, TPR on y.','目前 ROC 座標：橫軸 FPR，縱軸 TPR。'],auc:['Ranking performance over all true/false answer pairs.','在所有真實／錯誤回答配對上的排序表現。']}
+};
 /* ============================ 01 pipeline + generation ============================ */
 function pipe(){
   const C = {ink: '#E7EBF3', mute: '#7C869C', rule: '#2F3A50', acc: '#8CB8FF', acc2: '#C2B4FF', warm: '#F4C26B', sf: '#161D2B'};
@@ -999,11 +1515,12 @@ function pipe(){
     [430, 200, '#attn', T('Decoder block × 32', '解碼器區塊 × 32'), T('RoPE·attention + SwiGLU', 'RoPE·注意力 + SwiGLU')], [650, 140, '#head', T('Output layer', '輸出層'), 'softmax · 32,000'], [810, 170, '#llm', T('Next token', '下一個 token'), T('appended to input', '接回輸入')]];
   top.forEach(([x, w, h, a, b], i) => { s += box(x, 40, w, 50, h, a, b, i === 3 ? {stroke: C.acc} : {}); if (i) s += ar(top[i - 1][0] + top[i - 1][1], 65, x - 2, 65); });
   s += `<path d="M895 40 V18 H70 V36" fill="none" stroke="${C.acc2}" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#pa2)"/>` + tx(480, 13, T('autoregressive: the picked token goes back in, repeat', '自迴歸：挑出的 token 接回輸入，重複'), {a: 'middle', fs: 10, c: C.acc2});
-  s += tx(10, 156, 'LUNA · PCA 3 · Grid 5 · DTMC', {fs: 11, c: C.warm, w: 700});
-  const bot = [['#hidden', T('Concrete state', '具體狀態'), 'h ∈ ℝ⁴⁰⁹⁶'], ['#pca', 'PCA', T('→ 3 dims', '→ 3 維')], ['#grid', 'Grid', T('5³ = 125 states', '5³ = 125 狀態')], ['#dtmc', 'DTMC', T('transition probs', '轉移機率')], ['#sem', T('Semantics', '語意綁定'), T('mean θ̄ → score', 'θ̄ 平均 → 分數')], ['#roc', 'ROC AUC', T('paper: 0.65', '論文：0.65')]];
-  bot.forEach(([h, a, b], i) => { const x = 10 + i * 165; s += box(x, 166, 145, 50, h, a, b, {stroke: '#7A6230'}); if (i) s += ar(x - 20, 191, x - 2, 191); });
+  s += tx(10, 156, 'LUNA · PCA 3 · Grid 5', {fs: 11, c: C.warm, w: 700});
+  const bot = [['#hidden', T('Concrete state', '具體狀態'), 'H³² → S'], ['#pca', 'PCA', 'S → Z'], ['#grid', 'Grid', 'Z → s̄'], ['#sem', T('Semantics', '語意綁定'), 's̄ → score'], ['#roc', 'ROC AUC', T('scores → AUC', '分數 → AUC')]];
+  bot.forEach(([h, a, b], i) => { const x = 10 + i * 200; s += box(x, 166, 170, 50, h, a, b, {stroke: '#7A6230'}); if (i) s += ar(x - 30, 191, x - 2, 191); });
+  s += ar(495, 216, 495, 238) + box(410, 242, 170, 50, '#dtmc', 'DTMC', T('s̄ → transition P̄', 's̄ → 轉移 P̄'), {stroke: '#7A6230'});
   s += `<path d="M530 90 V128 H82 V162" fill="none" stroke="${C.warm}" stroke-width="1.6" marker-end="url(#paw)"/>` + tx(300, 122, T('reads the last layer only (authors’ code, idx 31)', '只讀最後一層（作者程式碼 idx 31）'), {fs: 10.5, c: C.warm});
-  s += tx(10, 240, T('click a box to jump to its unit', '點任一格跳到該單元'), {fs: 10, c: C.mute});
+  s += tx(10, 310, T('click a box to jump to its unit', '點任一格跳到該單元'), {fs: 10, c: C.mute});
   $('#pipe').innerHTML = s;
 }
 const GEN_PROMPT = 'Q: Which is denser, water vapor or air?  A:';
@@ -1023,11 +1540,11 @@ function gen(){
   const done = GEN.slice(0, genT);
   $('#gen-out').innerHTML = `<span class="prompt">${esc(GEN_PROMPT)}</span>` + done.map((g, i) => `<span class="tok${i === genT - 1 ? ' new' : ''}" data-link="g${i}">${esc(vtok(g[0][0]))}</span>`).join('');
   $('#gen-cands').innerHTML = genT < GEN.length ? GEN[genT].map((c, i) => `<div class="barrow${i ? '' : ' hi'}"${i ? '' : lk('nx')}><span class="w">${esc(vtok(c[0]))}</span><span class="b"><i style="width:${c[1] * 100}%"></i></span><span class="p">${f2(c[1])}</span></div>`).join('')
-    : `<p class="note" style="margin:0">${T('Done: the model emitted the end-of-sequence token.', '生成結束：模型輸出句尾 token。')}</p>`;
+    : `<p class="note" style="margin:0">${T('Done: the toy stops after the period; EOS is not simulated.', '生成結束：玩具流程在句點後停止，沒有模擬 EOS。')}</p>`;
   const ps = done.map(g => g[0][1]), prod = ps.reduce((a, b) => a * b, 1), lp = ps.reduce((a, b) => a + Math.log(b), 0);
   $('#gen-scores').innerHTML = stat([[T('generated', '已生成'), genT + ' / 9', 'tokens'], ['P(y∣x)', genT ? prod.toExponential(2) : '1', T('whole answer', '整句機率'), '', 'P'], ['log P', f2(lp), T('sum of steps', '每步相加'), '', 'lp']]);
   $('#gen-note').innerHTML = genT === 4 ? T('<b>The key step.</b> The correct token is <code>▁less</code> (0.31) but <code>▁dens</code> (0.38) is a bit higher; greedy decoding takes the highest and the sentence heads for the wrong answer. Hallucinations are often built this way, one token at a time.', '<b>關鍵的一步。</b>正確的是 <code>▁less</code>（0.31），但 <code>▁dens</code>（0.38）略高；貪婪解碼挑了最高的，句子就走向錯誤答案。幻覺往往就是這樣一個一個 token 累積出來的。')
-    : genT >= 9 ? T('The full answer is “Water vapor is denser than air.” — factually wrong. LUNA’s job is to notice that without reading the answer, only from the model’s internal vectors.', '整句答案是「Water vapor is denser than air.」——事實錯誤。LUNA 要做的，就是不看答案本身，只從模型內部的向量看出「這句不太對」。')
+    : genT >= 9 ? T('The displayed answer is “Water vapor is denser than air.” — factually wrong. This toy stops after the full stop; it does not simulate an EOS token. LUNA estimates a score from internal vectors.', '畫面回答是「Water vapor is denser than air.」——事實錯誤。玩具流程在句點後停止，沒有模擬 EOS token；LUNA 再由內部向量估計分數。')
     : T('Each step looks only at the text so far and decides one token. ▁ marks a piece with a space before it (SentencePiece notation).', '每一步只看前文、只決定一個 token。▁ 表示這個片段前面有空白（SentencePiece 的寫法）。');
   $('#gen-step').disabled = genT >= GEN.length;
   const term = i => H('g' + i, f2(ps[i]));
@@ -1088,19 +1605,20 @@ function embProbs(e){ const z = EM.W.map((w, j) => w[0] * e[0] + w[1] * e[1] + E
 function embFullLoss(){ let L = 0, n = 0; EPAIRS.forEach(([a, b, c]) => { L -= c * Math.log(embProbs(EM.E[a]).p[b]); n += c; }); return L / n; }
 function embStep(){
   const lr = +$('#emb-lr').value / 100, [a, y] = EFLAT[Math.floor(EM.r() * EFLAT.length)], e = EM.E[a].slice(), {z, p} = embProbs(e);
+  const Wbefore = EM.W.map(row => row.slice()), bBefore = EM.b.slice();
   const g = p.map((v, j) => v - (j === y ? 1 : 0)), gE = [0, 0];
   g.forEach((gj, j) => { gE[0] += gj * EM.W[j][0]; gE[1] += gj * EM.W[j][1]; });
   g.forEach((gj, j) => { EM.W[j][0] -= lr * gj * e[0]; EM.W[j][1] -= lr * gj * e[1]; EM.b[j] -= lr * gj; });
   EM.E[a][0] -= lr * gE[0]; EM.E[a][1] -= lr * gE[1];
-  EM.step++; EM.last = {a, y, e, z, p, gE, lr, after: EM.E[a].slice(), W: EM.W.map(w => w.slice())};
+  EM.step++; EM.last = {a, y, e, z, p, gE, lr, after: EM.E[a].slice(), W: Wbefore, b: bBefore, Wafter: EM.W.map(w => w.slice()), bAfter: EM.b.slice()};
   if (EM.step % 25 === 0) EM.loss.push([EM.step, embFullLoss()]);
 }
 function embRender(withFx){
-  const showW = $('#emb-w').checked, pts = EM.E.concat(showW ? EM.W : []);
+  const showW = $('#emb-w').checked, displayW = EM.last ? EM.last.W : EM.W, pts = EM.E.concat(showW ? displayW : []);
   const tgt = Math.max(1.5, ...pts.map(p => Math.max(Math.abs(p[0]), Math.abs(p[1])))) * 1.15; EM.R = EM.R + (tgt - EM.R) * (EM.play ? .08 : 1);
   const X = v => 280 + v / EM.R * 260, Y = v => 200 - v / EM.R * 185, L = EM.last;
   let s = `<defs><marker id="ea" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#F4C26B"/></marker></defs><path d="M20 200 H540 M280 12 V388" stroke="#232B3B"/>`;
-  if (showW) EM.W.forEach((w, j) => { s += `<circle cx="${X(w[0])}" cy="${Y(w[1])}" r="5" fill="none" stroke="${EVC[j]}" stroke-width="1.3" opacity=".75"${lk(L && L.y === j ? 'wy' : '')}/>` + tx(X(w[0]) + 7, Y(w[1]) + 12, 'W:' + EV[j], {fs: 9.5, c: EVC[j], op: .7}); });
+  if (showW) displayW.forEach((w, j) => { s += `<circle cx="${X(w[0])}" cy="${Y(w[1])}" r="5" fill="none" stroke="${EVC[j]}" stroke-width="1.3" opacity=".75"${lk(L && L.y === j ? 'wy' : '')}/>` + tx(X(w[0]) + 7, Y(w[1]) + 12, 'W:' + EV[j], {fs: 9.5, c: EVC[j], op: .7}); });
   if (L) { const dx = -L.gE[0] * L.lr, dy = -L.gE[1] * L.lr, k = Math.min(1, .25 * EM.R / (Math.hypot(dx, dy) || 1)) * 6;
     s += `<path d="M${X(L.e[0])} ${Y(L.e[1])} L${X(L.e[0] + dx * k)} ${Y(L.e[1] + dy * k)}" stroke="#F4C26B" stroke-width="2" marker-end="url(#ea)" data-link="g"/>`; }
   EM.E.forEach((e, j) => { const on = L && L.a === j, isY = L && L.y === j;
@@ -1120,21 +1638,26 @@ function embRender(withFx){
 }
 function embFx(){
   const L = EM.last, eta = f2(+$('#emb-lr').value / 100);
+  const parameterUpdate = FX(['All parameter updates', '全部參數更新'], String.raw`\mathbf g=\mathbf p-\mathbf y,\quad \nabla_{\mathbf e}\mathcal L=W^\top\mathbf g,\quad \nabla_W\mathcal L=\mathbf g\mathbf e^\top,\quad \nabla_{\mathbf b}\mathcal L=\mathbf g,\qquad E[x_t,:]\leftarrow E[x_t,:]-\eta(W^\top\mathbf g)^\top,\quad W\leftarrow W-\eta\mathbf g\mathbf e^\top,\quad \mathbf b\leftarrow\mathbf b-\eta\mathbf g`,
+    [
+      `Toy SGD updates the selected embedding row, all output-weight rows W, and every output bias b. All gradients use the same pre-update parameters and input vector. η = ${L ? f2(L.lr) : eta}${L ? ' for the displayed step' : ''}. This toy has a bias; the real Llama-2 output head does not.`,
+      `玩具 SGD 同時更新選取的嵌入列、輸出權重 W 的所有列，以及所有輸出偏差 b。全部梯度都由同一份「更新前」參數與輸入向量計算。η = ${L ? f2(L.lr) : eta}${L ? '（畫面這一步實際使用的值）' : ''}。玩具模型有偏差 b，真實 Llama-2 的輸出頭沒有偏差。`
+    ]);
   if (!L) { setFx('emb-map', [
-    FX(['Lookup', '查表'], String.raw`\mathbf e_t=E[x_t,:]=\mathrm{onehot}(x_t)^{\top}E`, ['Take row x_t of the embedding table. After “train 1 step”, this shows the numbers of the word that was sampled.', '取出嵌入表的第 x_t 列。按「訓練 1 步」後，這裡會顯示實際抽到的那個詞的數字。']),
+    FX(['Lookup', '查表'], String.raw`\mathbf e_t=E[x_t,:]^\top=E^\top\mathrm{onehot}(x_t)`, ['Vectors are columns here: select row x_t of E and transpose it. E is vocabulary × dimension; W is vocabulary × dimension, so W e + b is a vocabulary-sized column.', '本頁向量採欄向量：取 E 的第 x_t 列再轉置。E、W 都是「詞彙數 × 維度」，因此 W e + b 是每個候選詞一個分數的欄向量。']),
     FX(['Cross-entropy loss', '交叉熵損失'], String.raw`\mathcal L=-\log p(x_{t+1}\mid x_t)=-\log\frac{e^{z_{y}}}{\sum_j e^{z_j}},\quad z_j=W_j\cdot\mathbf e_t+b_j`, ['The higher the probability of the correct next word, the lower the loss.', '模型給正確下一個詞的機率越高，損失越小。']),
-    FX(['Gradient update', '梯度更新'], String.raw`\mathbf e_t\leftarrow\mathbf e_t-${H('eta', String.raw`\eta`)}\,W^{\top}(\mathbf p-\mathbf y),\quad \eta=${H('eta', eta)}`, ['The error p − y flows back through the output matrix into the embedding; only the row that was used moves.', '誤差 p − y 透過輸出矩陣傳回嵌入向量，只有用到的那一列會動。'])]); return; }
+    FX(['Gradient update', '梯度更新'], String.raw`\mathbf e_t\leftarrow\mathbf e_t-${H('eta', String.raw`\eta`)}\,W^{\top}(\mathbf p-\mathbf y),\quad \eta=${H('eta', eta)}`, ['Within E, only the selected row receives this sample’s gradient. W and b also update: see “All parameter updates”.', '在 E 裡，這個樣本只對選取列產生梯度；W 與 b 也會更新，請切換「全部參數更新」。']), parameterUpdate]); return; }
   const py = L.p[L.y], wa = EV[L.a].replace(/[<>]/g, ''), wy = EV[L.y].replace(/[<>]/g, ''), kw = $('#emb-w').checked ? 'wy' : 'y';
   setFx('emb-map', [
-    FX(['Lookup', '查表'], String.raw`\mathbf e_t=E[x_t,:]=E[${H('e', String.raw`\text{${wa}}`)},:]=${H('e', `(${f2(L.e[0])},\\ ${f2(L.e[1])})`)}`,
+    FX(['Lookup', '查表'], String.raw`\mathbf e_t=E[x_t,:]^\top=E[${H('e', String.raw`\text{${wa}}`)},:]^\top=${H('e', String.raw`\begin{pmatrix}${f2(L.e[0])}\\${f2(L.e[1])}\end{pmatrix}`)}`,
       [`This step sampled the pair “${esc(EV[L.a])} → ${esc(EV[L.y])}”. Looking up means taking the ${esc(EV[L.a])} row (the white point), the same as multiplying a one-hot vector by E.`, `這一步抽到的配對是「${esc(EV[L.a])} → ${esc(EV[L.y])}」。查表就是取出 ${esc(EV[L.a])} 那一列（白框的點），等於 one-hot 向量乘上 E。`]),
     FX(['Cross-entropy loss', '交叉熵損失'], String.raw`\mathcal L=-\log p(${H('y', String.raw`\text{${wy}}`)}\mid${H('e', String.raw`\text{${wa}}`)})=-\log\frac{e^{${H(kw, f2(L.z[L.y]))}}}{\sum_j e^{z_j}}=-\log ${H('y', f3(py))}=${f3(-Math.log(py))},\quad z_y=${H(kw, String.raw`W_y`)}\cdot\mathbf e_t+b_y`,
-      [`The model currently gives the correct answer “${esc(EV[L.y])}” probability ${f3(py)}; the loss is its −log. Tick “draw W” to see the output vector W_y whose dot product with e gives z_y.`, `模型目前給正確答案「${esc(EV[L.y])}」的機率是 ${f3(py)}，損失就是它的 −log。勾選「畫出 W」可以看到輸出向量 W_y，它和 e 的內積就是 z_y。`]),
-    FX(['Gradient update', '梯度更新'], String.raw`\frac{\partial\mathcal L}{\partial\mathbf e_t}=W^{\top}(\mathbf p-\mathbf y)=${H('g', `(${f3(L.gE[0])},\\ ${f3(L.gE[1])})`)},\quad \mathbf e_t\leftarrow\mathbf e_t-${H('eta', String.raw`\eta`)}\frac{\partial\mathcal L}{\partial\mathbf e_t}=${H('e', `(${f2(L.after[0])},\\ ${f2(L.after[1])})`)}`,
-      [`η = ${f2(L.lr)}. Only the “${esc(EV[L.a])}” row is updated (the amber arrow); every other word's embedding stays put this step. Llama-2's pre-training does the same thing, except E has 32,000 rows and 4,096 columns and the error first travels back through 32 blocks.`, `η = ${f2(L.lr)}。只有「${esc(EV[L.a])}」這一列被更新（圖上的黃箭頭）；其他詞的嵌入這一步完全不動。Llama-2 的預訓練做的是同一件事，只是 E 有 32,000 列、4,096 欄，誤差要先穿過 32 個區塊才傳回來。`])
+      [`Before this update, the model gave “${esc(EV[L.y])}” probability ${f3(py)}. The hollow W points are the pre-update output weights; z_y = W_y · e + b_y includes bias. The filled embedding point is after the update, and the arrow starts from the old e.`, `這一步更新前，模型給「${esc(EV[L.y])}」的機率是 ${f3(py)}。空心 W 點採用更新前權重；z_y = W_y · e + b_y，還要加上偏差。實心嵌入點是更新後的位置，箭頭起點則是舊 e。`]),
+    FX(['Gradient update', '梯度更新'], String.raw`\frac{\partial\mathcal L}{\partial\mathbf e_t}=W^{\top}(\mathbf p-\mathbf y)=${H('g', String.raw`\begin{pmatrix}${f3(L.gE[0])}\\${f3(L.gE[1])}\end{pmatrix}`)},\quad \mathbf e_t\leftarrow\mathbf e_t-${H('eta', String.raw`\eta`)}\frac{\partial\mathcal L}{\partial\mathbf e_t}=${H('e', String.raw`\begin{pmatrix}${f2(L.after[0])}\\${f2(L.after[1])}\end{pmatrix}`)},\quad \eta=${H('eta', f2(L.lr))}`,
+      [`η = ${f2(L.lr)} for this recorded step. Only the “${esc(EV[L.a])}” embedding row moves; output W and b update too. This is toy SGD; Llama-2 pre-training uses AdamW and backpropagates through the full decoder.`, `這一步實際使用 η = ${f2(L.lr)}。嵌入表只有「${esc(EV[L.a])}」這一列移動，但輸出 W、b 也有更新。此處是玩具 SGD；Llama-2 預訓練使用 AdamW，誤差會經完整解碼器反向傳播。`]), parameterUpdate
   ]);
 }
-function embLoop(){ if (!EM.play) return; for (let i = 0; i < 12; i++) embStep(); embRender(false); if (EM.step >= 8000) { embPlay(false); return; } requestAnimationFrame(embLoop); }
+function embLoop(){ if (!EM.play) return; for (let i = 0; i < 12; i++) embStep(); embRender(true); if (EM.step >= 8000) { embPlay(false); return; } requestAnimationFrame(embLoop); }
 function embPlay(on){ EM.play = on; if (on) { embRender(false); requestAnimationFrame(embLoop); } else embRender(true); }
 $('#emb-one').addEventListener('click', () => { embPlay(false); embStep(); embRender(true); });
 $('#emb-play').addEventListener('click', () => embPlay(!EM.play));
@@ -1203,16 +1726,18 @@ function attn(){
   $('#attn-toks').innerHTML = RUN_TOK.map((t, i) => `<button type="button" class="tok${i === attnQ ? ' on' : ''}" data-i="${i}">${esc(t)}</button>`).join('');
   $$('#attn-toks button').forEach(b => b.addEventListener('click', () => { attnQ = +b.dataset.i; attn(); }));
   $('#attn-bars').innerHTML = order.slice(0, 6).map(([w, j], k) => `<div class="barrow${k ? '' : ' hi'}"${lk(k ? 'b' + j : 'aq')}><span class="w">${esc(RUN_TOK[j])}</span><span class="b"><i style="width:${w * 100}%"></i></span><span class="p">${f2(w)}</span></div>`).join('');
-  $('#attn-note').innerHTML = attnQ === 0 ? T('The first token can only look at itself; its weight is always 1.', '第一個 token 只能看自己，權重一定是 1。')
+  $('#attn-note').innerHTML = attnQ === 0 && mask ? T('With the causal mask on, the first token can only look at itself; its weight is 1.', '因果遮罩開啟時，第一個 token 只能看自己，權重為 1。')
     : T(`<b>${esc(RUN_TOK[attnQ])}</b> attends most to <b>${esc(RUN_TOK[j0])}</b> (${f2(order[0][0])}).`, `<b>${esc(RUN_TOK[attnQ])}</b> 最關注 <b>${esc(RUN_TOK[j0])}</b>（${f2(order[0][0])}）。`) + (mask ? '' : T(' With the mask off it can also peek at later tokens — a real decoder never does that.', ' 遮罩關掉後，它也能偷看後面的 token——真實的 decoder 不允許這樣。'));
   const sc = ATS[attnQ], vis = sc.map((v, j) => [v, j]).filter(([, j]) => !(mask && j > attnQ)), Z = vis.reduce((a, [v]) => a + Math.exp(v / sq), 0);
   setFx('attn-mat', [
     FX(['Scaled dot-product attention', '縮放點積注意力'], String.raw`\mathrm{Attn}(Q,K,V)=\mathrm{softmax}\!\Big(\frac{QK^{\top}}{\sqrt{d_k}}+${H('mask', 'M')}\Big)V,\qquad \sqrt{d_k}=\sqrt{128}=${f2(sq)}`,
       ['QKᵀ gives every pairwise score at once; dividing by √d_k keeps scores moderate; the mask M blocks the future; softmax then multiplying by V gives the mixed information.', 'QKᵀ 一次算出所有 token 兩兩之間的分數；除以 √d_k 讓分數不要太大；加上遮罩 M 擋住未來；softmax 後乘上 V 就是混合後的資訊。']),
-    FX(['This row', '選中這一列'], String.raw`\alpha_{${attnQ + 1},${j0 + 1}}=\frac{\exp(s_{${attnQ + 1},${j0 + 1}}/\sqrt{d_k})}{\sum_{j}\exp(s_{${attnQ + 1},j}/\sqrt{d_k})}=\frac{\exp(${H('aq', f1(sc[j0]))}/${f2(sq)})}{${H('row', f2(Z))}}=${H('aq', f3(row[j0]))}`,
+    FX(['This row', '選中這一列'], String.raw`\alpha_{${attnQ + 1},${j0 + 1}}=\frac{\exp(s_{${attnQ + 1},${j0 + 1}}/\sqrt{d_k}+M_{${attnQ + 1},${j0 + 1}})}{\sum_{j=1}^{9}\exp(s_{${attnQ + 1},j}/\sqrt{d_k}+M_{${attnQ + 1},j})}=\frac{\exp(${H('aq', f1(sc[j0]))}/${f2(sq)})}{${H('row', f2(Z))}}=${H('aq', f3(row[j0]))}`,
       [`The raw score s of “${esc(RUN_TOK[attnQ])}” for “${esc(RUN_TOK[j0])}” is ${f1(sc[j0])} (toy). The denominator adds up all ${vis.length} unmasked tokens of the row.`, `「${esc(RUN_TOK[attnQ])}」對「${esc(RUN_TOK[j0])}」的原始分數 s 是 ${f1(sc[j0])}（玩具數字）。分母把這一列所有沒被遮住的 ${vis.length} 個 token 加起來。`]),
-    FX(['Causal mask', '因果遮罩'], String.raw`M_{ij}=\begin{cases}0,& j\le i\\${H('mask', String.raw`-\infty`)},& j>i\end{cases}\quad\Rightarrow\quad e^{-\infty}=0`,
-      ['Future positions get a score of minus infinity; after exp that is exactly 0, so their weight is 0. These are the dark cells in the upper right of the heat map.', '未來位置的分數被設成負無限大，取 exp 之後剛好是 0，所以權重是 0。熱圖右上角的暗格就是這些位置。'])
+    FX(['Causal mask', '因果遮罩'], mask ? String.raw`M_{ij}=\begin{cases}0,& j\le i\\${H('mask', String.raw`-\infty`)},& j>i\end{cases}\quad\Rightarrow\quad e^{-\infty}=0` : String.raw`M_{ij}=0\quad\text{for all }i,j\quad(${Tx('mask disabled', '遮罩關閉')})`,
+      ['With the mask enabled, future positions get minus infinity and their exponential is zero. With it disabled, M is zero everywhere and all nine tokens enter the denominator.', '遮罩開啟時，未來位置加上負無限大，取 exp 後為零；關閉時 M 全為零，分母納入全部九個 token。']),
+    FX(['Learned projections + multi-head output', '投影權重與多頭輸出'], String.raw`\mathbf q_t^{(r)}=W_Q^{(r)}\mathbf h_t,\quad \mathbf k_t^{(r)}=W_K^{(r)}\mathbf h_t,\quad \mathbf v_t^{(r)}=W_V^{(r)}\mathbf h_t,\quad W_Q^{(r)},W_K^{(r)},W_V^{(r)}\in\mathbb R^{128\times4096},\qquad \mathbf o_t^{(r)}=\sum_j\alpha_{tj}^{(r)}\mathbf v_j^{(r)}\in\mathbb R^{128},\quad \Delta\mathbf a_t=W_O[\mathbf o_t^{(1)};\dots;\mathbf o_t^{(32)}],\quad W_O\in\mathbb R^{4096\times4096}`,
+      ['One heatmap represents one head. Q/K projections are followed by RoPE before scoring. Concatenate 32 head outputs and apply learned W_O to obtain a 4,096-dimensional residual contribution. Inputs here are already normalized by the block’s first RMSNorm. The toy heatmap uses invented scores and does not calculate these large matrices.', '一張熱圖代表一個頭。Q／K 投影後先套 RoPE 再算分數。32 個頭的 128 維輸出串接，再乘學得的 W_O，才得到 4,096 維殘差增量。此處 h 已經過區塊第一個 RMSNorm；玩具熱圖使用編造分數，沒有實算這些大矩陣。'])
   ]);
 }
 $('#attn-mask').addEventListener('change', attn);
@@ -1247,12 +1772,12 @@ function block(){
   $('#blk-note').innerHTML = res ? T('Residual on: the output points almost the same way as the input (cos near 1); the block only makes small edits. That is how a token’s early information survives all the way up.', '殘差開著：輸出和輸入幾乎同方向（cos 接近 1），區塊只是在原本的向量上做小修改。所以一個 token 的向量一路往上，前面寫進去的資訊都還在。')
     : T('<b>Residual off:</b> each sub-layer’s output replaces the vector and the incoming numbers are gone. After 32 such blocks the earliest information would barely reach the top — which is why residual connections exist.', '<b>殘差關掉了：</b>每個子層的輸出直接取代原本的向量，進來時的數字全部消失。疊 32 層之後，最早的資訊幾乎傳不上來——這就是殘差連接存在的理由。');
   setFx('blk-svg', [
-    FX(['RMSNorm', 'RMSNorm'], String.raw`${H('rn', String.raw`\mathrm{RMSNorm}(\mathbf h)`)}=\frac{${H('rh', String.raw`\mathbf h`)}}{\sqrt{\frac1d\sum_{i=1}^{d}h_i^2+\epsilon}}\odot\mathbf g,\qquad \sqrt{\tfrac18\textstyle\sum h_i^2}=${H('rms', f2(rmsOf(B.h0)))}`,
-      [`Divide the vector by its root mean square to keep every layer's input at a stable size. Here g is all ones, so row 1 is row 0 divided by ${f2(rmsOf(B.h0))}. Llama-2 uses ε = 10⁻⁵.`, `把向量除以均方根，讓每一層輸入的大小穩定。這裡 g 全部是 1，所以第 1 列就是第 0 列除以 ${f2(rmsOf(B.h0))}。Llama-2 的 ε = 10⁻⁵。`]),
+    FX(['RMSNorm', 'RMSNorm'], String.raw`${H('rn', String.raw`\mathrm{RMSNorm}(\mathbf h)`)}=\frac{${H('rh', String.raw`\mathbf h`)}}{\sqrt{\frac1d\sum_{i=1}^{d}h_i^2+\epsilon}}\odot\mathbf g,\qquad \sqrt{\tfrac18\textstyle\sum h_i^2+10^{-6}}=${H('rms', f2(rmsOf(B.h0)))}`,
+      [`The toy sets learned gain g to ones and ε = 10⁻⁶; its numeric denominator includes ε. Real Llama-2 uses separate learned gains for the two sublayer norms and ε = 10⁻⁵. This diagram does not train those gains.`, `玩具設定 g 全為 1、ε = 10⁻⁶；數值分母有包含 ε。真實 Llama-2 的兩個子層正規化各有獨立、可訓練的 g，且 ε = 10⁻⁵；本圖不訓練這些增益。`]),
     FX(['Residual connection', '殘差連接'], res ? String.raw`${H('rA', String.raw`\mathbf a`)}=\mathbf h+${H('ra', String.raw`\mathrm{Attn}(\mathrm{RMSNorm}(\mathbf h))`)},\quad ${H('ro', String.raw`\mathbf h^{(l)}`)}=\mathbf a+${H('rm', String.raw`\mathrm{FFN}(\mathrm{RMSNorm}(\mathbf a))`)}\ \Rightarrow\ h^{(l)}_1=${H('h1a', f2(B.h0[0]))}${H('h1b', sgn(B.da[0]))}${H('h1c', sgn(dm[0]))}=${H('h1d', f2(h1[0]))}`
       : String.raw`${Tx('residual off: ', '殘差關閉：')}\ ${H('ro', String.raw`\mathbf h^{(l)}`)}=${H('rm', String.raw`\mathrm{FFN}(\cdots)`)}\ \Rightarrow\ h^{(l)}_1=${H('h1d', f2(h1[0]))}\ \ (${Tx('was ', '原本是 ')}${H('h1a', f2(B.h0[0]))})`,
       ['Both sub-layers compute a change and add it to the vector. The first dimension as an example: the original value plus the attention change plus the feed-forward change — hover each number to find its cell.', '兩個子層都是「算出一個修改量，加回原本的向量」。第 1 維的例子：原本的值加上注意力的修改量，再加上前饋層的修改量——滑到每個數字上可以找到它的格子。']),
-    FX(['SwiGLU feed-forward', 'SwiGLU 前饋層'], String.raw`${H('rm', String.raw`\mathrm{FFN}(\mathbf x)`)}=W_2\big(\mathrm{SiLU}(W_1\mathbf x)\odot W_3\mathbf x\big),\quad \mathrm{SiLU}(u)=u\,\sigma(u),\quad W_1,W_3\in\mathbb R^{11008\times4096}`,
+    FX(['SwiGLU feed-forward', 'SwiGLU 前饋層'], String.raw`${H('rm', String.raw`\mathrm{FFN}(\mathbf x)`)}=W_2\big(\mathrm{SiLU}(W_1\mathbf x)\odot W_3\mathbf x\big),\quad \mathrm{SiLU}(u)=u\,\sigma(u),\quad W_1,W_3\in\mathbb R^{11008\times4096},\quad W_2\in\mathbb R^{4096\times11008}`,
       ['One branch goes through SiLU as a gate and multiplies the other; W₂ shrinks the result back to 4,096 dimensions. The toy uses 8 → 6 → 8. This layer looks at one token at a time.', '一路經過 SiLU 當作閘門，乘上另一路，再用 W₂ 縮回 4,096 維。玩具裡是 8 → 6 → 8。這一層一次只看一個 token。'])
   ]);
 }
@@ -1276,14 +1801,16 @@ function head(){
     : temp > 1.6 ? T('Very high temperature: the distribution flattens and even <code>▁the</code> might be sampled.', '溫度很高：分布變平，連 <code>▁the</code> 都有機會被抽到。')
     : T(`The target <code>${esc(vtok(tg))}</code> has probability ${f3(pt)}. Training pushes its logit up and the others down until the correct answer becomes likely.`, `目標 <code>${esc(vtok(tg))}</code> 的機率是 ${f3(pt)}。訓練時，梯度會把它的 logit 往上推、其他的往下壓，直到正確答案的機率變大。`);
   setFx('head-bars', [
-    FX(['Output layer + softmax', '輸出層 + softmax'], String.raw`\mathbf z=W\mathbf h\in\mathbb R^{32000},\qquad p_i=\frac{e^{z_i/T}}{\sum_j e^{z_j/T}}\ \Rightarrow\ p(${H('pt', String.raw`\text{${ttok(tg)}}`)})=\frac{e^{${H('pt', f1(HEAD[ti][1]))}/${H('T', f2(temp))}}}{\sum_j e^{z_j/${H('T', f2(temp))}}}=${H('pt', f3(pt))}`,
-      ['The last layer’s 4,096-dim vector times the output matrix gives one score per token; divide by the temperature T and apply softmax. T = 1 is the model’s own distribution.', '最後一層的 4,096 維向量乘上輸出矩陣，得到每個 token 一個分數；除以溫度 T 再做 softmax。T = 1 是模型原本的分布。']),
-    FX(['Pre-training loss', '預訓練損失'], String.raw`\mathcal L=-\frac1N\sum_{t=1}^{N}\log p_\theta(x_{t+1}\mid x_{\le t}),\quad ${Tx('this position: ', '這個位置：')}-\log ${H('pt', f3(pt))}=${H('ce', f3(ce))}`,
-      ['At every position of the corpus, take −log of the true next token’s probability and average. This is Llama-2’s only pre-training objective; the embedding table, attention and feed-forward layers are all learned from its gradient.', '對語料裡每個位置，取正確下一個 token 機率的 −log 再平均。這是 Llama-2 唯一的預訓練目標；嵌入表、注意力、前饋層全部靠它的梯度學出來。']),
+    FX(['Output layer + softmax', '輸出層 + softmax'], String.raw`\widehat{\mathbf h}=\mathrm{RMSNorm}_{\mathrm{final}}(\mathbf h^{(32)}),\quad \mathbf z=W_{\mathrm{out}}\widehat{\mathbf h}\in\mathbb R^{32000},\qquad p_i(T)=\frac{e^{z_i/T}}{\sum_j e^{z_j/T}}\ \Rightarrow\ p(${H('pt', String.raw`\text{${ttok(tg)}}`)})=\frac{e^{${H('pt', f1(HEAD[ti][1]))}/${H('T', f2(temp))}}}{\sum_j e^{z_j/${H('T', f2(temp))}}}=${H('pt', f3(pt))}`,
+      ['Apply final RMSNorm before the bias-free output projection, then divide logits by T and apply softmax. The numeric toy normalizes eight fixed logits, not a computed 32,000-token head.', '先經最終 RMSNorm，再乘無偏差的輸出權重；logits 除以 T 後做 softmax。此處玩具數字只對八個固定 logits 正規化，未實算 32,000 詞彙輸出頭。']),
+    FX(['Pre-training loss', '預訓練損失'], String.raw`\mathcal L_{\mathrm{train}}=-\frac1N\sum_{t=1}^{N}\log p_\theta(x_{t+1}\mid x_{\le t};T=1),\quad \mathcal L_{\mathrm{demo}}(T)=-\log ${H('pt', f3(pt))}=${H('ce', f3(ce))}`,
+      ['Average the negative log probabilities of true next tokens. Pre-training uses T = 1. The displayed single-position demo loss follows the temperature slider, so it is labelled separately.', '對正確下一個 token 的負對數機率取平均；預訓練使用 T = 1。畫面單一位置的示範損失會跟著溫度滑桿改變，因此另標為 demo 損失。']),
     FX(['Perplexity', '困惑度'], String.raw`\mathrm{PPL}=\exp\!\Big(-\frac1N\sum_t\log p(y_t\mid\cdot)\Big)=\exp\!\Big(-\frac19\sum_{t=1}^{9}\log p_t\Big)=${f2(ppl)}`,
       [`From the per-step probabilities of unit 01's example: PPL = ${f2(ppl)}, i.e. on average the model guesses as if among ${f2(ppl)} options. LUNA also has a metric called perplexity, but that one is computed on the abstract model, not on the LLM.`, `用第 01 單元例句每一步的機率算：PPL = ${f2(ppl)}，意思是模型平均每一步像在 ${f2(ppl)} 個選項裡猜。LUNA 也有一個叫「困惑度」的指標，但那是算在抽象模型上，不是 LLM 本身。`]),
-    FX(['top-p (nucleus)', 'top-p（核取樣）'], String.raw`S_p=\text{smallest set with}\sum_{i\in S_p}p_i\ge ${H('P', f2(topP))}\ \Rightarrow\ |S_p|=${H('keep', keep.size)},\ \sum_{S_p}p_i=${f3(acc)}`,
-      ['Sort candidates by probability and keep them until their total reaches p; sample only from that set (renormalized). The faded bars are cut off.', '把候選依機率排序，一直保留到總和達到 p，只從這些裡面抽（重新歸一化）。淡掉的長條就是被截掉的。'])
+    FX(['top-p (nucleus)', 'top-p（核取樣）'], String.raw`S_p=\text{smallest sorted prefix with}\sum_{i\in S_p}p_i\ge ${H('P', f2(topP))}\ \Rightarrow\ |S_p|=${H('keep', keep.size)},\ \sum_{i\in S_p}p_i=${f3(acc)}`,
+      ['Sort candidates by probability and keep the shortest prefix reaching p; sample from that set after renormalization. The toy distribution normalizes over eight candidates, not the real 32,000-token vocabulary.', '先依機率遞減排序，保留累積達到 p 的最短前綴，再重新歸一化抽樣。玩具分布只對八個候選正規化，不是真實的 32,000 詞彙分布。']),
+    FX(['Trainable parameters', '全模型參數與更新'], String.raw`\Theta_{\mathrm{global}}=\{E,\mathbf g_{\mathrm{final}},W_{\mathrm{out}}\},\quad \Theta_{\mathrm{attn}}^{(l)}=\{W_Q^{(l)},W_K^{(l)},W_V^{(l)},W_O^{(l)}\},\quad \Theta_{\mathrm{FFN}}^{(l)}=\{W_1^{(l)},W_2^{(l)},W_3^{(l)}\},\quad \Theta_{\mathrm{norm}}^{(l)}=\{\mathbf g_1^{(l)},\mathbf g_2^{(l)}\},\quad l=1,\dots,32,\qquad \Theta^{(k+1)}=\operatorname{AdamW}(\Theta^{(k)},\nabla_\Theta\mathcal L_{\mathrm{train}};\eta,\beta_1,\beta_2,\epsilon,\lambda)`,
+      ['Backpropagation reaches all these parameters, including Q/K/V/O projections, feed-forward weights and RMSNorm gains. AdamW also keeps first/second-moment optimizer state; its update is not plain SGD. E, final gain and output head occur once; layer-indexed parameters repeat 32 times. No bias parameters are used in these Llama-2 linear layers. This page only actually trains the tiny model in unit 03.', '反向傳播會更新這些參數，包括 Q／K／V／O 投影、前饋權重和 RMSNorm 增益。AdamW 另保存一、二階動量狀態，不是直接做普通 SGD。E、最終增益和輸出頭各一份，帶層索引的參數才重複 32 次；這些 Llama-2 線性層沒有偏差。本頁只有第 03 節的小模型真的執行訓練。'])
   ]);
 }
 ['head-t', 'head-p'].forEach(id => $('#' + id).addEventListener('input', head)); $('#head-tg').addEventListener('change', head);
@@ -1530,14 +2057,14 @@ function gridView(){
   setFx('grid-svg', [
     FX(['Cell width', '每格寬度'], String.raw`u_i=\frac{\max_i-\min_i}{${H('m', 'm')}}:\quad ${H('u1', 'u_1')}=\frac{${H('box', f2(p.hi[0]))}-(${H('box', f2(p.lo[0]))})}{${H('m', p.m)}}=${H('u1', f2(p.unit[0]))},\ ${H('u2', 'u_2')}=${H('u2', f2(p.unit[1]))},\ u_3=${f2(p.unit[2])}`,
       ['Minimum and maximum come from the PCA coordinates of all training tokens (the dashed outer box); each dimension is split into m equal cells.', '最小值、最大值都從訓練集所有 token 的 PCA 座標算出來（外框虛線），每一維各自均分成 m 格。']),
-    FX(['Which cell', '落在第幾格'], String.raw`c_i=\Big\lfloor\frac{z_i-\min_i}{u_i}\Big\rfloor:\quad ${H('c1', 'c_1')}=\Big\lfloor\frac{${H('zp', zs[0])}-(${H('box', f2(p.lo[0]))})}{${H('u1', f2(p.unit[0]))}}\Big\rfloor=${H('c1', w.c[0])},\ ${H('c2', 'c_2')}=${H('c2', w.c[1])},\ ${H('c3', 'c_3')}=${H('c3', w.c[2])}`,
+    FX(['Which cell', '落在第幾格'], String.raw`c_i=\operatorname{trunc}\Big(\frac{\bar z_i-\min_i}{u_i}\Big):\quad ${H('c1', 'c_1')}=\operatorname{trunc}\Big(\frac{${H('zp', zs[0])}-(${H('box', f2(p.lo[0]))})}{${H('u1', f2(p.unit[0]))}}\Big)=${H('c1', w.c[0])},\ ${H('c2', 'c_2')}=${H('c2', w.c[1])},\ ${H('c3', 'c_3')}=${H('c3', w.c[2])}`,
       [`“${esc(winLabel(a, w))}” falls in cells ${w.c.join(', ')} of the three dimensions (counting from 0). Hover c₁ / c₂ to see the column / row on the grid; c₃ is the slice slider.`, `「${esc(winLabel(a, w))}」在三個維度上分別落在第 ${w.c.join('、')} 格（從 0 數）。滑到 c₁ / c₂ 上看格子上的那一欄／列；c₃ 是切片滑桿。`]),
     FX(['State number', '抽象狀態編號'], String.raw`${H('s', String.raw`\bar s`)}=\sum_{i=1}^{k}c_i\,m^{\,i-1}=${H('c1', w.c[0])}+${H('c2', w.c[1])}\cdot${H('m', p.m)}+${H('c3', w.c[2])}\cdot${p.m * p.m}=${H('s', w.s)}`,
       [`The three cell numbers form one id, like a base-${p.m} number — the same as the authors’ abs += c_i · m^i (i from 0).`, `三個格號合成一個編號，像 ${p.m} 進位的數字。和作者程式碼 abs += c_i · m^i（i 從 0 開始）相同。`]),
     FX(['Multi-step abstraction', '多步抽象'], String.raw`\bar{\mathbf z}_i=\frac1{${H('N', 'N')}}\sum_{j=0}^{N-1}\mathbf z_{i+j},\quad i=0,\dots,n-N-1\quad(${H('N', 'N=' + RUN.N)},\ n=9\Rightarrow ${9 - RUN.N}\ ${Tx('steps', '步')})`,
       ['Average the coordinates of N consecutive tokens before cutting, so one state carries a few neighbouring steps.', '先把連續 N 個 token 的座標平均再切格子，讓一個狀態包含相鄰幾步的資訊。']),
-    FX(['Number of states', '狀態總數'], String.raw`|\bar S|=${H('m', 'm')}^{k}=${H('m', p.m)}^{3}=${H('tot', total.toLocaleString().replace(/,/g, '{,}'))}\qquad(${Tx('Table IX: ', '表 IX：')}5^3=125;\ ${Tx('seen: ', '出現過：')}${H('used', used)})`,
-      ['The paper’s Table III lists m in the #State column; the real number of states is m to the power k. With k = 10, m = 15 it is 5.8 × 10¹¹.', '論文表 III 的 #State 欄寫的是 m，實際狀態數是 m 的 k 次方。k = 10、m = 15 時是 5.8 × 10¹¹。'])
+    FX(['Number of states', '狀態總數'], String.raw`|\bar S_{\mathrm{nom}}|=${H('m', 'm')}^{k}=${H('m', p.m)}^{3}=${H('tot', total.toLocaleString().replace(/,/g, '{,}'))}\qquad(${Tx('Table IX: ', '表 IX：')}5^3=125;\ ${Tx('seen: ', '出現過：')}${H('used', used)})`,
+      ['m^k is the nominal number of cells when each index is in 0…m−1. The code does not clip indices, so actual observed integer IDs may lie outside that range or collide. “Seen” counts distinct observed IDs, not guaranteed distinct nominal cells.', 'm^k 是各維格號皆在 0…m−1 時的名義格子數。程式未裁切格號，因此實際整數編號可能超出此範圍或碰撞；「出現過」統計的是不同編號，不保證等於不同名義格子數。'])
   ]);
 }
 function segBind(id, key){ $$('#' + id + ' button').forEach(b => b.addEventListener('click', () => { RUN[key] = +b.dataset.v; $$('#' + id + ' button').forEach(x => x.setAttribute('aria-pressed', x === b)); gridZ = null; luna(); })); }
@@ -1574,12 +2101,12 @@ function dtmcView(){
   const prodT = runT.map(pterm).join('\\cdot');
   const prod = runT.reduce((acc, [a, b]) => acc * Pr(a, b), 1);
   setFx('dtmc-svg', [
-    FX(['Transition probability', '轉移機率'], String.raw`\bar P(\bar s,\bar s')=\frac{\#(\bar s\to\bar s')}{\sum_{\bar s''}\#(\bar s\to\bar s'')}=\frac{\#(\bar s_{${ca}}\to\bar s_{${cb}})}{\#(\bar s_{${ca}}\to\cdot)}=\frac{${H('num', cc)}}{${H('row', co)}}=${H('num', f3(co ? cc / co : 0))}`,
-      ['Just count over all training traces. The numerator is the selected cell, the denominator its whole row. Click any cell of the heat map to switch to it.', '只要在所有訓練軌跡裡數次數。分子是選中的那一格，分母是它整列。點熱圖上任一格就會換成那一格的數字。']),
-    FX(['DTMC definition', 'DTMC 定義'], String.raw`\mathcal M=(\bar S,\ \bar s_0,\ \bar\delta,\ \bar P),\quad |\bar S|=${Math.pow(p.m, 3)},\ |\bar\delta|=${H('nT', nT)}`,
-      ['Definition 1 in the paper: a finite state set, an initial state, a transition set, a transition-probability function. An abstract transition exists whenever a concrete one does.', '論文定義 1：有限狀態集合、初始狀態、轉移集合、轉移機率函數。只要具體轉移存在，抽象轉移就存在。']),
-    FX(['Probability of a trace', '一條軌跡的機率'], String.raw`\Pr(\bar s_1\to\cdots\to\bar s_n)=\prod_{t=1}^{n-1}\bar P(\bar s_t,\bar s_{t+1})=${prodT}=${prod < .001 ? prod.toExponential(2).replace('e', '\\times10^{') + '}' : f3(prod)}`,
-      ['The Markov assumption: the next step depends only on the current state. Each factor is one row of the table on the right (hover to match). OOD / adversarial tasks average these P̄ as the semantics; TruthfulQA uses state semantics instead (next unit).', '馬可夫假設：下一步只看目前狀態。每個因子對應右邊表格的一列（滑過去可以對照）。OOD／對抗任務把每一步的 P̄ 當成語意取平均；TruthfulQA 則改用狀態的語意（下一單元）。'])
+    FX(['Transition probability', '轉移機率'], co ? String.raw`\bar P(\bar s,\bar s')=\frac{\#(\bar s\to\bar s')}{\sum_{\bar s''}\#(\bar s\to\bar s'')}=\frac{\#(\bar s_{${ca}}\to\bar s_{${cb}})}{\#(\bar s_{${ca}}\to\cdot)}=\frac{${H('num', cc)}}{${H('row', co)}}=${H('num', f3(cc / co))}` : String.raw`\#(\bar s_{${ca}}\to\cdot)=0\quad\Rightarrow\quad\bar P(\bar s_{${ca}},\bar s_{${cb}})=${H('num', '0')}\quad(${Tx('lookup convention', '查表約定')})`,
+      ['Count over training traces: numerator is the selected cell, denominator its outgoing row total. With no outgoing observations, the code returns zero rather than dividing by zero. Such a row is not a normalized DTMC row; a complete chain would need an explicit terminal/unseen-state convention.', '分子是選中的轉移次數，分母是出發狀態的整列總次數。若無出發轉移觀測，程式約定回傳 0，不計算 0/0；這種列尚未正規化成 DTMC 的機率列，完整鏈還需定義終止／未見狀態的處理。']),
+    FX(['DTMC definition', 'DTMC 定義'], String.raw`\mathcal M=(\bar S,\ \bar s_0,\ \bar\delta,\ \bar P),\quad |\bar S_{\mathrm{obs}}|=${p.cnt.size},\ |\bar\delta|=${H('nT', nT)}`,
+      ['A DTMC specifies states, an initial state, transitions and probabilities. The count here is the observed training-state set, not the nominal m^k grid size. The toy lookup leaves rows without outgoing observations as zero, rather than completing a stochastic chain.', 'DTMC 包含狀態、起始狀態、轉移與機率。此處數量採訓練中實際觀測狀態，不把名義格網大小 m^k 當成觀測狀態數。玩具查表把沒有出發觀測的列留為 0，未額外補成完整隨機鏈。']),
+    FX(['Probability of a trace', '一條軌跡的機率'], String.raw`\Pr(\bar s_2,\dots,\bar s_n\mid\bar s_1)=\prod_{t=1}^{n-1}\bar P(\bar s_t,\bar s_{t+1})=${prodT}=${prod < .001 ? prod.toExponential(2).replace('e', '\\times10^{') + '}' : f3(prod)}`,
+      ['This product is conditional on the first state. An unconditional path probability additionally needs its initial-state probability. Each factor is one observed transition; unseen lookups return zero. TruthfulQA uses state semantics instead (next unit).', '這個連乘是「已知第一個狀態」的條件軌跡機率；若要無條件機率，還要乘起始狀態機率。每個因子對應一個轉移，未見轉移查表為零。TruthfulQA 使用下一節的狀態語意。'])
   ]);
 }
 
@@ -1604,7 +2131,7 @@ function semView(){
     + (bad ? T(' The mean is below the threshold, so it is flagged as a hallucination: correct.', ' 平均低於門檻，判為幻覺：答對了。') : T(' But the mean is not below the threshold, so this threshold misses it.', ' 但平均沒有低於門檻，這個門檻下會漏掉它。'));
   const terms = th.map((v, i) => H('b' + i, f2(v))), sumT = terms.join('+');
   setFx('sem-svg', [
-    FX(['State semantics', '狀態的語意'], String.raw`\bar\theta(\bar s)=\frac{\mathrm{pos}(\bar s)}{\mathrm{pos}(\bar s)+\mathrm{neg}(\bar s)}:\quad \bar\theta(\bar s_{${w.s}})=\frac{${H('sel', c.pos)}}{${H('sel', c.pos)}+${H('sel', c.neg)}}=${H('sel', f3(p.theta(w.s)))}`,
+    FX(['State semantics', '狀態的語意'], c.pos + c.neg ? String.raw`\bar\theta(\bar s)=\frac{\mathrm{pos}(\bar s)}{\mathrm{pos}(\bar s)+\mathrm{neg}(\bar s)}:\quad \bar\theta(\bar s_{${w.s}})=\frac{${H('sel', c.pos)}}{${H('sel', c.pos)}+${H('sel', c.neg)}}=${H('sel', f3(p.theta(w.s)))}` : String.raw`\mathrm{pos}(\bar s_{${w.s}})+\mathrm{neg}(\bar s_{${w.s}})=0\quad\Rightarrow\quad\bar\theta(\bar s_{${w.s}})=${H('sel', '0')}\quad(${Tx('unseen-state convention', '未見狀態約定')})`,
       [`In training, true answers passed through s̄${w.s} ${c.pos} times and false answers ${c.neg} times. The paper calls it “the mean of the concrete semantics in the abstract state”; with binary labels that is this share.`, `訓練時，真實回答經過 s̄${w.s} ${c.pos} 次、不真實回答經過 ${c.neg} 次。論文的說法是「抽象狀態內所有具體語意的平均」，二元標籤時就等於這個比例。`]),
     FX(['Answer score', '一句話的分數'], String.raw`\mathrm{score}=\frac1n\sum_{t=1}^{n}\bar\theta(\bar s_t)=\frac{${sumT}}{${a.length}}=${H('sc', f3(sc))}`,
       ['Average θ̄ over every step of the trace — each term is one bar. The lower the score, the more the answer passes through states that only wrong answers tend to visit.', '把軌跡上每一步的 θ̄ 平均起來——每一項就是一根長條。分數越低，代表這句話越常經過「錯誤回答才會去」的狀態。']),
@@ -1644,7 +2171,7 @@ function rocView(){
   setFx('roc-curve', [
     FX(['TPR and FPR', 'TPR 與 FPR'], String.raw`\mathrm{TPR}(${H('tau', String.raw`\tau`)})=\frac{\#\{${Tx('false', '幻覺')}:\ \mathrm{score}<\tau\}}{\#${Tx('false', '幻覺')}}=\frac{${H('tp', tp)}}{${neg.length}}=${H('pt', f2(tpr))},\quad \mathrm{FPR}(\tau)=\frac{\#\{${Tx('true', '真實')}:\ \mathrm{score}<\tau\}}{\#${Tx('true', '真實')}}=\frac{${H('fp', fp)}}{${pos.length}}=${H('pt', f2(fpr))}`,
       ['The “positive” class is hallucination (what we want to catch). Hover the counts to see which histogram bars they add up. A higher threshold catches more hallucinations but also flags more true answers.', '「陽性」是幻覺（我們想抓的）。滑到兩個計數上，看它們加的是哪些長條。門檻越高，抓到越多幻覺，但也誤判越多真實回答。']),
-    FX(['AUC', 'AUC'], String.raw`${H('auc', String.raw`\mathrm{AUC}`)}=P\big(\mathrm{score}_{${Tx('true', '真實')}}>\mathrm{score}_{${Tx('false', '幻覺')}}\big)=\frac{${wins}+\frac12\cdot${ties}}{${pos.length}\times${neg.length}}=${H('auc', f3(p.auc))}`,
+    FX(['AUC', 'AUC'], String.raw`${H('auc', String.raw`\mathrm{AUC}`)}=P\big(\mathrm{score}_{${Tx('true', '真實')}}>\mathrm{score}_{${Tx('false', '幻覺')}}\big)+\tfrac12P\big(\mathrm{score}_{${Tx('true', '真實')}}=\mathrm{score}_{${Tx('false', '幻覺')}}\big)=\frac{${wins}+\frac12\cdot${ties}}{${pos.length}\times${neg.length}}=${H('auc', f3(p.auc))}`,
       ['Compare every true answer with every hallucination; the share of pairs where the true one scores higher (ties count half). This equals the area under the curve and does not depend on the threshold.', '把每個真實回答和每個幻覺回答兩兩比較，真實那個分數較高的比例（平手算一半）。這和曲線下面積相等，與門檻無關。'])
   ]);
 }
@@ -1681,37 +2208,37 @@ function ioSpecs(){
       sig: [String.raw`\text{text}`, String.raw`\mathbf x\in\{0..31999\}^{9}`]},
     embed: {n: ['table lookup', '查表'], from: ['token'], to: ['attn', 'block'],
       i: [String.raw`x_5=\mathrm{id}(${tt(RUN_TOK[4])})\in\{0,\dots,31999\}`, Tx('one integer per token', '每個 token 一個整數')],
-      o: String.raw`\mathbf e_t=E[x_t,:],\quad E\in\mathbb R^{32000\times4096}`,
-      out: [String.raw`\mathbf e_5\in\mathbb R^{4096}`, String.raw`\mathbf e_5=${vv(BLK.h0)}\ \Rightarrow\ H^{(0)}=[\mathbf e_1;\dots;\mathbf e_9]\in\mathbb R^{9\times4096}`],
+      o: String.raw`\mathbf e_t=E[x_t,:]^\top,\quad E\in\mathbb R^{32000\times4096}`,
+      out: [String.raw`H^{(0)}=[\mathbf e_1^\top;\dots;\mathbf e_9^\top]\in\mathbb R^{9\times4096}`, String.raw`\mathbf e_5=${vv(BLK.h0)}\in\mathbb R^{4096}`],
       note: ['A number becomes a vector: from here on every token is a list of 4,096 numbers. e₅ is the toy vector that enters block 1 in unit 06 (row h⁽ˡ⁻¹⁾).', '一個編號變成一個向量：從這裡開始，每個 token 都是 4,096 個數字。e₅ 就是第 06 單元進入第 1 個區塊的那個玩具向量（h⁽ˡ⁻¹⁾ 那一列）。'],
       sig: [String.raw`x_t`, String.raw`\mathbf e_t\in\mathbb R^{4096}`]},
     rope: {n: ['rotate by position', '依位置旋轉'], from: ['embed', 'block'], to: ['attn'],
-      i: [String.raw`\mathbf q_m=W_Q\mathbf h_m,\ \mathbf k_n=W_K\mathbf h_n\in\mathbb R^{128}`, String.raw`${Tx('per head, from the vectors h; ', '每個頭，由向量 h 算出；')}m=${rp.m},\ n=${rp.n}`],
-      o: String.raw`\tilde{\mathbf q}_m=R(m\theta)\,\mathbf q_m,\quad \tilde{\mathbf k}_n=R(n\theta)\,\mathbf k_n`,
-      out: [String.raw`\tilde{\mathbf q}_m,\ \tilde{\mathbf k}_n\in\mathbb R^{128}`, String.raw`\tilde{\mathbf q}_m^{\top}\tilde{\mathbf k}_n=${f3(rp.dot)}\ ${Tx('(depends only on n − m)', '（只看 n − m）')}`],
+      i: [String.raw`H^{(0)}\in\mathbb R^{9\times4096}`, String.raw`${Tx('first block, one head; ', '第 1 個區塊、其中一個頭；')}m=${rp.m},\ n=${rp.n}`],
+      o: String.raw`Q=H^{(0)}W_Q,\quad K=H^{(0)}W_K,\quad (\widetilde Q,\widetilde K)=\mathrm{RoPE}(Q,K)`,
+      out: [String.raw`\widetilde Q,\widetilde K\in\mathbb R^{9\times128}`, String.raw`\tilde{\mathbf q}_m^{\top}\tilde{\mathbf k}_n=${f3(rp.dot)}\ ${Tx('(depends only on n − m)', '（只看 n − m）')}`],
       sig: [String.raw`\mathbf q,\mathbf k\in\mathbb R^{128}`, String.raw`\tilde{\mathbf q},\tilde{\mathbf k}\in\mathbb R^{128}`]},
     attn: {n: ['mix earlier tokens', '混合前文'], from: ['embed', 'rope'], to: ['block'],
-      i: [String.raw`H=[\mathbf h_1;\dots;\mathbf h_9]\in\mathbb R^{9\times4096}`, String.raw`${Tx('block 1: H = H⁽⁰⁾ from unit 03; query = ', '第 1 個區塊：H = 第 03 單元的 H⁽⁰⁾；查詢者 = ')}${tt(qT)}`],
-      o: String.raw`\Delta\mathbf a_t=\sum_{j\le t}\alpha_{tj}\,\mathbf v_j,\quad \alpha_{tj}=\mathrm{softmax}_j\!\Big(\tfrac{\tilde{\mathbf q}_t^{\top}\tilde{\mathbf k}_j}{\sqrt{128}}\Big)`,
-      out: [String.raw`\boldsymbol\alpha_{${attnQ + 1}}=(${alpha})`, String.raw`\Delta\mathbf a_5=${vv(BLK.da)}\in\mathbb R^{4096}`],
-      note: ['Output: one weight per earlier token (they sum to 1) and the weighted mix of their values, Δa — the toy Δa₅ for ▁dens is the Δa row of unit 06.', '輸出：前文每個 token 一個權重（加總為 1），以及依權重混合出來的 Δa——▁dens 的玩具 Δa₅ 就是第 06 單元的 Δa 那一列。'],
+      i: [String.raw`\widetilde Q,\widetilde K\in\mathbb R^{9\times128},\quad V=H^{(0)}W_V`, String.raw`${Tx('block 1; query = ', '第 1 個區塊；查詢者 = ')}${tt(qT)}`],
+      o: String.raw`\mathbf o_t^{(r)}=\sum_{j=1}^{9}\alpha_{tj}^{(r)}\mathbf v_j^{(r)},\quad \alpha_{tj}^{(r)}=\mathrm{softmax}_j\!\Big(\tfrac{\tilde{\mathbf q}_t^{(r)\top}\tilde{\mathbf k}_j^{(r)}}{\sqrt{128}}+M_{tj}\Big),\quad \Delta\mathbf a_t=W_O[\mathbf o_t^{(1)};\dots;\mathbf o_t^{(32)}]`,
+      out: [String.raw`\Delta A\in\mathbb R^{9\times4096}`, String.raw`\boldsymbol\alpha_{${attnQ + 1}}=(${alpha}),\quad\Delta\mathbf a_5=${vv(BLK.da)}`],
+      note: ['The heatmap illustrates one head. Each head mixes 128-dim values, then 32 heads are concatenated and projected by W_O to 4,096 dimensions. The 8-dim toy Δa₅ shown here is a fixed illustration shared with unit 06, not computed from the heatmap.', '熱圖示範單一頭。每個頭先混合 128 維 value，再將 32 頭串接、經 W_O 投影為 4,096 維。此處顯示的 8 維玩具 Δa₅ 是與第 06 節共用的固定示意值，不是熱圖實算結果。'],
       sig: [String.raw`H\in\mathbb R^{9\times4096}`, String.raw`\Delta A\in\mathbb R^{9\times4096}`]},
     block: {n: ['add attention and FFN', '加上注意力與前饋層'], from: ['embed', 'attn'], to: ['head', 'hidden'],
-      i: [String.raw`\mathbf h^{(l-1)}_5\in\mathbb R^{4096}`, String.raw`l=1:\ \mathbf h^{(0)}_5=\mathbf e_5=${vv(BLK.h0)}`],
+      i: [String.raw`H^{(0)},\ \Delta A\in\mathbb R^{9\times4096}`, String.raw`l=1:\ \mathbf h^{(0)}_5=\mathbf e_5=${vv(BLK.h0)},\quad\Delta\mathbf a_5=${vv(BLK.da)}`],
       o: String.raw`\mathbf h^{(l)}=\mathbf h^{(l-1)}+\Delta\mathbf a+\Delta\mathbf m`,
-      out: [String.raw`\mathbf h^{(l)}_5\in\mathbb R^{4096}`, String.raw`\mathbf h^{(1)}_5=${vv(bo.h1)}\ \xrightarrow{\times32}\ \mathbf h^{(32)}_5`],
+      out: [String.raw`H^{(32)}\in\mathbb R^{9\times4096}`, String.raw`\mathbf h^{(1)}_5=${vv(bo.h1)}\ \xrightarrow{\text{32 blocks}}\ \mathbf h^{(32)}_5`],
       note: ['Same shape in, same shape out: a block maps a 4,096-vector to a 4,096-vector, so 32 of them can be stacked. The last one, h⁽³²⁾, goes both to the output layer (07) and to LUNA (08).', '進去和出來的形狀一樣：一個區塊把 4,096 維向量變成 4,096 維向量，所以能疊 32 層。最後的 h⁽³²⁾ 同時送到輸出層（07）和 LUNA（08）。'],
       sig: [String.raw`\mathbf h^{(l-1)}\in\mathbb R^{4096}`, String.raw`\mathbf h^{(l)}\in\mathbb R^{4096}`]},
-    head: {n: ['logits → softmax', 'logit → softmax'], from: ['block'], to: ['token', 'hidden'],
-      i: [String.raw`\mathbf h^{(32)}_4\in\mathbb R^{4096}`, String.raw`${Tx('at ', '在 ')}${tt(RUN_TOK[3])}${Tx(', the position that predicts token 5', '，負責預測第 5 個 token 的位置')}`],
-      o: String.raw`\mathbf p=\mathrm{softmax}\big(W\mathbf h^{(32)}_4/T\big),\quad W\in\mathbb R^{32000\times4096}`,
+    head: {n: ['logits → softmax', 'logit → softmax'], from: ['block'], to: [],
+      i: [String.raw`H^{(32)}\in\mathbb R^{9\times4096}`, String.raw`\mathbf h^{(32)}_4=(H^{(32)}_{4,:})^\top\ ${Tx('predicts token 5', '用來預測第 5 個 token')}`],
+      o: String.raw`\widehat{\mathbf h}_4=\mathrm{RMSNorm}_{\mathrm{final}}(\mathbf h^{(32)}_4),\quad \mathbf p=\mathrm{softmax}\big(W_{\mathrm{out}}\widehat{\mathbf h}_4/T\big),\quad W_{\mathrm{out}}\in\mathbb R^{32000\times4096}`,
       out: [String.raw`\mathbf p\in[0,1]^{32000},\ \textstyle\sum_i p_i=1`, String.raw`p(${tt(' dens')})=${f2(hp.p[0])},\ p(${tt(' less')})=${f2(hp.p[1])}\ \Rightarrow\ y_5=${tt(' dens')}`],
       note: ['y₅ is appended to the input and the loop starts again from unit 02 for token 6. LUNA ignores p and reads h⁽³²⁾ directly.', 'y₅ 接到輸入後面，從第 02 單元開始產生第 6 個 token。LUNA 不看 p，直接讀 h⁽³²⁾。'],
       sig: [String.raw`\mathbf h^{(32)}_t\in\mathbb R^{4096}`, String.raw`\mathbf p\in[0,1]^{32000}`]},
     hidden: {n: ['stack the last layer', '把最後一層疊起來'], from: ['block'], to: ['pca'],
-      i: [String.raw`\mathbf h^{(32)}_t\in\mathbb R^{4096},\ t=1,\dots,9`, Tx('the same vectors unit 07 turns into p', '就是第 07 單元拿去算 p 的那些向量')],
+      i: [String.raw`H^{(32)}\in\mathbb R^{9\times4096}`, Tx('the same block output also feeds unit 07', '同一份區塊輸出也送往第 07 單元')],
       o: String.raw`S=\begin{bmatrix}s_1^{\top}\\[-2pt]\vdots\\[-2pt]s_9^{\top}\end{bmatrix},\quad s_t=\mathbf h^{(32)}_t`,
-      out: [String.raw`S\in\mathbb R^{9\times4096}`, String.raw`s_5=\mathbf h^{(32)}_5\ (${tt(RUN_TOK[4])})`],
+      out: [String.raw`S=H^{(32)}\in\mathbb R^{9\times4096}`, String.raw`s_5=\mathbf h^{(32)}_5\ (${tt(RUN_TOK[4])})`],
       note: ['From here on the LLM is finished; LUNA only works with this matrix (one row per answer token).', '從這裡開始 LLM 已經結束；LUNA 只處理這個矩陣（回答的每個 token 一列）。'],
       sig: [String.raw`\mathbf h^{(32)}_{1..9}`, String.raw`S\in\mathbb R^{9\times4096}`]},
     pca: {n: ['project on top-3 directions', '投影到前 3 個方向'], from: ['hidden'], to: ['grid'],
@@ -1721,17 +2248,17 @@ function ioSpecs(){
       note: ['4,096 numbers per token become 3. z₅ is the point of ▁dens in units 09 and 10.', '每個 token 從 4,096 個數字變成 3 個。z₅ 就是第 09、10 單元圖上 ▁dens 的那個點。'],
       sig: [String.raw`S\in\mathbb R^{9\times4096}`, String.raw`Z\in\mathbb R^{9\times3}`]},
     grid: {n: ['cell number', '格子編號'], from: ['pca'], to: ['dtmc', 'sem'],
-      i: [String.raw`\mathbf z_5\in\mathbb R^{3}`, String.raw`${RUN.N > 1 ? String.raw`\bar{\mathbf z}_5=${Tx('mean of ', '平均 ')}${RUN.N}${Tx(' rows', ' 列')}=` : String.raw`\mathbf z_5=`}(${w5.zm.map(f2).join(',\\ ')})`],
-      o: String.raw`\bar s=\sum_{i=1}^{3}\Big\lfloor\frac{z_i-\min_i}{u_i}\Big\rfloor\,m^{\,i-1},\quad m=${p.m}`,
-      out: [String.raw`(\bar s_1,\dots,\bar s_{${nW}})\in\{0,\dots,${mS - 1}\}^{${nW}}`, String.raw`\bar s_5=${w5.s};\quad (${sbar})`],
+      i: [String.raw`Z\in\mathbb R^{9\times3}`, String.raw`${RUN.N > 1 ? String.raw`\bar{\mathbf z}_5=${Tx('mean of ', '平均 ')}${RUN.N}${Tx(' rows', ' 列')}=` : String.raw`\mathbf z_5=`}(${w5.zm.map(f2).join(',\\ ')})`],
+      o: String.raw`\bar s=\sum_{i=1}^{3}\operatorname{trunc}\Big(\frac{\bar z_i-\min_i}{u_i}\Big)\,m^{\,i-1},\quad m=${p.m}`,
+      out: [String.raw`\bar{\mathbf s}=(\bar s_1,\dots,\bar s_{${nW}})\in\mathbb Z^{${nW}}`, String.raw`\bar s_5=${w5.s};\quad (${sbar})`],
       note: ['Three real numbers become one integer: the abstract state. The whole answer is now a short list of integers — the input of both 11 and 12.', '三個實數變成一個整數：抽象狀態。整句回答現在是一小串整數——它同時是第 11、12 單元的輸入。'],
-      sig: [String.raw`Z\in\mathbb R^{9\times3}`, String.raw`\bar{\mathbf s}\in\{0..${mS - 1}\}^{${nW}}`]},
-    dtmc: {n: ['count transitions', '數轉移次數'], from: ['grid'], to: ['sem'],
+      sig: [String.raw`Z\in\mathbb R^{9\times3}`, String.raw`\bar{\mathbf s}\in\mathbb Z^{${nW}}`]},
+    dtmc: {n: ['count transitions', '數轉移次數'], from: ['grid'], to: [],
       i: [String.raw`\{\bar{\mathbf s}^{(n)}\}_{n=1}^{160}`, Tx('the state lists of all 160 training answers', '160 句訓練回答的狀態序列')],
-      o: String.raw`\bar P(\bar s,\bar s')=\frac{\#(\bar s\to\bar s')}{\#(\bar s\to\cdot)}`,
-      out: [String.raw`\bar P\in[0,1]^{${mS}\times${mS}}`, String.raw`\bar P(\bar s_{${a[3].s}}\to\bar s_{${w5.s}})=\tfrac{${t45}}{${o4}}=${f2(o4 ? t45 / o4 : 0)}`],
+      o: String.raw`\bar P(\bar s,\bar s')=\frac{\#(\bar s\to\bar s')}{\#(\bar s\to\cdot)}\quad\text{if outgoing count}>0`,
+      out: [String.raw`\bar P\in[0,1]^{${p.cnt.size}\times${p.cnt.size}}\quad(${Tx('observed states', '觀測狀態')})`, o4 ? String.raw`\bar P(\bar s_{${a[3].s}}\to\bar s_{${w5.s}})=\tfrac{${t45}}{${o4}}=${f2(t45 / o4)}` : String.raw`\bar P(\bar s_{${a[3].s}}\to\bar s_{${w5.s}})=0\quad(${Tx('no outgoing observations', '無出發轉移觀測')})`],
       note: ['A model of how answers move between states. For TruthfulQA the score uses the states’ semantics (12); the transition probabilities are what OOD and adversarial detection score with.', '「回答怎麼在狀態之間移動」的模型。TruthfulQA 的分數用的是狀態的語意（12）；OOD 與對抗偵測則用這些轉移機率打分。'],
-      sig: [String.raw`\{\bar{\mathbf s}^{(n)}\}`, String.raw`\bar P\in[0,1]^{${mS}\times${mS}}`]},
+      sig: [String.raw`\{\bar{\mathbf s}^{(n)}\}`, String.raw`\bar P\in[0,1]^{${p.cnt.size}\times${p.cnt.size}}`]},
     sem: {n: ['average state truthfulness', '狀態真實性取平均'], from: ['grid'], to: ['roc'],
       i: [String.raw`\bar{\mathbf s}=(${sbar})`, Tx('the example’s states, plus the training labels', '例句的狀態，加上訓練標籤')],
       o: String.raw`\mathrm{score}=\frac1n\sum_{t}\bar\theta(\bar s_t),\quad \bar\theta=\frac{\mathrm{pos}}{\mathrm{pos}+\mathrm{neg}}`,
@@ -1740,23 +2267,43 @@ function ioSpecs(){
       sig: [String.raw`\bar{\mathbf s}`, String.raw`\mathrm{score}\in[0,1]`]},
     roc: {n: ['rank all answers', '把所有回答排序'], from: ['sem'], to: [],
       i: [String.raw`\{(\mathrm{score}_n,\ y_n)\}_{n=1}^{${p.test.length}}`, String.raw`${Tx('one score per test answer, incl. the example ', '每句測試回答一個分數，包含例句 ')}(${f3(sc)})`],
-      o: String.raw`\mathrm{AUC}=P\big(\mathrm{score}_{\text{true}}>\mathrm{score}_{\text{false}}\big)`,
+      o: String.raw`\mathrm{AUC}=P\big(\mathrm{score}_{\text{true}}>\mathrm{score}_{\text{false}}\big)+\tfrac12P\big(\mathrm{score}_{\text{true}}=\mathrm{score}_{\text{false}}\big)`,
       out: [String.raw`\mathrm{AUC}\in[0,1]`, String.raw`${f3(p.auc)}\ (${Tx('toy', '玩具')}),\quad 0.65\ (${Tx('paper, Table IX', '論文表 IX')})`],
       sig: [String.raw`\{(\mathrm{score}_n,y_n)\}`, String.raw`\mathrm{AUC}\in[0,1]`]}
   };
 }
+/* The same symbol is printed on both sides of every cross-unit connection. */
+const CARRY = {
+  embed: [['token', String.raw`\mathbf x`]],
+  rope: [['embed', String.raw`H^{(0)}`]],
+  attn: [['rope', String.raw`\widetilde Q,\widetilde K`]],
+  block: [['embed', String.raw`H^{(0)}`], ['attn', String.raw`\Delta A`]],
+  head: [['block', String.raw`H^{(32)}`]],
+  hidden: [['block', String.raw`H^{(32)}`]],
+  pca: [['hidden', String.raw`S`]],
+  grid: [['pca', String.raw`Z`]],
+  dtmc: [['grid', String.raw`\bar{\mathbf s}`]],
+  sem: [['grid', String.raw`\bar{\mathbf s}`]],
+  roc: [['sem', String.raw`\mathrm{score}`]]
+};
 function ioCard(sp, id){
   const col = (cls, head, tex, ex) => `<div class="io-col ${cls}"><p class="io-k">${head}</p><span class="tex" data-display="1" data-tex="${esc(tex)}"></span>${ex ? `<div class="io-ex"><span class="tex" data-tex="${esc(ex)}"></span></div>` : ''}</div>`;
-  return '<div class="io-flow">' + col('in', `<b>${T('Input', '輸入')}</b>${sp.from.length ? ' · ' + T('from ', '來自 ') + uref(sp.from) : ''}`, sp.i[0], sp.i[1])
-    + `<div class="io-arrow" aria-hidden="true">↓</div>` + col('op', `<b>${T('Operation', '運算')}</b> · ${esc(T(sp.n[0], sp.n[1]))}`, sp.o, '')
-    + `<div class="io-arrow" aria-hidden="true">↓</div>` + col('out', `<b>${T('Output', '輸出')}</b>${sp.to.length ? ' · ' + T('used by ', '交給 ') + uref(sp.to) : ''}`, sp.out[0], sp.out[1])
-    + '</div>' + `<div class="equation-reading"><h3>${T('How to read the equations', '公式怎麼讀')}</h3><p>${esc(T(...EQUATION_READING[id]))}</p>${sp.note ? `<p class="io-note">${esc(T(...sp.note))}</p>` : ''}</div>`;
+  const carry = (CARRY[id] || []).map(([from, tex]) => `<a href="#${from}">${UNIT[from][0]}</a> → ${UNIT[id][0]} <span class="tex" data-tex="${esc(tex)}"></span>`).join(' <span aria-hidden="true">＋</span> ');
+  const sig = `<summary><span class="io-sig"><b class="io-in">${T('Input', '輸入')}</b><span class="tex" data-tex="${esc(sp.sig[0])}"></span><span class="io-sig-op">→ ${esc(T(sp.n[0], sp.n[1]))} →</span><b class="io-out">${T('Output', '輸出')}</b><span class="tex" data-tex="${esc(sp.sig[1])}"></span></span><span class="io-toggle">${T('full input / output formulas', '完整的輸入／輸出公式')}</span></summary>`;
+  return `<details class="io-more">${sig}<div class="io-body">` + (carry ? `<p class="io-continuity"><span lang="en">Output = input:</span><span lang="zh">輸出 = 輸入：</span> ${carry}</p>` : '')
+    + '<div class="io-flow">' + col('in', `<b>${T('Input', '輸入')}</b>${sp.from.length ? ' · ' + T('from ', '來自 ') + uref(sp.from) : ''}`, sp.i[0], sp.i[1])
+    + `<div class="io-arrow" aria-hidden="true">→</div>` + col('op', `<b>${T('Operation', '運算')}</b> · ${esc(T(sp.n[0], sp.n[1]))}`, sp.o, '')
+    + `<div class="io-arrow" aria-hidden="true">→</div>` + col('out', `<b>${T('Output', '輸出')}</b>${sp.to.length ? ' · ' + T('used by ', '交給 ') + uref(sp.to) : ''}`, sp.out[0], sp.out[1])
+    + '</div>' + `<details class="equation-reading"><summary>${T('How to read this calculation', '展開公式解讀')}</summary><p>${esc(T(...EQUATION_READING[id]))}</p>${sp.note ? `<p class="io-note">${esc(T(...sp.note))}</p>` : ''}</details></div></details>`;
 }
 function ioAll(){
   if (!EM.E.length) return;
   const S = ioSpecs();
-  Object.keys(S).forEach(id => { const el = document.getElementById('io-' + id), html = ioCard(S[id], id); if (el && IOC[id] !== html) { IOC[id] = html; el.innerHTML = html; renderTexIn(el); } });
+  Object.keys(S).forEach(id => { const el = document.getElementById('io-' + id), html = ioCard(S[id], id); if (el && IOC[id] !== html) { IOC[id] = html; const open = el.querySelector('.io-more')?.open, read = el.querySelector('.equation-reading')?.open;
+    el.innerHTML = html; if (open) el.querySelector('.io-more').open = true; if (read) el.querySelector('.equation-reading').open = true; renderTexIn(el); } });
 }
+/* formulas inside a closed <details> have no width yet; fit them when it opens */
+document.addEventListener('toggle', e => { if (e.target.classList && e.target.classList.contains('io-more')) requestMathLayout(); }, true);
 
 /* Read the transformation in words before manipulating the visualization. */
 const EQUATION_READING = {
@@ -1774,15 +2321,105 @@ dtmc: ['For a current state i and next state j, count how many training transiti
 sem: ['The state score θ̄ is pos/(pos+neg): the share of labelled visits coming from true answers. It is a label-frequency estimate, not the language model’s token probability. The answer score averages the scores of states in its trace; the released implementation gives unseen states zero. Compare each state’s counts with its score and then the trace average.', '狀態分數 θ̄ = pos/(pos+neg)：真實回答的造訪次數，除以真實與錯誤回答的總造訪次數。這是依標記頻率估出的分數，不是語言模型生成 token 的機率。回答分數再取軌跡上各狀態分數的平均；作者實作將未見狀態記為 0。先對照狀態計數與分數，再看整條軌跡的平均。'],
 roc: ['The decision threshold τ turns a continuous answer score into a predicted class. TPR divides correctly detected positives by all actual positives; FPR divides incorrectly flagged negatives by all actual negatives. Here the positive class is hallucination: score < τ is flagged, so raising τ catches more hallucinations and also flags more true answers. Each threshold gives one (FPR,TPR) point; AUC is the area under the resulting curve.', '門檻 τ 將連續的回答分數轉成類別預測。TPR 是正類中被正確找出的比例；FPR 是負類中被誤判為正類的比例。本圖以幻覺為正類，score < τ 就標為幻覺；提高 τ 會抓到更多幻覺，也會誤判更多真實回答。每個門檻對應一個 (FPR,TPR) 點，掃過門檻得到曲線，AUC 就是曲線下面積。']
 };
+/* ============================ data-flow rail ============================ */
+/* rows: ['g', section|'' , caption] group · ['d', data key, producing section] data dot · ['o', section] unit on the line · ['b', section, data key] side branch */
+const RAIL = [['g', 'llm', 'Llama-2-7b'],
+  ['d', 'text', 'llm'], ['o', 'token'], ['d', 'x', 'token'], ['o', 'embed'], ['d', 'h0', 'embed'], ['o', 'rope'], ['d', 'qk', 'rope'], ['o', 'attn'], ['d', 'da', 'attn'], ['o', 'block'], ['d', 'h32', 'block'], ['b', 'head', 'p'],
+  ['g', '', 'LUNA'],
+  ['o', 'hidden'], ['d', 'S', 'hidden'], ['o', 'pca'], ['d', 'Z', 'pca'], ['o', 'grid'], ['d', 's', 'grid'], ['b', 'dtmc', 'P'], ['o', 'sem'], ['d', 'score', 'sem'], ['o', 'roc'], ['d', 'auc', 'roc']];
+/* data key: [tex, plain fallback, shape en, shape zh] */
+const RAIL_D = {text: [String.raw`\text{text}`, 'text', 'string', '字串'], x: [String.raw`\mathbf x`, 'x', '9 ids', '9 個編號'], h0: [String.raw`H^{(0)}`, 'H⁽⁰⁾', '9×4096', '9×4096'],
+  qk: [String.raw`\widetilde Q,\widetilde K`, 'Q̃, K̃', '9×128', '9×128'], da: [String.raw`\Delta A`, 'ΔA', '9×4096', '9×4096'], h32: [String.raw`H^{(32)}`, 'H⁽³²⁾', '9×4096', '9×4096'],
+  p: [String.raw`\mathbf p_t`, 'p', '32000', '32000'], S: ['S', 'S', '9×4096', '9×4096'], Z: ['Z', 'Z', '9×3', '9×3'], s: [String.raw`\bar{\mathbf s}`, 's̄', 'state ids', '狀態編號'],
+  P: [String.raw`\bar P`, 'P̄', '', ''], score: [String.raw`\mathrm{score}`, 'score', '∈[0,1]', '∈[0,1]'], auc: [String.raw`\mathrm{AUC}`, 'AUC', '∈[0,1]', '∈[0,1]']};
+/* section -> [input keys, output keys], tagged on the rail while that section is on screen */
+const RAIL_IO = {llm: [['text'], ['p']], token: [['text'], ['x']], embed: [['x'], ['h0']], rope: [['h0'], ['qk']], attn: [['h0', 'qk'], ['da']], block: [['h0', 'da'], ['h32']], head: [['h32'], ['p']],
+  hidden: [['h32'], ['S']], pca: [['S'], ['Z']], grid: [['Z'], ['s']], dtmc: [['s'], ['P']], sem: [['s'], ['score']], roc: [['score'], ['auc']]};
+const railEl = $('#rail');
+let railCur = '';
+function rail(){
+  const sym = k => { const d = RAIL_D[k]; if (window.katex) { try { return katex.renderToString(d[0], KOPT); } catch (e) {} } return esc(d[1]); };
+  const node = (k, sec, shape) => `<a class="rail-node" href="#${sec}" data-k="${k}"><span class="rail-sym">${sym(k)}</span>${shape ? `<span class="rail-shape">${esc(T(RAIL_D[k][2], RAIL_D[k][3]))}</span>` : ''}<span class="rail-tag" data-in="${T('in', '輸入')}" data-out="${T('out', '輸出')}"></span></a>`;
+  const unit = id => `<a class="rail-unit" href="#${id}" data-sec="${id}"><b>${UNIT[id][0]}</b>${esc(T(UNIT[id][1], UNIT[id][2]))}</a>`;
+  const last = RAIL.length - 1;
+  railEl.setAttribute('aria-label', T('Data flow', '資料流'));
+  railEl.innerHTML = `<p class="rail-h">${T('Data flow', '資料流')}</p>`
+    + `<p class="rail-eg">${T('Token 5 of the answer, <b>▁dens</b>. Each ● is data: the output of the unit above it and the input of the unit below. Hover a ● for its toy values.', '跟著回答的第 5 個 token <b>▁dens</b>。每個 ● 是資料：上面那一步的輸出，也是下面那一步的輸入。滑到 ● 上看玩具數值。')}</p>`
+    + '<ol class="rail-list">' + RAIL.map((r, i) =>
+      r[0] === 'g' ? `<li class="rail-grp${i ? '' : ' rail-top'}">${r[1] ? `<a class="rail-unit" href="#${r[1]}" data-sec="${r[1]}"><b>${UNIT[r[1]][0]}</b>${esc(r[2])}</a>` : `<span>${esc(r[2])}</span>`}</li>`
+      : r[0] === 'd' ? `<li class="rail-d${i === 1 ? ' rail-start' : ''}${i === last ? ' rail-end' : ''}">${node(r[1], r[2], true)}</li>`
+      : r[0] === 'o' ? `<li>${unit(r[1])}</li>`
+      : `<li class="rail-br">${unit(r[1])}<span class="rail-arrow" aria-hidden="true">→</span>${node(r[2], r[1], false)}</li>`).join('') + '</ol>';
+  railSpy(railCur);
+}
+function railSpy(id){
+  railCur = id || '';
+  const io = RAIL_IO[railCur] || [[], []];
+  railEl.querySelectorAll('[data-sec]').forEach(el => el.classList.toggle('on', el.dataset.sec === railCur));
+  railEl.querySelectorAll('[data-k]').forEach(el => { el.classList.toggle('is-in', io[0].includes(el.dataset.k)); el.classList.toggle('is-out', io[1].includes(el.dataset.k)); });
+}
+/* Tooltip text is computed on hover from the same objects the widgets draw, so it follows every slider. */
+function railTip(k){
+  const p = P(), a = p.run.a, i5 = Math.min(4, a.length - 1), w5 = a[i5], w4 = a[Math.max(0, i5 - 1)], sc = p.run.score;
+  const vec = (v, more) => '[' + v.map(f2).join(', ') + (more ? ', …' : '') + ']';
+  const box = (h, v, n) => `<div class="tt-h">${h}</div><div class="tt-v">${v}</div><div class="tt-n">${n}</div>`;
+  const t5 = RUN_TOK[4];
+  switch (k) {
+    case 'text': return box(T('text · the answer string', 'text · 回答字串'), '"Water vapor is denser than air."',
+      T('Input of 02. It is cut into 9 pieces: ', '02 的輸入。會被切成 9 個片段：') + esc(RUN_TOK.join(' · ')));
+    case 'x': return box('x ∈ {0,…,31999}⁹', '[' + RUN_TOK.map((t, i) => i === 4 ? `<b>id(${esc(t)})</b>` : `id(${esc(t)})`).join(', ') + ']',
+      T('Output of 02 = input of 03. One integer per piece; x₅ = id(▁dens). The toy does not assign real id numbers.', '02 的輸出＝03 的輸入。每個片段一個整數；x₅ = id(▁dens)。玩具資料沒有指定真實編號。'));
+    case 'h0': return box('H⁽⁰⁾ ∈ ℝ^(9×4096)', `e₅ (${esc(t5)}) = ${vec(BLK.h0, 1)}`,
+      T('Output of 03 = input of 04–06. Toy: 8 numbers standing in for 4,096; the row h⁽ˡ⁻¹⁾ of unit 06.', '03 的輸出＝04–06 的輸入。玩具：用 8 個數字代表 4,096 個，就是第 06 單元 h⁽ˡ⁻¹⁾ 那一列。'));
+    case 'qk': { const rp = ROPE || {m: 3, n: 7, dot: 0}, i = +$('#rope-i').value, th = Math.pow(10000, -2 * i / 128);
+      return box('Q̃, K̃ ∈ ℝ^(9×128)', `q̃ (m=${rp.m}) = ${vec(rot(RQ, rp.m * th))}\nk̃ (n=${rp.n}) = ${vec(rot(RK, rp.n * th))}\nq̃ᵀk̃ = ${f3(rp.dot)}`,
+        T(`Output of 04 = input of 05. Toy: coordinate pair i = ${i} of 64, at the positions set in unit 04.`, `04 的輸出＝05 的輸入。玩具：64 組座標中的第 i = ${i} 組，位置取自第 04 單元的滑桿。`)); }
+    case 'da': { const row = ATTN ? ATTN.row.slice(0, attnQ + 1) : [];
+      return box('ΔA ∈ ℝ^(9×4096)', `α (${esc(RUN_TOK[attnQ])}) = ${vec(row)}\nΔa₅ (${esc(t5)}) = ${vec(BLK.da, 1)}`,
+        T('Output of 05 = input of 06. α is the selected query row of the unit 05 heatmap; Δa₅ is the fixed 8-number toy of unit 06, not computed from α.', '05 的輸出＝06 的輸入。α 是第 05 單元熱圖選中的那一列；Δa₅ 是第 06 單元固定的 8 維玩具值，不是由 α 算出來的。')); }
+    case 'h32': return box('H⁽³²⁾ ∈ ℝ^(9×4096)', `h⁽¹⁾₅ = ${vec(BLKO ? BLKO.h1 : BLK.h0, 1)}\n   ⋮  ${T('31 more blocks', '再 31 個區塊')}\nh⁽³²⁾₅ = ${vec(TOY.run.h[4], 1)}`,
+      T('Output of 06 = input of 07 and 08. Two separate toys: h⁽¹⁾ is the 8-number example of unit 06, h⁽³²⁾ is the 12-number dataset of units 08–13.', '06 的輸出＝07 與 08 的輸入。這是兩份各自獨立的玩具：h⁽¹⁾ 是第 06 單元的 8 維例子，h⁽³²⁾ 是第 08–13 單元共用的 12 維資料。'));
+    case 'p': { const hp = HEADP || {p: []}, top = HEAD.map((h, i) => [vtok(h[0]), hp.p[i] || 0]).sort((x, y) => y[1] - x[1]).slice(0, 5);
+      return box('p ∈ [0,1]^32000, Σp = 1', top.map(([w, v], i) => `${i ? '' : '<b>'}p(${esc(w)}) = ${f3(v)}${i ? '' : '</b>'}`).join('\n') + '\n…',
+        T(`Output of 07 (temperature ${f2(hp.temp || 1)}): the model's guess for token 5. The pick is appended and the loop restarts at 02. LUNA does not read p.`, `07 的輸出（溫度 ${f2(hp.temp || 1)}）：模型對第 5 個 token 的猜測。選中的 token 接回輸入，從 02 重新開始。LUNA 不讀 p。`)); }
+    case 'S': return box('S = H⁽³²⁾ ∈ ℝ^(9×4096)', `s₅ (${esc(t5)}) = ${vec(TOY.run.h[4], 1)}`,
+      T('Output of 08 = input of 09: one row like this per answer token. Toy: 12 numbers standing in for 4,096.', '08 的輸出＝09 的輸入：回答的每個 token 一列。玩具：用 12 個數字代表 4,096 個。'));
+    case 'Z': return box('Z ∈ ℝ^(9×3)', TOY.run.z.map((z, t) => { const ln = `z${'₁₂₃₄₅₆₇₈₉'[t]} ${RUN_TOK[t].padEnd(6)} ${vec(z.slice(0, 3))}`; return t === 4 ? `<b>${esc(ln)}</b>` : esc(ln); }).join('\n'),
+      T('Output of 09 = input of 10: every token is now 3 numbers, the points drawn in units 09 and 10.', '09 的輸出＝10 的輸入：每個 token 只剩 3 個數字，就是第 09、10 單元圖上的點。'));
+    case 's': return box(`s̄ ∈ ℤ^${a.length}`, `s̄ = [${a.map((w, i) => i === i5 ? `<b>${w.s}</b>` : w.s).join(', ')}]\nz̄ = ${vec(w5.zm)} → ${T('cell', '格子')} (${w5.c.join(', ')}) → <b>${w5.s}</b>`,
+      T(`Output of 10 = input of 11 and 12. Live from unit 10: m = ${p.m} cells per dimension, window N = ${p.N}.`, `10 的輸出＝11 與 12 的輸入。隨第 10 單元變動：每維 m = ${p.m} 格、視窗 N = ${p.N}。`));
+    case 'P': { const t = p.trans.get(w4.s + '>' + w5.s) || 0, o = p.out.get(w4.s) || 0;
+      return box(`P̄ ∈ [0,1]^(${p.cnt.size}×${p.cnt.size})`, `P̄(s̄${w4.s} → s̄${w5.s}) = ${o ? `${t} / ${o} = ${f3(t / o)}` : '0'}`,
+        T(`Output of 11: transition probabilities counted over the 160 training answers (${p.cnt.size} observed states). Used for OOD / adversarial scores, not for the TruthfulQA score.`, `11 的輸出：從 160 句訓練回答數出來的轉移機率（觀測到 ${p.cnt.size} 個狀態）。用在 OOD／對抗偵測，不用在 TruthfulQA 的分數。`)); }
+    case 'score': { const hal = sc < RUN.tau;
+      return box('score ∈ [0,1]', a.map(w => `θ̄(s̄${w.s}) = ${f2(p.theta(w.s))}`).join('\n') + `\n<b>${T('mean', '平均')} = ${f3(sc)} ${hal ? '&lt;' : '≥'} τ = ${f2(RUN.tau)} → ${T(hal ? 'hallucination' : 'normal', hal ? '幻覺' : '正常')}</b>`,
+        T('Output of 12 = input of 13: the whole answer is now one number. θ̄ = pos / (pos + neg) from the training labels; an unseen state scores 0.', '12 的輸出＝13 的輸入：整句回答只剩一個數字。θ̄ = pos / (pos + neg)，由訓練標籤算出；沒見過的狀態記 0。')); }
+    default: return box('AUC ∈ [0,1]', `${T('toy', '玩具')}  ${f3(p.auc)}\n${T('paper', '論文')}  0.65`,
+      T(`Output of 13: ranks the scores of all ${p.test.length} toy test answers. 0.65 is the paper's Table IX value for Llama2-7b on TruthfulQA.`, `13 的輸出：把 ${p.test.length} 句玩具測試回答的分數排序算出來。0.65 是論文表 IX 中 Llama2-7b 在 TruthfulQA 的數值。`));
+  }
+}
+function railShow(el){ const r = el.getBoundingClientRect(); tip.classList.add('wide'); showTip(railTip(el.dataset.k), {clientX: r.right - 8, clientY: r.top - 10}); }
+function railHide(e){ const el = e.target.closest('[data-k]'); if (el && !el.contains(e.relatedTarget)) { hideTip(); tip.classList.remove('wide'); } }
+railEl.addEventListener('mouseover', e => { const el = e.target.closest('[data-k]'); if (el && EM.E.length) railShow(el); });
+railEl.addEventListener('focusin', e => { const el = e.target.closest('[data-k]'); if (el && EM.E.length) railShow(el); });
+railEl.addEventListener('mouseout', railHide);
+railEl.addEventListener('focusout', railHide);
+/* Wide screens: sticky in the left margin. Otherwise: a card in the hero. */
+const railMq = matchMedia('(min-width:1320px)');
+function placeRail(){ if (railMq.matches) $('.shell').insertBefore(railEl, $('main')); else $('#rail-slot').append(railEl); }
+railMq.addEventListener('change', placeRail);
+placeRail();
+
 /* ============================ boot ============================ */
 function luna(){ gridView(); dtmcView(); semView(); rocView(); }
-function renderAll(){ pipe(); gen(); bpe(); embRender(true); rope(); attn(); block(); head(); hidden(); pcgView(); pcaView(); luna(); }
+function renderAll(){ rail(); pipe(); gen();bpe(); embRender(true); rope(); attn(); block(); head(); hidden(); pcgView(); pcaView(); luna(); }
 function setLang(l){
   lang = l; document.documentElement.setAttribute('data-lang', l); document.documentElement.lang = l === 'zh' ? 'zh-Hant' : 'en';
   $('#lang-en').setAttribute('aria-pressed', l === 'en'); $('#lang-zh').setAttribute('aria-pressed', l === 'zh');
   document.title = T('LUNA, End to End', 'LUNA 從頭走一遍');
   try { localStorage.setItem('luna-v2-lang', l); } catch (e) {}
   if (EM.E.length) renderAll();
+  requestToc();
 }
 $('#lang-en').addEventListener('click', () => setLang('en')); $('#lang-zh').addEventListener('click', () => setLang('zh'));
 addEventListener('keydown', e => {   // ` toggles EN / 中文 (e.code so it also works with an IME), except while typing in a field
@@ -1796,26 +2433,37 @@ function updateToc(){
   tocFrame = 0;
   const height = navBar.getBoundingClientRect().height;
   document.documentElement.style.scrollPaddingTop = `${height + 16}px`;
+  document.documentElement.style.setProperty('--bar-h', `${height}px`);
   const line = height + innerHeight * .3;
   let index = 0;
   secs.forEach((section, i) => { if (section && section.getBoundingClientRect().top <= line) index = i; });
   if (scrollY > 0 && innerHeight + scrollY >= document.documentElement.scrollHeight - 4) index = secs.length - 1;
   if (index === tocCurrent) return;
   tocCurrent = index;
+  railSpy(secs[index] ? secs[index].id : '');
   tocLinks.forEach((a, i) => {
     a.classList.toggle('on', i === index);
     if (i === index) a.setAttribute('aria-current', 'location'); else a.removeAttribute('aria-current');
   });
   const a = tocLinks[index], box = a.getBoundingClientRect(), viewport = navToc.getBoundingClientRect();
-  if (box.left < viewport.left || box.right > viewport.right) navToc.scrollTo({left: navToc.scrollLeft + box.left - viewport.left - 24, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
+  if (box.left < viewport.left || box.right > viewport.right) navToc.scrollTo({left: navToc.scrollLeft + box.left - viewport.left - 24, behavior: 'instant'});
 }
 function requestToc(){ if (!tocFrame) tocFrame = requestAnimationFrame(updateToc); }
 addEventListener('scroll', requestToc, {passive:true});
 addEventListener('resize', requestToc);
 addEventListener('hashchange', requestToc);
-new ResizeObserver(requestToc).observe(navBar);
 requestToc();
 $('#head-tg').innerHTML = HEAD.map(h => `<option value="${esc(h[0])}"${h[0] === ' less' ? ' selected' : ''}>${esc(vtok(h[0]))}</option>`).join('');
+/* Put the first plain-language explanation ahead of each equation card. */
+document.querySelectorAll('main > section:not(.hero)').forEach(section => {
+  const io = section.querySelector(':scope > .io');
+  const first = section.querySelector(':scope > .col > p:first-child');
+  if (!io || !first) return;
+  const intro = document.createElement('div');
+  intro.className = 'section-intro';
+  intro.append(first);
+  section.insertBefore(intro, io);
+});
 (function boot(){ let l = 'en'; try { l = localStorage.getItem('luna-v2-lang') || 'en'; } catch (e) {} setLang(l); bpeReset(); embReset(); renderAll(); })();
 </script>
 </body>
