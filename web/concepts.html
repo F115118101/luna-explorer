@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
 <title>LUNA Concepts</title>
-<!-- Background concepts for luna.html. Every figure uses invented toy data. Deep links: concepts.html#tokenization | #embedding | #attention | #sampling | #pca | #kmeans | #gmm | #llm | #metrics | #errata -->
+<!-- Background concepts for luna.html. Every figure uses invented toy data. Deep links: concepts.html#tokenization | #embedding | #attention | #sampling | #pca | #grid | #kmeans | #gmm | #llm | #metrics | #errata -->
 <style>
 :root{
   --ground:#080B12; --surface:#0F141E; --surface-2:#161D2B; --sunk:#0B0F17;
@@ -767,6 +767,42 @@ body.ctrls-resizing .wrap{transition:none}
       <tr><td><b><span lang="en">snap to PC1</span><span lang="zh">對準 PC1</span></b></td><td><span lang="en">Jumps straight to the angle that keeps the most variance, without you having to search for it.</span><span lang="zh">直接跳到保留變異量最多的角度，不用自己慢慢找。</span></td></tr>
     </tbody></table></div>
     <div class="plain"><p class="plain-h"><span lang="en">In plain words</span><span lang="zh">白話說明</span></p><p><span lang="en">Imagine shining a torch on a cloud of points and looking at its shadow on the wall. From some angles the shadow is spread out and the points are easy to tell apart; from others it collapses into a blob. PCA automatically finds the angle with the widest shadow (PC1), then the next best, and so on. Keep only the first few directions and you have fewer numbers per point while keeping as much of the difference between points as possible.</span><span lang="zh">想像用手電筒照一團點雲，看它在牆上的影子。從某些角度照，影子攤得很開，點和點很好分辨；換個角度照，影子就擠成一團。PCA 會自動找出影子攤得最開的角度（PC1），再找第二好的，依此類推。只留前幾個方向，每個點需要的數字就變少了，但點和點之間的差異會盡量保留下來。</span></p><p class="plain-luna"><span lang="en"><b>Link to LUNA:</b> LUNA first squeezes thousands of numbers per token down with PCA, so that grouping them into states becomes feasible.</span><span lang="zh"><b>和 LUNA 的關係：</b>LUNA 先用 PCA 把每個 token 的幾千個數字壓下來，之後才分得了群。</span></p></div>
+  </div></aside>
+</section>
+<section id="grid" class="sec-wide">
+  <div class="sec-head"><div>
+    <h2><span lang="en">Grid — cutting the space into equal cells</span><span lang="zh">Grid——把空間切成等寬的格子</span></h2>
+    <p class="sec-sub"><span lang="en">The simplest abstraction, and the only one LUNA combines with a history step</span><span lang="zh">最簡單的抽象方式，也是 LUNA 唯一搭配 history step 的方式</span></p></div></div>
+  <div class="col" style="margin-bottom:24px">
+    <p><span lang="en">After PCA every token is a point with a few coordinates. A <strong>grid</strong> turns that point into one integer. On the training data, take the minimum and maximum of each dimension and split that range into <i>m</i> equal cells. The cell a point falls into along dimension <i>i</i> is its cell number <i>c</i><sub>i</sub>; the cell numbers of all dimensions together name one box, and that box is the <strong>abstract state</strong>. With <i>k</i> dimensions there are <i>m</i><sup>k</sup> boxes.</span><span lang="zh">PCA 之後，每個 token 是一個只有幾個座標的點。<strong>Grid</strong> 把這個點變成一個整數。在訓練資料上取每一維的最小值與最大值，把這段範圍均分成 <i>m</i> 格。一個點在第 <i>i</i> 維落在第幾格，就是它的格號 <i>c</i><sub>i</sub>；各維的格號合起來決定一個方塊，這個方塊就是<strong>抽象狀態</strong>。有 <i>k</i> 維時共有 <i>m</i><sup>k</sup> 個方塊。</span></p>
+    <p><span lang="en">Nothing has to be fitted: the cells are fixed as soon as the range is known. The price is that cells also exist where there is no data, so many states are never visited, and the number of cells explodes with the number of dimensions. That is why LUNA uses a grid only with 3, 5 or 10 PCA components. K-Means and GMM (next two chapters) place states only where the data is.</span><span lang="zh">Grid 不需要擬合：範圍一確定，格子就定了。代價是沒有資料的地方也有格子，所以很多狀態從來沒被走過；而且維度一多，格子數就爆炸。這就是 LUNA 的 Grid 只搭配 3、5 或 10 個 PCA 成分的原因。K-Means 和 GMM（接下來兩章）只在有資料的地方放狀態。</span></p>
+    <p><span lang="en"><strong>History step <i>N</i>.</strong> One cell says where the model is at this token, not how it got there. The history step lets a state cover <i>N</i> consecutive tokens. The paper describes keeping the <i>N</i> steps together; the authors' code does something simpler: it <strong>averages the coordinates of <i>N</i> consecutive tokens</strong> and looks up the cell of that average. The loop runs over window starts <i>i</i> = 0 … <i>n</i> − <i>N</i> − 1, so a trace of <i>n</i> tokens gives <i>n</i> − <i>N</i> states and the last token is never used, even with <i>N</i> = 1. Set <i>N</i> to 2 or 3 below: the path of averages is shorter and smoother than the raw path. Why only Grid gets a history step is discussed in <a href="#errata">the reading notes</a>.</span><span lang="zh"><strong>History step <i>N</i>（歷史步數）。</strong>一個格子只說明模型在這個 token 的位置，沒有說它是怎麼走過來的。History step 讓一個狀態涵蓋連續 <i>N</i> 個 token。論文的描述是把 <i>N</i> 步一起保留；作者程式碼的做法比較簡單：<strong>把連續 <i>N</i> 個 token 的座標取平均</strong>，再查這個平均點落在哪一格。迴圈的視窗起點是 <i>i</i> = 0 … <i>n</i> − <i>N</i> − 1，所以 <i>n</i> 個 token 的軌跡會得到 <i>n</i> − <i>N</i> 個狀態，而且最後一個 token 永遠不會被用到，<i>N</i> = 1 時也一樣。把下面的 <i>N</i> 調成 2 或 3：平均後的路徑比原始路徑短，也比較平滑。為什麼只有 Grid 搭配 history step，在<a href="#errata">讀後筆記</a>裡有討論。</span></p>
+  </div>
+  <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">Grid and history step (2-D toy)</span><span lang="zh">Grid 與 history step（2 維玩具）</span></p><p class="fig-note"><span lang="en">Grey dots = training tokens. Grey dashed path = the answer's tokens. White path = the window averages that are actually looked up. Amber = the selected window and its cell.</span><span lang="zh">灰點＝訓練 token。灰色虛線＝這句回答的 token。白色路徑＝實際拿去查格子的視窗平均。黃色＝選中的視窗和它落在的格子。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-cg">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
+    <div class="demo">
+      <div class="demo-vis">
+        <p class="vis-label"><span lang="en">PCA plane, cells and the answer's path</span><span lang="zh">PCA 平面、格子與這句回答的路徑</span></p>
+        <div class="vis-box"><svg class="stage" id="cg-svg" viewBox="0 0 640 420"></svg></div>
+      </div>
+      <div class="demo-side">
+        <div class="ctrls">
+          <div class="ctrl-row"><label class="ctrl-lab" for="cg-m"><span lang="en">cells per dim, m</span><span lang="zh">每維格數 m</span></label><input type="range" id="cg-m" min="3" max="10" value="5"><span class="kval" id="cg-mv"></span></div>
+          <div class="ctrl-row"><span class="ctrl-lab"><span lang="en">history step N</span><span lang="zh">歷史步數 N</span></span><div class="seg" id="cg-n"><button type="button" data-v="1" aria-pressed="true">1</button><button type="button" data-v="2" aria-pressed="false">2</button><button type="button" data-v="3" aria-pressed="false">3</button></div></div>
+          <div class="ctrl-row"><label class="ctrl-lab" for="cg-i"><span lang="en">window start i</span><span lang="zh">視窗起點 i</span></label><input type="range" id="cg-i" min="0" max="7" value="3"><span class="kval" id="cg-iv"></span></div>
+        </div>
+        <div class="scores" id="cg-scores"></div>
+        <p class="note" id="cg-note"></p>
+      </div>
+    </div>
+  </div>
+  <aside class="ctrls-drawer" id="ctrls-cg"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
+    <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
+      <tr><td><b><span lang="en">cells per dim, m</span><span lang="zh">每維格數 m</span></b></td><td><span lang="en">Splits each dimension's training range into m equal cells. More cells keep more detail but leave more of them empty.</span><span lang="zh">把每一維的訓練範圍均分成 m 格。格子越多保留的細節越多，但空格也越多。</span></td></tr>
+      <tr><td><b><span lang="en">history step N</span><span lang="zh">歷史步數 N</span></b></td><td><span lang="en">How many consecutive tokens are averaged before the cell is looked up.</span><span lang="zh">查格子之前，先把連續幾個 token 取平均。</span></td></tr>
+      <tr><td><b><span lang="en">window start i</span><span lang="zh">視窗起點 i</span></b></td><td><span lang="en">Picks which window to inspect: tokens i … i + N − 1.</span><span lang="zh">選要看哪一個視窗：第 i 到 i + N − 1 個 token。</span></td></tr>
+    </tbody></table></div>
+    <div class="plain"><p class="plain-h"><span lang="en">In plain words</span><span lang="zh">白話說明</span></p><p><span lang="en">Lay graph paper over a map and say “square C4” instead of the exact position: that is a grid. With a history step you first take the middle point of the last few positions and report the square of that middle point, so one square also tells you a little about where you just were.</span><span lang="zh">在地圖上鋪一張方格紙，不報精確位置，只報「C4 那一格」，這就是 Grid。加上 history step 之後，先取最近幾個位置的中間點，再報那個中間點所在的格子，所以一個格子也帶了一點「剛剛從哪裡來」的資訊。</span></p><p class="plain-luna"><span lang="en"><b>Link to LUNA:</b> each box is one abstract state. The main walkthrough uses 3 PCA dimensions and 5 cells per dimension: 125 states.</span><span lang="zh"><b>和 LUNA 的關係：</b>每個方塊就是一個抽象狀態。主頁的例子用 3 個 PCA 維度、每維 5 格，共 125 個狀態。</span></p></div>
   </div></aside>
 </section>
 <section id="kmeans" class="sec-wide">
@@ -1832,6 +1868,60 @@ $('#pc-data').addEventListener('input', () => { pcaInit(); pcaRender(); });
 $('#pc-ang').addEventListener('input', pcaRender);
 $('#pc-snap').addEventListener('click', () => { let t1 = .5 * Math.atan2(2 * PC.S[1], PC.S[0] - PC.S[2]); if (t1 < 0) t1 += Math.PI; $('#pc-ang').value = Math.round(t1 * 180 / Math.PI) % 180; pcaRender(); });
 
+/* ============================ 05b Grid + history step ============================ */
+const CG = {N: 1};
+const CG_TOK = ['▁Water', '▁vap', 'or', '▁is', '▁dens', 'er', '▁than', '▁air', '.'];
+const CG_DATA = (() => { const r = rng(4242), cen = [[-1.6, -1], [.2, 1.1], [1.7, -.4]], pts = [];
+  for (let i = 0; i < 150; i++) { const c = cen[i % 3]; pts.push([c[0] + gauss(r) * .75, c[1] + gauss(r) * .65]); }
+  const tr = [[-2.1, -1.5], [-1.5, -.7], [-1.1, -1.25], [-.3, .2], [.5, 1.4], [.1, .9], [.9, .3], [1.6, -.2], [2, -.8]];
+  const lo = [0, 1].map(d => Math.min(...pts.map(p => p[d]))), hi = [0, 1].map(d => Math.max(...pts.map(p => p[d])));
+  return {pts, tr, lo, hi}; })();
+function cgRender(){
+  const D = CG_DATA, m = +$('#cg-m').value, N = CG.N, n = D.tr.length;
+  const unit = [0, 1].map(d => (D.hi[d] - D.lo[d]) / m), cell = z => z.map((v, d) => Math.trunc((v - D.lo[d]) / unit[d]));   // numpy astype(int), no clipping
+  const win = []; for (let i = 0; i < n - N; i++) { const ws = D.tr.slice(i, i + N), zm = [0, 1].map(d => mean(ws.map(z => z[d]))), c = cell(zm); win.push({i, zm, c, s: c[0] + c[1] * m}); }
+  const sr = $('#cg-i'); sr.max = win.length - 1; const sel = Math.min(+sr.value, win.length - 1); sr.value = sel; const w = win[sel];
+  $('#cg-mv').textContent = m; $('#cg-iv').textContent = sel;
+  const tx = (x, y, s, o = {}) => `<text x="${x}" y="${y}" text-anchor="${o.a || 'start'}" font-size="${o.fs || 11}" font-weight="${o.w || 400}" fill="${o.c || '#E7EBF3'}" style="font-family:var(--mono)">${esc(s)}</text>`;
+  const pad = .07, ex = [0, 1].map(d => [D.lo[d] - (D.hi[d] - D.lo[d]) * pad, D.hi[d] + (D.hi[d] - D.lo[d]) * pad]);
+  const X = v => 46 + (v - ex[0][0]) / (ex[0][1] - ex[0][0]) * 570, Y = v => 388 - (v - ex[1][0]) / (ex[1][1] - ex[1][0]) * 372;
+  const gx = i => X(D.lo[0] + i * unit[0]), gy = j => Y(D.lo[1] + j * unit[1]);
+  let s = '';
+  for (let i = 0; i <= m; i++) s += `<path d="M${gx(i)} ${gy(0)} V${gy(m)}" stroke="#3A4458" stroke-width="${i % m ? .8 : 1.4}"/><path d="M${gx(0)} ${gy(i)} H${gx(m)}" stroke="#3A4458" stroke-width="${i % m ? .8 : 1.4}"/>`;
+  for (let i = 0; i < m; i++) s += tx((gx(i) + gx(i + 1)) / 2, gy(0) + 14, 'c₁=' + i, {fs: 9, a: 'middle', c: i === w.c[0] ? '#F4C26B' : '#7C869C'}) + tx(gx(0) - 4, (gy(i) + gy(i + 1)) / 2 + 3, 'c₂=' + i, {fs: 9, a: 'end', c: i === w.c[1] ? '#F4C26B' : '#7C869C'});
+  D.pts.forEach(p => { s += `<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="2.2" fill="#7C869C" opacity=".5"/>`; });
+  if (w.c.every(c => c >= 0 && c < m)) s += `<rect x="${gx(w.c[0])}" y="${gy(w.c[1] + 1)}" width="${gx(w.c[0] + 1) - gx(w.c[0])}" height="${gy(w.c[1]) - gy(w.c[1] + 1)}" fill="rgba(244,194,107,.1)" stroke="#F4C26B" stroke-width="2.2"/>`;
+  s += `<path d="${D.tr.map((z, i) => (i ? 'L' : 'M') + X(z[0]).toFixed(1) + ' ' + Y(z[1]).toFixed(1)).join(' ')}" fill="none" stroke="#7C869C" stroke-width="1.2" stroke-dasharray="4 3"/>`;
+  s += `<path d="${win.map((x, i) => (i ? 'L' : 'M') + X(x.zm[0]).toFixed(1) + ' ' + Y(x.zm[1]).toFixed(1)).join(' ')}" fill="none" stroke="#fff" stroke-width="1.6" opacity=".9"/>`;
+  D.tr.forEach((z, i) => { const inW = i >= w.i && i < w.i + N, last = i === n - 1;
+    if (inW && N > 1) s += `<path d="M${X(z[0])} ${Y(z[1])} L${X(w.zm[0])} ${Y(w.zm[1])}" stroke="#F4C26B" stroke-width="1.2"/>`;
+    s += `<circle cx="${X(z[0])}" cy="${Y(z[1])}" r="${inW ? 5 : 3.4}" fill="#080B12" stroke="${inW ? '#F4C26B' : last ? '#FF7B8B' : '#AEB7CA'}" stroke-width="1.5" data-tip="${esc(CG_TOK[i] + ` (${f2(z[0])}, ${f2(z[1])})` + (last ? T(' — never used: the loop stops one step early', '——不會被用到：迴圈少走一步') : ''))}"/>`
+      + tx(X(z[0]) + 7, Y(z[1]) - 7, CG_TOK[i], {fs: 10, c: inW ? '#F4C26B' : last ? '#FF7B8B' : '#AEB7CA', w: inW ? 700 : 400}); });
+  win.forEach((x, i) => { const on = i === sel; s += `<circle class="cgw" data-i="${i}" style="cursor:pointer" cx="${X(x.zm[0])}" cy="${Y(x.zm[1])}" r="${on ? 6.5 : 4}" fill="${on ? '#F4C26B' : '#fff'}" stroke="#080B12" stroke-width="1.4" data-tip="${esc(`i = ${i}: z̄ = (${f2(x.zm[0])}, ${f2(x.zm[1])}) → (c₁, c₂) = (${x.c.join(', ')}) → s̄${x.s}`)}"/>`; });
+  const svg = $('#cg-svg'); svg.innerHTML = s; bindTips(svg);
+  svg.querySelectorAll('.cgw').forEach(c => c.addEventListener('click', () => { $('#cg-i').value = c.dataset.i; hideTip(); cgRender(); }));
+  const used = new Set(D.pts.map(p => { const c = cell(p); return c[0] + c[1] * m; })).size, toks = CG_TOK.slice(w.i, w.i + N).join(' ');
+  $('#cg-scores').innerHTML = stat([[T('cells', '格子總數'), m * m, `${m}² · ${T('with data', '有資料')} ${used}`], [T('states in the path', '路徑上的狀態數'), win.length, `n − N = ${n} − ${N}`], [T('selected', '選中'), 's̄' + w.s, `(c₁, c₂) = (${w.c.join(', ')})`]]);
+  $('#cg-note').innerHTML = T('<b>State sequence:</b> ', '<b>狀態序列：</b>') + win.map((x, i) => i === sel ? `<b>s̄${x.s}</b>` : 's̄' + x.s).join(' → ') + '<br>'
+    + (N === 1 ? T('N = 1: every token is looked up on its own. The last token “.” (red) is still left out, because the loop stops one step early.', 'N = 1：每個 token 各自查格子。最後一個 token「.」（紅色）仍然沒被用到，因為迴圈少走一步。')
+      : T(`N = ${N}: the amber point is the average of “${esc(toks)}”; it can land in a cell that none of those tokens is in. The white path has ${win.length} points instead of ${n} and turns less sharply.`, `N = ${N}：黃點是「${esc(toks)}」的平均，可能落在這幾個 token 都不在的格子裡。白色路徑只有 ${win.length} 個點（原本 ${n} 個），轉折也比較小。`));
+  const pn = v => v < 0 ? `(${f2(v)})` : f2(v), pt = z => `(${f2(z[0])},\\ ${f2(z[1])})`;
+  setFx('cg-svg', [
+    FX(['Cell width', '每格寬度'], `u_i=\\dfrac{\\max_i-\\min_i}{m}:\\quad u_1=\\dfrac{${f2(D.hi[0])}-${pn(D.lo[0])}}{${m}}=${f2(unit[0])},\\quad u_2=\\dfrac{${f2(D.hi[1])}-${pn(D.lo[1])}}{${m}}=${f2(unit[1])}`,
+      ['Minimum and maximum are taken over the training tokens only; test tokens reuse the same cells.', '最小值和最大值只從訓練 token 取；測試 token 沿用同一組格子。']),
+    FX(['History step: average the window', 'History step：視窗取平均'], `\\bar{\\mathbf z}_i=\\dfrac1N\\sum_{j=0}^{N-1}\\mathbf z_{i+j},\\quad i=0,\\dots,n-N-1:\\qquad \\bar{\\mathbf z}_{${w.i}}=\\dfrac1{${N}}\\big[${D.tr.slice(w.i, w.i + N).map(pt).join('+')}\\big]=${pt(w.zm)}`,
+      ['This is what the authors’ code does. With N = 1 the average is the token itself. The index i stops at n − N − 1, so the path has n − N states.', '這是作者程式碼的做法。N = 1 時，平均就是那個 token 自己。i 只走到 n − N − 1，所以路徑有 n − N 個狀態。']),
+    FX(['Which cell', '落在第幾格'], `c_i=\\operatorname{trunc}\\Big(\\dfrac{\\bar z_i-\\min_i}{u_i}\\Big):\\quad c_1=\\operatorname{trunc}\\Big(\\dfrac{${f2(w.zm[0])}-${pn(D.lo[0])}}{${f2(unit[0])}}\\Big)=${w.c[0]},\\quad c_2=\\operatorname{trunc}\\Big(\\dfrac{${f2(w.zm[1])}-${pn(D.lo[1])}}{${f2(unit[1])}}\\Big)=${w.c[1]}`,
+      ['Distance from the lower edge, measured in cell widths, with the fraction dropped. The code does not clip: a test point outside the training range gets a cell number outside 0 … m − 1.', '離下緣的距離換算成幾個格寬，去掉小數。程式碼沒有裁切：超出訓練範圍的測試點會得到 0 … m − 1 以外的格號。']),
+    FX(['State number', '狀態編號'], `\\bar s=\\sum_{i=1}^{k}c_i\\,m^{\\,i-1}=${w.c[0]}+${w.c[1] < 0 ? `(${w.c[1]})` : w.c[1]}\\cdot${m}=${w.s}`,
+      ['The cell numbers are combined like the digits of a base-m number, so every box has its own id.', '各維的格號像 m 進位數字的各個位數一樣合起來，每個方塊都有自己的編號。']),
+    FX(['Number of states', '狀態總數'], `|\\bar S|=m^{k}=${m}^{2}=${m * m}\\qquad\\text{LUNA: }5^{3}=125,\\quad 15^{10}\\approx5.8\\times10^{11}`,
+      ['The count grows as a power of the number of dimensions, which is why Grid is only used with very few PCA components.', '格子數隨維度以次方成長，所以 Grid 只能搭配很少的 PCA 成分。'])
+  ]);
+}
+['cg-m', 'cg-i'].forEach(id => $('#' + id).addEventListener('input', cgRender));
+$$('#cg-n button').forEach(b => b.addEventListener('click', () => { CG.N = +b.dataset.v; $$('#cg-n button').forEach(x => x.setAttribute('aria-pressed', x === b)); cgRender(); }));
+
 /* ============================ 06 K-Means ============================ */
 const KM = {pts: [], cent: [], prev: null, assign: null, last: null, phase: 'init', iter: 0, done: false, seed: 1, timer: 0};
 const kmNear = p => { let b = 0, bd = 1e18; KM.cent.forEach((c, j) => { const d = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2; if (d < bd) { bd = d; b = j; } }); return b; };
@@ -2894,7 +2984,7 @@ G('rn-mk', {
 const NAV = [
   {g: ['Home', '首頁'], items: [['home', 'Home', '首頁']]},
   {g: ['LLM', 'LLM'], items: [['llm', 'LLM overview', 'LLM 概觀'], ['tokenization', 'Tokenization', '分詞'], ['embedding', 'Embedding', '嵌入向量'], ['attention', 'Self-attention', '自注意力'], ['decoder', 'Decoder block', '解碼器區塊'], ['sampling', 'Next-token sampling', '下一字取樣'], ['probing', 'Probing / ITI', '探測 / ITI'], ['rnn', 'RNN vs Transformer', 'RNN 與 Transformer']]},
-  {g: ['Abstraction', '降維與分群'], items: [['pca', 'PCA', 'PCA'], ['kmeans', 'K-Means', 'K-Means'], ['gmm', 'GMM', 'GMM']]},
+  {g: ['Abstraction', '降維與分群'], items: [['pca', 'PCA', 'PCA'], ['grid', 'Grid', 'Grid'], ['kmeans', 'K-Means', 'K-Means'], ['gmm', 'GMM', 'GMM']]},
   {g: ['Probabilistic models', '機率模型'], items: [['markov', 'Markov chain', '馬可夫鏈'], ['hmm', 'HMM', 'HMM']]},
   {g: ['Detection & metrics', '偵測與評估'], items: [['ood', 'Out-of-distribution', '分布外'], ['adv', 'Adversarial attacks', '對抗攻擊'], ['hal', 'Hallucination', '幻覺'], ['roc', 'ROC / AUC', 'ROC / AUC'], ['kl', 'KL & perplexity', 'KL 與困惑度'], ['metrics', 'Equations & the 12 metrics', '公式與 12 個指標']]},
   {g: ['Reading notes', '讀後筆記'], items: [['errata', 'Errata, gaps & extras', '勘誤、落差與延伸']]}];
@@ -3025,7 +3115,7 @@ function showSec(id){
 function route(){ showSec(decodeURIComponent(location.hash.slice(1))); }
 addEventListener('hashchange', route);
 
-function renderAll(){ menuRender(); renderLoop(); tokenizer(); bpe(); embedding(); attention(); decoderPage(); sampling(); pcaRender(); kmRender(); gmRender(); markov(); hmm(); klRender(); rocPage(); oodPage(); adxPage(); advPage(); hlxPage(); halPage(); probing(); rnPage(); metricsPage(); }
+function renderAll(){ menuRender(); renderLoop(); tokenizer(); bpe(); embedding(); attention(); decoderPage(); sampling(); pcaRender(); cgRender(); kmRender(); gmRender(); markov(); hmm(); klRender(); rocPage(); oodPage(); adxPage(); advPage(); hlxPage(); halPage(); probing(); rnPage(); metricsPage(); }
 function setLang(l){
   lang = l; document.documentElement.setAttribute('data-lang', l); document.documentElement.lang = l === 'zh' ? 'zh-Hant' : 'en';
   $('#lang-en').setAttribute('aria-pressed', l === 'en'); $('#lang-zh').setAttribute('aria-pressed', l === 'zh');
