@@ -138,6 +138,9 @@ select{font-family:var(--sans);font-size:12.5px;background:var(--surface-2);colo
 .katex{color:var(--ink)}
 .katex-display{margin:.3em 0}
 .katex .symx:hover{background:rgba(140,184,255,.22);border-radius:3px;cursor:help;box-shadow:0 0 0 1px rgba(140,184,255,.55)}
+/* KaTeX layout boxes sit on top of glyphs and swallow the pointer: the depth row of a vlist covers denominators, subscripts and lower limits; a radical's SVG box covers its radicand. Only the painted radical stays hoverable. */
+.katex .vlist-t2>.vlist-r:nth-child(2)>.vlist,.katex .hide-tail,.katex .hide-tail svg{pointer-events:none}
+.katex .hide-tail svg path{pointer-events:visiblePainted}
 /* I/O cards: input -> operation -> output of every unit */
 .io{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:stretch;margin:0 0 24px;background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:14px;box-shadow:var(--shadow)}
 .io-arrow{justify-self:center;line-height:1;padding:2px 0}
@@ -764,7 +767,7 @@ svg .band.hot{fill:color-mix(in srgb,var(--lk,#F4C26B) 16%,transparent)!importan
   <div class="sec-head"><span class="sec-num">05</span><div><h2><span lang="en">Self-attention: every token looks back at the text before it</span><span lang="zh">自注意力：每個 token 回頭看前文</span></h2><p class="sec-sub"><span lang="en">Score → softmax into weights → mix the earlier tokens' information by those weights; a causal mask hides the future</span><span lang="zh">打分 → softmax 成權重 → 依權重混合前面 token 的資訊；因果遮罩讓它看不到未來</span></p></div></div>
   <div class="io" id="io-attn"></div>
   <div class="col">
-    <p><span lang="en">From its own vector, every token computes three vectors: a query <i>q</i> (what am I looking for), a key <i>k</i> (what do I have) and a value <i>v</i> (what do I pass on). Token <i>t</i> scores every token by the dot product of its <i>q</i> with their <i>k</i>, divides by √<i>d</i><sub>k</sub> to keep the numbers small, turns the scores into weights that sum to 1 with softmax, and adds up everyone's <i>v</i> with those weights.</span><span lang="zh">每個 token 由自己的向量算出三個向量：查詢 <i>q</i>（我想找什麼）、鍵 <i>k</i>（我有什麼）、值 <i>v</i>（我要提供什麼）。token <i>t</i> 拿自己的 <i>q</i> 跟每個 token 的 <i>k</i> 做內積當分數，除以 √<i>d</i><sub>k</sub> 免得數字太大，經過 softmax 變成加總為 1 的權重，再用權重把大家的 <i>v</i> 加起來。</span></p>
+    <p><span lang="en">From its own vector, every token computes three vectors: a query <i>q</i> (what am I looking for), a key <i>k</i> (what do I have) and a value <i>v</i> (what do I pass on). Token <i>t</i> scores every token by the dot product of its <i>q</i> with their <i>k</i>, divides by √<i>d</i><sub>k</sub> to keep the numbers small, turns the scores into weights that sum to 1 with <a href="concepts.html#softmax">softmax</a>, and adds up everyone's <i>v</i> with those weights.</span><span lang="zh">每個 token 由自己的向量算出三個向量：查詢 <i>q</i>（我想找什麼）、鍵 <i>k</i>（我有什麼）、值 <i>v</i>（我要提供什麼）。token <i>t</i> 拿自己的 <i>q</i> 跟每個 token 的 <i>k</i> 做內積當分數，除以 √<i>d</i><sub>k</sub> 免得數字太大，經過 <a href="concepts.html#softmax">softmax</a> 變成加總為 1 的權重，再用權重把大家的 <i>v</i> 加起來。</span></p>
     <p><span lang="en">A decoder-only model adds a <strong>causal mask</strong>: a token may look only at itself and earlier tokens (masked scores are set to −∞, so their weight after softmax is exactly 0). This is the <strong>only</strong> place where tokens exchange information, which is why the hidden state of “er” contains information about “dens” and “Water vapor” — the states LUNA reads carry the context.</span><span lang="zh">decoder-only 模型還有<strong>因果遮罩</strong>：token 只能看自己和前面的 token（遮住的位置分數設成 −∞，softmax 後權重剛好是 0）。這是 token 之間<strong>唯一</strong>交換資訊的地方，所以「er」的隱藏狀態裡才會有「dens」、「Water vapor」的資訊——LUNA 讀到的狀態因此帶著前文。</span></p>
   </div>
   <div class="figure">
@@ -795,18 +798,17 @@ svg .band.hot{fill:color-mix(in srgb,var(--lk,#F4C26B) 16%,transparent)!importan
   <div class="col">
     <p><span lang="en">A block has two sub-layers and each does three things: <strong>normalize, compute, add the result back to the vector</strong>. That last step is the <strong>residual connection</strong>: every token has one vector flowing from the bottom to the top (the residual stream), and each sub-layer only adds a small change Δ to it. The output of block <i>l</i>, <i>h</i><sup>(l)</sup>, is the “hidden state” LUNA can read.</span><span lang="zh">一個區塊有兩個子層，每個都做三件事：<strong>先正規化、再計算、最後加回原本的向量</strong>。最後這個「加回去」叫<strong>殘差連接</strong>：每個 token 有一條向量從底層一路往上流（殘差流），每個子層只往上面加一點修改量 Δ。第 <i>l</i> 個區塊的輸出 <i>h</i><sup>(l)</sup> 就是 LUNA 能讀的「隱藏狀態」。</span></p>
     <ul>
-      <li><span lang="en"><strong>RMSNorm</strong>: divide the vector by its root mean square so its size stays stable, then multiply by a learned gain <i>g</i>. It drops the “subtract the mean” step of GPT-2's LayerNorm.</span><span lang="zh"><strong>RMSNorm</strong>：把向量除以它的均方根，讓長度穩定，再乘一組學出來的增益 <i>g</i>。比 GPT-2 的 LayerNorm 少了「減平均」那一步。</span></li>
+      <li><span lang="en"><strong><a href="concepts.html#rmsnorm">RMSNorm</a></strong>: divide the vector by its root mean square so its size stays stable, then multiply by a learned gain <i>g</i>. It drops the “subtract the mean” step of GPT-2's LayerNorm.</span><span lang="zh"><strong><a href="concepts.html#rmsnorm">RMSNorm</a></strong>：把向量除以它的均方根，讓長度穩定，再乘一組學出來的增益 <i>g</i>。比 GPT-2 的 LayerNorm 少了「減平均」那一步。</span></li>
       <li><span lang="en"><strong>Attention sub-layer</strong>: unit 05, the only place that reads other tokens.</span><span lang="zh"><strong>注意力子層</strong>：第 05 單元，唯一會讀其他 token 的地方。</span></li>
-      <li><span lang="en"><strong>Feed-forward (SwiGLU)</strong>: one token at a time. Widen 4,096 dimensions to 11,008, let one branch pass through SiLU as a “gate” that multiplies the other branch, then shrink back to 4,096.</span><span lang="zh"><strong>前饋層（SwiGLU）</strong>：一次只處理一個 token。把 4,096 維放大到 11,008 維，一路經過 SiLU 當作「閘門」去乘另一路，再縮回 4,096 維。</span></li>
+      <li><span lang="en"><strong>Feed-forward (<a href="concepts.html#swiglu">SwiGLU</a>)</strong>: one token at a time. Widen 4,096 dimensions to 11,008, let one branch pass through SiLU as a “gate” that multiplies the other branch, then shrink back to 4,096.</span><span lang="zh"><strong>前饋層（<a href="concepts.html#swiglu">SwiGLU</a>）</strong>：一次只處理一個 token。把 4,096 維放大到 11,008 維，一路經過 SiLU 當作「閘門」去乘另一路，再縮回 4,096 維。</span></li>
     </ul>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">One token's vector passing through one block</span><span lang="zh">一個 token 的向量穿過一個區塊</span></p><p class="fig-note"><span lang="en">Each row holds 8 toy numbers (Llama has 4,096). Drag the step; switch the residual off to see the original information disappear. Hover a cell for its value.</span><span lang="zh">每一列是 8 個玩具數字（Llama 有 4,096 個）。拖動步驟；把殘差關掉，看原本的資訊怎麼不見。滑到格子上看數值。</span></p><span class="badge">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">One block as a flow chart</span><span lang="zh">一個區塊的流程圖</span></p><p class="fig-note"><span lang="en">Left: the token's vector flowing down (the residual stream). Right: the two sub-layers; each computes a change Δ and adds it back. The amber numbers are dimension 1 of an 8-number toy vector. Click a box for its formula; switch the residual off to cut the direct path.</span><span lang="zh">左邊是 token 的向量一路往下流（殘差流）；右邊是兩個子層，各自算出修改量 Δ 再加回去。黃色數字是玩具向量（8 個數字）的第 1 維。點方塊切換左邊的公式；把殘差關掉，直通的路就被切斷。</span></p><span class="badge">TOY</span></div>
     <div class="demo">
-      <div class="demo-vis"><div class="vis-box"><svg class="stage" id="blk-svg" viewBox="0 0 600 330"></svg></div></div>
+      <div class="demo-vis"><div class="vis-box"><svg class="stage" id="blk-svg" viewBox="0 0 600 420"></svg></div></div>
       <div class="demo-side">
         <div class="ctrls">
-          <div class="ctrl-row"><label class="ctrl-lab" for="blk-s"><span lang="en">Step</span><span lang="zh">步驟</span></label><input type="range" id="blk-s" min="0" max="5" value="5"><span class="kval" id="blk-sv"></span></div>
           <div class="ctrl-row" data-tab="1"><label class="switch"><input type="checkbox" id="blk-res" checked><span lang="en">residual connection (add back)</span><span lang="zh">殘差連接（加回去）</span></label></div>
         </div>
         <div class="scores" id="blk-scores"></div>
@@ -823,7 +825,7 @@ svg .band.hot{fill:color-mix(in srgb,var(--lk,#F4C26B) 16%,transparent)!importan
   <div class="io" id="io-head"></div>
   <div class="col">
     <p><span lang="en">The last layer's vector <i>h</i> times the output matrix <i>W</i> gives one score (logit) per vocabulary token; softmax turns the scores into probabilities. When generating, a <strong>temperature T</strong> sharpens or flattens the distribution (small T → almost always the top token; large T → more even), and <strong>top-p</strong> keeps only the candidates whose probabilities add up to p before one is sampled.</span><span lang="zh">最後一層的向量 <i>h</i> 乘上輸出矩陣 <i>W</i>，對詞彙表裡每個 token 給一個分數（logit）。softmax 把分數變成機率。生成時可以用<strong>溫度 T</strong> 調整分布的尖銳程度（T 小 → 幾乎只選最高的；T 大 → 比較平均），用 <strong>top-p</strong> 只保留機率加起來到 p 的那幾個候選，再從中抽一個。</span></p>
-    <p><span lang="en"><strong>Pre-training</strong> is the same step run backwards: take real text, at every position take −log of the probability of the <em>true</em> next token as the loss (cross-entropy), average over about 2 trillion tokens, and update <strong>all</strong> parameters by gradient descent — the embedding table of unit 03, the attention of unit 05, the feed-forward layers of unit 06. exp of the mean loss is the <strong>perplexity</strong>.</span><span lang="zh"><strong>預訓練</strong>就是這一步反過來：拿真實文字，在每個位置把「真正的下一個 token」的機率取 −log 當作損失（交叉熵），對約 2 兆個 token 取平均，再用梯度下降更新<strong>所有</strong>參數——包括第 03 單元的嵌入表、第 05 單元的注意力、第 06 單元的前饋層。把平均損失取 exp 就是<strong>困惑度（perplexity）</strong>。</span></p>
+    <p><span lang="en"><strong>Pre-training</strong> is the same step run backwards: take real text, at every position take −log of the probability of the <em>true</em> next token as the loss (<a href="concepts.html#xent">cross-entropy</a>), average over about 2 trillion tokens, and update <strong>all</strong> parameters by gradient descent — the embedding table of unit 03, the attention of unit 05, the feed-forward layers of unit 06. exp of the mean loss is the <strong>perplexity</strong>.</span><span lang="zh"><strong>預訓練</strong>就是這一步反過來：拿真實文字，在每個位置把「真正的下一個 token」的機率取 −log 當作損失（<a href="concepts.html#xent">交叉熵</a>），對約 2 兆個 token 取平均，再用梯度下降更新<strong>所有</strong>參數——包括第 03 單元的嵌入表、第 05 單元的注意力、第 06 單元的前饋層。把平均損失取 exp 就是<strong>困惑度（perplexity）</strong>。</span></p>
     <p><span lang="en">At step 5 of the example the correct continuation is <i>less</i> (“Water vapor is less dense than air”), but <i>dens</i> is slightly more likely; greedy decoding takes the path to the hallucination. Set the target to <i>less</i> and see how large the loss is.</span><span lang="zh">在例句的第 5 步，正確答案應該是 <i>less</i>（「Water vapor is less dense than air」），但 <i>dens</i> 的機率略高；貪婪解碼就會走上幻覺那條路。把目標切到 <i>less</i>，看損失有多大。</span></p>
   </div>
   <div class="figure">
@@ -1632,6 +1634,22 @@ defineSymbols('roc-curve', [
   ['false','False-answer class: the positive class in this ROC.','錯誤回答類別，在本 ROC 中是要偵測的正類。']
 ]);
 defineSymbols('_', [['ℤ','Integers, including negative, zero and positive whole numbers.','整數集合，包括負整數、零與正整數。']]);
+/* symbols that rendered without any hover entry */
+defineSymbols('_', [['⟨','Opens an ordered sequence.','有序序列的開頭。'], ['⟩','Closes an ordered sequence.','有序序列的結尾。']]);
+defineSymbols('bpe-words', [['∗','Marks the chosen pair: the adjacent pair with the highest count.','標記被選中的那一對：相鄰次數最多的組合。']]);
+defineSymbols('attn-mat', [
+  ['W','Learned projection matrix; the subscript names its role: Q query, K key, V value, O output.','學得的投影矩陣；下標表示用途：Q 查詢、K 鍵、V 值、O 輸出。'],
+  ['M_ij','Mask entry added to the score of query i and position j.','加在 query i 與位置 j 配對分數上的遮罩值。']
+]);
+defineSymbols('dtmc-svg', [['′′','Double prime: each destination state summed over in the denominator.','雙撇號：分母求和時走過的每一個目的狀態。']]);
+defineSymbols('head-bars', [
+  ['RMSNorm','Normalize by root mean square, then apply the learned gain; here the final norm before the output layer.','以均方根調整尺度，再乘上學得的增益；這裡是輸出層前的最終正規化。'],
+  ['l','Decoder block index, from 1 to 32.','解碼器區塊的索引，從 1 到 32。'],
+  ['k','Optimizer step index.','最佳化器的更新步數索引。'],
+  ['Q','Subscript: the query projection of this block.','下標：這個區塊的 query 投影。'], ['K','Subscript: the key projection of this block.','下標：這個區塊的 key 投影。'],
+  ['V','Subscript: the value projection of this block.','下標：這個區塊的 value 投影。'], ['O','Subscript: the attention output projection of this block.','下標：這個區塊的注意力輸出投影。'],
+  ['ϵ','Small AdamW denominator stabilizer; distinct from RMSNorm epsilon.','AdamW 分母的微小穩定常數，與 RMSNorm 的 ε 是不同參數。']
+]);
 const LINK_GLOSS = {
   'gen-cands': {'g*':['Probability factor for this generated token.','這個已生成 token 對整句機率貢獻的乘數。'],nx:['Next-token probability in the current candidate distribution.','目前候選分布中，下一個被選 token 的機率。']},
   'emb-map': {e:['Selected embedding or its updated coordinates.','選取詞的嵌入向量，或本步更新後的座標。'],g:['Embedding gradient: direction of increasing loss.','嵌入向量的梯度，指向損失增加的方向；更新時沿反方向移動。'],'w*':['Selected candidate output weights or logit.','選取候選詞的輸出權重或 logit 分數。']},
@@ -1900,20 +1918,31 @@ const rmsN = v => { const r = rmsOf(v); return v.map(x => x / r); };
 const silu = x => x / (1 + Math.exp(-x));
 const mv = (M, v) => M.map(row => row.reduce((a, w, j) => a + w * v[j], 0));
 function block(){
-  const st = +$('#blk-s').value, res = $('#blk-res').checked, B = BLK;
+  const res = $('#blk-res').checked, B = BLK;
   const n1 = rmsN(B.h0), a = res ? B.h0.map((x, i) => x + B.da[i]) : B.da.slice(), n2 = rmsN(a);
   const u = mv(B.W1, n2), gt = mv(B.W3, n2), hid = u.map((x, i) => silu(x) * gt[i]), dm = mv(B.W2, hid), h1 = res ? a.map((x, i) => x + dm[i]) : dm.slice();
   BLKO = {h1, res};
-  const rows = [['h⁽ˡ⁻¹⁾', T('enters the block', '進入區塊'), B.h0, 'rh'], ['RMSNorm(h)', T('normalized', '正規化'), n1, 'rn'], ['Δa', T('attention output', '注意力的輸出'), B.da, 'ra'], [res ? 'a = h + Δa' : 'a = Δa', T('added back', '加回去'), a, 'rA'], ['Δm', 'SwiGLU(RMSNorm(a))', dm, 'rm'], [res ? 'h⁽ˡ⁾ = a + Δm' : 'h⁽ˡ⁾ = Δm', T('block output', '區塊輸出'), h1, 'ro']];
-  const cell0 = {0: 'h1a', 2: 'h1b', 4: 'h1c', 5: 'h1d'};
-  $('#blk-sv').textContent = st;
-  const c0 = 190, cw = 48, rh = 50;
-  let s = '';
-  rows.forEach(([nm, sub, v, key], k) => { const y = 14 + k * rh, done = k <= st, cur = k === st;
-    s += tx(10, y + 18, nm, {fs: 12.5, w: 700, c: cur ? '#F4C26B' : done ? '#E7EBF3' : '#3A4458', lk: key}) + tx(10, y + 33, sub, {fs: 10, c: done ? '#7C869C' : '#2F3A50', sans: 1});
-    v.forEach((x, i) => { s += done ? `<rect x="${c0 + i * cw}" y="${y + 2}" width="${cw - 4}" height="34" rx="4" fill="${valCol(x / 2.5)}" stroke="${cur ? '#F4C26B' : 'none'}"${lk(i === 0 && cell0[k] !== undefined ? cell0[k] : '')} data-tip="${esc(nm + T(' dim ', ' 第 ') + (i + 1) + T(': ', ' 維：') + f3(x))}"/>` + tx(c0 + i * cw + cw / 2 - 2, y + 23, f2(x), {fs: 10, a: 'middle', c: Math.abs(x) > 1.6 ? '#0A1020' : '#E7EBF3'})
-      : `<rect x="${c0 + i * cw}" y="${y + 2}" width="${cw - 4}" height="34" rx="4" fill="none" stroke="#232B3B" stroke-dasharray="3 3"/>`; });
-    s += `<rect class="band" data-link="${key}" x="${c0 - 4}" y="${y - 2}" width="${8 * cw + 4}" height="42" rx="5"/>`; });
+  /* flow chart of one pre-norm block: the residual stream runs down the left, each sub-layer branches off to the right and adds its change back */
+  const CM = '#7C869C', CX = 130, v1 = x => (x < 0 ? '−' : '') + Math.abs(x).toFixed(2), d1 = x => (x < 0 ? '−' : '+') + Math.abs(x).toFixed(2);
+  const node = (y, t1, t2, key, k2) => `<rect x="${CX - 92}" y="${y}" width="184" height="44" rx="7" fill="#161D2B" stroke="#8CB8FF" stroke-width="1.4" data-link="${key}"/>` + tx(CX, y + 19, t1, {a: 'middle', fs: 12.5, w: 700, lk: key}) + tx(CX, y + 35, t2, {a: 'middle', fs: 10.5, c: '#F4C26B', lk: k2});
+  const op = (y, tab, t1, t2, key) => `<g data-tab="${tab}" style="cursor:pointer"><rect x="300" y="${y}" width="150" height="38" rx="7" fill="#161D2B" stroke="#7A6230" stroke-width="1.3" data-link="${key}"/>` + tx(375, y + 17, t1, {a: 'middle', fs: 12, w: 700, sans: 1}) + tx(375, y + 31, t2, {a: 'middle', fs: 9.5, c: CM, sans: 1}) + '</g>';
+  const arr = (d, col) => `<path d="${d}" fill="none" stroke="${col || CM}" stroke-width="1.5" marker-end="url(#${col ? 'bkw' : 'bka'})"/>`;
+  const plus = y => `<circle cx="${CX}" cy="${y}" r="10" fill="#0B0F17" stroke="${res ? '#F4C26B' : CM}" stroke-width="1.5"/>` + tx(CX, y + 4.5, res ? '+' : '→', {a: 'middle', fs: 13, w: 700, c: res ? '#F4C26B' : CM});
+  /* the skip path: solid when the residual is on, crossed out when it is off */
+  const skip = (y1, y2) => res ? arr(`M${CX} ${y1} V${y2 - 12}`) : `<path d="M${CX} ${y1} V${y2 - 12}" stroke="#FF7B8B" stroke-width="1.3" stroke-dasharray="3 4" opacity=".7"/>` + tx(CX - 8, (y1 + y2) / 2 + 2, T('cut', '切斷'), {a: 'end', fs: 9.5, c: '#FF7B8B', sans: 1}) + tx(CX, (y1 + y2) / 2 + 4, '✕', {a: 'middle', fs: 12, c: '#FF7B8B'});
+  const sub = (y, name) => `<rect x="278" y="${y}" width="306" height="126" rx="9" fill="none" stroke="#2F3A50" stroke-dasharray="4 4"/>` + tx(576, y + 15, name, {a: 'end', fs: 10, c: CM, sans: 1});
+  let s = `<defs><marker id="bka" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="${CM}"/></marker><marker id="bkw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#F4C26B"/></marker></defs>`;
+  s += tx(CX, 12, T('residual stream', '殘差流'), {a: 'middle', fs: 10, c: '#8CB8FF', sans: 1});
+  s += node(18, 'h⁽ˡ⁻¹⁾', T('dim 1: ', '第 1 維：') + v1(B.h0[0]), 'rh', 'h1a');
+  s += sub(52, T('attention sub-layer', '注意力子層')) + skip(62, 172) + arr(`M${CX} 84 H298`)
+    + op(65, 0, 'RMSNorm', T('÷ RMS ', '÷ RMS ') + f2(rmsOf(B.h0)), 'rn') + arr('M375 103 V118') + op(120, 1, T('Self-attention', '自注意力'), T('unit 05 · reads other tokens', '第 05 單元 · 讀其他 token'), 'ra')
+    + arr(`M375 158 V172 H${CX + 12}`, '#F4C26B') + tx(250, 166, 'Δa₁ = ' + d1(B.da[0]), {a: 'middle', fs: 10.5, c: '#F4C26B', lk: 'h1b'}) + plus(172);
+  s += arr(`M${CX} 182 V190`) + node(192, res ? 'a = h + Δa' : 'a = Δa', T('dim 1: ', '第 1 維：') + v1(a[0]), 'rA', '');
+  s += sub(226, T('feed-forward sub-layer', '前饋子層')) + skip(236, 346) + arr(`M${CX} 258 H298`)
+    + op(239, 0, 'RMSNorm', T('÷ RMS ', '÷ RMS ') + f2(rmsOf(a)), '') + arr('M375 277 V292') + op(294, 2, 'SwiGLU', '4,096 → 11,008 → 4,096', 'rm')
+    + arr(`M375 332 V346 H${CX + 12}`, '#F4C26B') + tx(250, 340, 'Δm₁ = ' + d1(dm[0]), {a: 'middle', fs: 10.5, c: '#F4C26B', lk: 'h1c'}) + plus(346);
+  s += arr(`M${CX} 356 V364`) + node(366, res ? 'h⁽ˡ⁾ = a + Δm' : 'h⁽ˡ⁾ = Δm', T('dim 1: ', '第 1 維：') + v1(h1[0]), 'ro', 'h1d');
+  s += tx(300, 388, T('→ next block, or read by LUNA', '→ 下一個區塊，或被 LUNA 讀走'), {fs: 10, c: CM, sans: 1}) + tx(300, 403, T('(l = 32: the concrete state)', '（l = 32：具體狀態）'), {fs: 10, c: CM, sans: 1});
   const svg = $('#blk-svg'); svg.innerHTML = s; bindTips(svg);
   const cosv = B.h0.reduce((acc, x, i) => acc + x * h1[i], 0) / (Math.hypot(...B.h0) * Math.hypot(...h1));
   $('#blk-scores').innerHTML = stat([['RMS(h)', f2(rmsOf(B.h0)), T('size before norm', '正規化前的大小'), '', 'rms'], [T('RMS(output)', 'RMS(輸出)'), f2(rmsOf(h1)), T('size of block output', '區塊輸出的大小')], [T('cos(h, output)', 'cos(h, 輸出)'), f2(cosv), res ? T('direction barely changes', '方向幾乎沒變') : T('original info gone', '原本的資訊沒了')]]);
@@ -1923,13 +1952,13 @@ function block(){
     FX(['RMSNorm', 'RMSNorm'], String.raw`${H('rn', String.raw`\mathrm{RMSNorm}(\mathbf h)`)}=\frac{${H('rh', String.raw`\mathbf h`)}}{\sqrt{\frac1d\sum_{i=1}^{d}h_i^2+\epsilon}}\odot\mathbf g,\qquad \sqrt{\tfrac18\textstyle\sum h_i^2+10^{-6}}=${H('rms', f2(rmsOf(B.h0)))}`,
       [`The toy sets learned gain g to ones and ε = 10⁻⁶; its numeric denominator includes ε. Real Llama-2 uses separate learned gains for the two sublayer norms and ε = 10⁻⁵. This diagram does not train those gains.`, `玩具設定 g 全為 1、ε = 10⁻⁶；數值分母有包含 ε。真實 Llama-2 的兩個子層正規化各有獨立、可訓練的 g，且 ε = 10⁻⁵；本圖不訓練這些增益。`]),
     FX(['Residual connection', '殘差連接'], res ? String.raw`${H('rA', String.raw`\mathbf a`)}=\mathbf h+${H('ra', String.raw`\mathrm{Attn}(\mathrm{RMSNorm}(\mathbf h))`)},\quad ${H('ro', String.raw`\mathbf h^{(l)}`)}=\mathbf a+${H('rm', String.raw`\mathrm{FFN}(\mathrm{RMSNorm}(\mathbf a))`)}\ \Rightarrow\ h^{(l)}_1=${H('h1a', f2(B.h0[0]))}${H('h1b', sgn(B.da[0]))}${H('h1c', sgn(dm[0]))}=${H('h1d', f2(h1[0]))}`
-      : String.raw`${Tx('residual off: ', '殘差關閉：')}\ ${H('ro', String.raw`\mathbf h^{(l)}`)}=${H('rm', String.raw`\mathrm{FFN}(\cdots)`)}\ \Rightarrow\ h^{(l)}_1=${H('h1d', f2(h1[0]))}\ \ (${Tx('was ', '原本是 ')}${H('h1a', f2(B.h0[0]))})`,
-      ['Both sub-layers compute a change and add it to the vector. The first dimension as an example: the original value plus the attention change plus the feed-forward change — hover each number to find its cell.', '兩個子層都是「算出一個修改量，加回原本的向量」。第 1 維的例子：原本的值加上注意力的修改量，再加上前饋層的修改量——滑到每個數字上可以找到它的格子。']),
+      : String.raw`${Tx('residual off: ', '殘差關閉：')}\ ${H('rA', String.raw`\mathbf a`)}=${H('ra', String.raw`\mathrm{Attn}(\mathrm{RMSNorm}(\mathbf h))`)},\quad ${H('ro', String.raw`\mathbf h^{(l)}`)}=${H('rm', String.raw`\mathrm{FFN}(\mathrm{RMSNorm}(\mathbf a))`)}\ \Rightarrow\ h^{(l)}_1=${H('h1d', f2(h1[0]))}\ \ (${Tx('was ', '原本是 ')}${H('h1a', f2(B.h0[0]))})`,
+      ['Both sub-layers compute a change and add it to the vector. The first dimension as an example: the original value plus the attention change plus the feed-forward change — hover each number to find it in the flow chart.', '兩個子層都是「算出一個修改量，加回原本的向量」。第 1 維的例子：原本的值加上注意力的修改量，再加上前饋層的修改量——滑到每個數字上，可以在流程圖裡找到它。']),
     FX(['SwiGLU feed-forward', 'SwiGLU 前饋層'], String.raw`${H('rm', String.raw`\mathrm{FFN}(\mathbf x)`)}=W_2\big(\mathrm{SiLU}(W_1\mathbf x)\odot W_3\mathbf x\big),\quad \mathrm{SiLU}(u)=u\,\sigma(u),\quad W_1,W_3\in\mathbb R^{11008\times4096},\quad W_2\in\mathbb R^{4096\times11008}`,
       ['One branch goes through SiLU as a gate and multiplies the other; W₂ shrinks the result back to 4,096 dimensions. The toy uses 8 → 6 → 8. This layer looks at one token at a time.', '一路經過 SiLU 當作閘門，乘上另一路，再用 W₂ 縮回 4,096 維。玩具裡是 8 → 6 → 8。這一層一次只看一個 token。'])
   ]);
 }
-$('#blk-s').addEventListener('input', e => { fxTab('blk-svg', [0, 0, 1, 1, 2, 1][+e.target.value]); block(); }); $('#blk-res').addEventListener('change', block);
+$('#blk-res').addEventListener('change', block);
 
 /* ============================ 07 output head ============================ */
 let HEADP = null, BLKO = null, ROPE = null;
@@ -2122,7 +2151,7 @@ function pcgView(){
   const top3 = (F.vals.slice(0, Math.min(3, d)).reduce((a, b) => a + b, 0) / tot * 100).toFixed(0);
   $('#pcg-note').innerHTML = k === d ? T('<b>k = d:</b> nothing is thrown away — PCA is just a rotation and reconstruction is exact.', '<b>k = d：</b>什麼都沒丟——PCA 只是轉了一個座標系，重建完全精確。')
     : T(`<b>Reading:</b> the two red numbers agree: the error measured by actually reconstructing every token equals the sum of the discarded eigenvalues. With d = ${d}, the first 3 eigenvalues are much larger than the rest, so k = 3 already keeps ${top3}%.`, `<b>解讀：</b>兩個紅色數字一樣：把每個 token 真的重建回去量到的誤差，等於被丟掉的特徵值總和。d = ${d} 時前 3 個特徵值遠大於其他，所以 k = 3 就保留了 ${top3}%。`);
-  const lamK = F.vals.slice(0, k).map(f2), keptT = k > 4 ? lamK.slice(0, 3).join('+') + '+\\cdots+' + lamK[k - 1] : lamK.join('+');
+  const lamK = F.vals.slice(0, k).map(f2), keptT = lamK.join('+');
   setFx('pcg-svg', [
     FX(['The PCA objective', 'PCA 的目標'], String.raw`${H('W', 'W_k')}=\arg\max_{W\in\mathbb R^{${H('d', d)}\times${H('k', k)}},\ W^{\top}W=I_k}\operatorname{tr}\!\big(W^{\top}C\,W\big)=[\mathbf w_1,\dots,\mathbf w_{${k}}],\qquad \max=\sum_{i=1}^{k}\lambda_i=${keptT}=${H('kept', f2(kept))}`,
       ['One formula for every d and k: choose k orthonormal directions that keep the most variance. The answer is the k eigenvectors of C with the largest eigenvalues (the blue bars), and the variance they keep is the sum of those eigenvalues.', '所有 d、k 都是這一條：選 k 個互相垂直的單位方向，讓保留的變異量最大。答案是 C 最大的 k 個特徵值對應的特徵向量（藍色長條），保留的變異量就是這些特徵值的和。']),
@@ -2156,7 +2185,7 @@ function pcaView(){
   rz.forEach((z, i) => { const on = i === pcaSel; s += `<circle cx="${X(z[0])}" cy="${Y(z[1])}" r="${on ? 7 : 4.5}" fill="${on ? '#F4C26B' : '#fff'}" stroke="#080B12"${lk(on ? 'z' : '')}/>` + (on ? tx(X(z[0]) + 9, Y(z[1]) - 8, RUN_TOK[i], {fs: 12, w: 700, c: '#F4C26B', lk: 'z'}) : ''); });
   $('#pca-svg').innerHTML = s;
   const bw = 290 / 12;
-  $('#pca-scree').innerHTML = TOY.vals.map((v, i) => { const h = v / TOY.vals[0] * 100; return `<rect x="${22 + i * bw}" y="${112 - h}" width="${bw - 4}" height="${h}" rx="2" fill="${i < k ? '#8CB8FF' : '#2F3A50'}"${lk([i < 3 ? 'l' + i : '', i < k ? 'k' : '', 'all'].filter(Boolean).join(' '))}/>` + tx(22 + i * bw + bw / 2 - 2, 126, i + 1, {fs: 9, a: 'middle', c: '#7C869C'}); }).join('') + tx(310, 14, T('eigenvalue λ (relative)', '特徵值 λ（相對）'), {fs: 9.5, a: 'end', c: '#7C869C'});
+  $('#pca-scree').innerHTML = TOY.vals.map((v, i) => { const h = v / TOY.vals[0] * 100; return `<rect x="${22 + i * bw}" y="${112 - h}" width="${bw - 4}" height="${h}" rx="2" fill="${i < k ? '#8CB8FF' : '#2F3A50'}"${lk(['l' + i, i < k ? 'k' : '', 'all'].filter(Boolean).join(' '))}/>` + tx(22 + i * bw + bw / 2 - 2, 126, i + 1, {fs: 9, a: 'middle', c: '#7C869C'}); }).join('') + tx(310, 14, T('eigenvalue λ (relative)', '特徵值 λ（相對）'), {fs: 9.5, a: 'end', c: '#7C869C'});
   $('#pca-toks').innerHTML = RUN_TOK.map((t, i) => `<button type="button" class="tok${i === pcaSel ? ' on' : ''}" data-i="${i}"${lk(i === pcaSel ? 'z' : '')}>${esc(t)}</button>`).join('');
   $$('#pca-toks button').forEach(b => b.addEventListener('click', () => { pcaSel = +b.dataset.i; pcaView(); }));
   const z = rz[pcaSel];
@@ -2164,11 +2193,11 @@ function pcaView(){
   $('#pca-note').innerHTML = k === 3 ? T('The toy data varies mainly along 3 directions, so k = 3 keeps most of the variance. PC1 roughly tracks the position in the sentence; the red/green difference lies mostly along PC3, which is why it is hard to see in these two dimensions.', '玩具資料的變化主要來自 3 個方向，所以 k = 3 就保留了大部分變異。注意 PC1 大致對應「在句子裡的位置」，紅綠的差別主要在 PC3 上——光看左邊這兩維看不太出來。')
     : k < 3 ? T('Keeping only 1 or 2 dimensions throws away the direction that separates true from false (PC3).', '只留 1、2 維會丟掉區分真假的那個方向（PC3）。')
     : T('More components keep more variance, but Grid has m^k cells, which explodes (unit 10).', '多留幾維能保留更多變異，但 Grid 的格子數是 m^k，會爆炸性成長（第 10 單元）。');
-  const lam = TOY.vals.slice(0, 3).map((v, i) => H('l' + i, f1(v)));
+  const lam = TOY.vals.map((v, i) => H('l' + i, f1(v)));
   setFx('pca-svg', [
     FX(['Centering and covariance', '中心化與共變異數'], String.raw`${H('mu', String.raw`\boldsymbol\mu`)}=\frac1N\sum_{j=1}^{N}\mathbf h_j,\qquad C=\frac1{N-1}\sum_{j=1}^{N}(\mathbf h_j-\boldsymbol\mu)(\mathbf h_j-\boldsymbol\mu)^{\top}\in\mathbb R^{12\times12},\ N=${TOY.N}`,
       [`Mean and covariance over all ${TOY.N} training tokens (in reality C is 4,096 × 4,096). After centering, the mean sits at the origin of the plot (the purple cross). Fitted on the training set only — test data must not leak in.`, `在訓練集全部 ${TOY.N} 個 token 上算平均和共變異數（真實情況 C 是 4,096 × 4,096）。中心化之後，平均落在圖的原點（紫色十字）。只用訓練集擬合，測試資料不能偷看。`]),
-    FX(['Eigendecomposition', '特徵分解'], String.raw`C\mathbf w_i=\lambda_i\mathbf w_i,\qquad \lambda_1\ge\lambda_2\ge\cdots:\ ${lam.join(',\\ ')},\ \dots`,
+    FX(['Eigendecomposition', '特徵分解'], String.raw`C\mathbf w_i=\lambda_i\mathbf w_i,\qquad \lambda_1\ge\lambda_2\ge\cdots\ge\lambda_{12}:\ ${lam.join(',\\ ')}`,
       ['The eigenvectors w are the principal directions; the eigenvalues λ are the variance along each. They are the bars on the right — hover a λ to find its bar.', '特徵向量 w 是主成分方向，特徵值 λ 是資料在那個方向上的變異量。右邊的長條圖就是 λ——滑到某個 λ 上可以找到它的長條。']),
     FX(['Projection', '投影'], String.raw`\mathbf z=W_{${H('k', k)}}^{\top}(\mathbf h-${H('mu', String.raw`\boldsymbol\mu`)})=${H('z', `(${z.slice(0, Math.min(k, 3)).map(v => f2(v)).join(',\\ ')}${k > 3 ? ',\\ \\dots' : ''})`)}\in\mathbb R^{${k}}`,
       [`Subtract the mean from “${esc(RUN_TOK[pcaSel])}”’s vector and project it on the first k directions: k coordinates. This is what Grid cuts up.`, `把「${esc(RUN_TOK[pcaSel])}」的向量減掉平均，再投影到前 k 個方向，得到 k 個座標。這就是 Grid 要切的東西。`]),

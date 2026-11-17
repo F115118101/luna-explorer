@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
 <title>LUNA Concepts</title>
-<!-- Background concepts for luna.html. Every figure uses invented toy data. Deep links: concepts.html#tokenization | #embedding | #attention | #sampling | #pca | #grid | #kmeans | #gmm | #llm | #metrics | #errata -->
+<!-- Background concepts for luna.html. Every figure uses invented toy data. Deep links: concepts.html#tokenization | #embedding | #softmax | #attention | #rmsnorm | #sampling | #xent | #swiglu | #pca | #grid | #kmeans | #gmm | #llm | #metrics | #errata -->
 <style>
 :root{
   --ground:#080B12; --surface:#0F141E; --surface-2:#161D2B; --sunk:#0B0F17;
@@ -496,6 +496,46 @@ body.ctrls-resizing .wrap{transition:none}
     <div class="plain"><p class="plain-h"><span lang="en">In plain words</span><span lang="zh">白話說明</span></p><p><span lang="en">An id number means nothing by itself — token 500 and token 501 are not similar. An embedding gives every id a set of coordinates, i.e. a spot on a “map of meaning”, and training moves words that appear in similar sentences close together. Directions on the map mean something too: the step from <i>man</i> to <i>king</i> is roughly “make it royal”, and taking the same step from <i>woman</i> lands near <i>queen</i>. Position encoding adds a second stamp: “I am word number n”.</span><span lang="zh">編號本身沒有意思——第 500 號和第 501 號不代表意思相近。嵌入就是幫每個編號配一組座標，把它放到一張「意思地圖」上；訓練會把常出現在相似句子裡的字放得很近。地圖上的方向也有意思：從 <i>man</i> 走到 <i>king</i> 的那一步大約是「變成皇室」，從 <i>woman</i> 走同樣一步就會到 <i>queen</i> 附近。位置編碼則是再蓋一個章：「我是第幾個字」。</span></p><p class="plain-luna"><span lang="en"><b>Link to LUNA:</b> This vector is where every token starts before the decoder blocks; it is <code>hidden_states[0]</code>.</span><span lang="zh"><b>和 LUNA 的關係：</b>這個向量是每個 token 進解碼器區塊之前的起點，也就是 <code>hidden_states[0]</code>。</span></p></div>
   </div></aside>
 </section>
+<section id="softmax" class="sec-wide">
+  <div class="sec-head"><div>
+    <h2><span lang="en">Softmax — turning scores into probabilities</span><span lang="zh">Softmax——把分數變成機率</span></h2>
+    <p class="sec-sub"><span lang="en">Exponentiate every score, then divide by the total</span><span lang="zh">每個分數先取指數，再除以總和</span></p></div></div>
+  <div class="col" style="margin-bottom:24px">
+    <p><span lang="en">A network produces <strong>scores</strong> (logits): any real numbers, positive or negative, with no fixed total. To choose among candidates it needs <strong>probabilities</strong>: numbers that are all positive and add up to 1. Softmax does this in two steps. First take <i>e</i> to the power of each score, which makes every number positive and keeps their order. Then divide each one by the sum of all of them, which makes the total exactly 1.</span><span lang="zh">神經網路算出來的是<strong>分數</strong>（logit）：任意實數，可正可負，總和也沒有限制。要在候選之間做選擇，需要的是<strong>機率</strong>：每個都是正數，而且加起來等於 1。Softmax 用兩步做到這件事。第一步，對每個分數取 <i>e</i> 的次方，所有數字都變成正的，大小順序不變。第二步，每個數字除以全部的總和，總和就剛好是 1。</span></p>
+    <p><span lang="en">Three properties follow, and you can check each one in the figure. <strong>Only differences count:</strong> adding the same constant to every score changes nothing, because the constant cancels in the division. <strong>Gaps are exponential:</strong> a score that is higher by 1 gets <i>e</i> ≈ 2.72 times the probability, higher by 2 gets about 7.4 times. <strong>A score of −∞ gives probability exactly 0</strong>, and the others share the total among themselves; this is how the causal mask in self-attention hides later tokens. The <strong>temperature</strong> <i>T</i> divides every score before the exponential: a small <i>T</i> stretches the gaps, so the largest score takes almost everything; a large <i>T</i> shrinks the gaps, so the probabilities become nearly equal.</span><span lang="zh">由此得到三個性質，都可以在下面的圖上驗證。<strong>只有差距有意義：</strong>每個分數都加上同一個常數，結果完全不變，因為這個常數在相除時會消掉。<strong>差距以指數放大：</strong>分數高 1，機率是 <i>e</i> ≈ 2.72 倍；高 2，約 7.4 倍。<strong>分數是 −∞ 時，機率剛好是 0</strong>，其餘候選重新分配總和；自注意力的因果遮罩就是用這個方式把後面的 token 蓋掉。<strong>溫度</strong> <i>T</i> 是在取指數之前先把每個分數除以 <i>T</i>：<i>T</i> 小，差距被拉大，最高分幾乎拿走全部；<i>T</i> 大，差距被縮小，各個機率變得接近。</span></p>
+    <p><span lang="en">Llama-2 uses softmax in two places. Inside every <a href="#attention">self-attention</a> head, each row of query-key scores goes through softmax to become the attention weights. At the <a href="#sampling">output</a>, the 32,000 vocabulary scores go through softmax to become the next-token probabilities. During training the same probabilities enter the <a href="#xent">cross-entropy loss</a>.</span><span lang="zh">Llama-2 有兩個地方用到 softmax。每個<a href="#attention">自注意力</a>頭裡，每一列 query 與 key 的配對分數經過 softmax，變成注意力權重。在<a href="#sampling">輸出層</a>，詞彙表 32,000 個分數經過 softmax，變成下一個 token 的機率。訓練時，同一組機率會被放進<a href="#xent">交叉熵損失</a>。</span></p>
+  </div>
+  <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">Softmax, step by step</span><span lang="zh">Softmax 一步一步算</span></p><p class="fig-note"><span lang="en">Five candidates for the next token after “Water vapor is”. Left: score after shift and temperature. Middle: its exponential. Right: the share of the total. Click a row to select it.</span><span lang="zh">「Water vapor is」之後的五個候選 token。左：加上平移、除以溫度後的分數。中：取指數。右：占總和的比例。點某一列可以選取它。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-sx">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
+    <div class="demo">
+      <div class="demo-vis">
+        <p class="vis-label"><span lang="en">score → exponential → probability</span><span lang="zh">分數 → 指數 → 機率</span></p>
+        <div class="vis-box"><svg class="stage" id="sx-svg" viewBox="0 0 640 330"></svg></div>
+      </div>
+      <div class="demo-side">
+        <div class="ctrls">
+          <div class="ctrl-row"><span class="ctrl-lab"><span lang="en">selected token</span><span lang="zh">選取的 token</span></span><div class="seg" id="sx-sel"><button type="button" data-v="0" aria-pressed="false">dens</button><button type="button" data-v="1" aria-pressed="true">less</button><button type="button" data-v="2" aria-pressed="false">lighter</button><button type="button" data-v="3" aria-pressed="false">more</button><button type="button" data-v="4" aria-pressed="false">heavier</button></div></div>
+          <div class="ctrl-row"><label class="ctrl-lab" for="sx-z"><span lang="en">its score z</span><span lang="zh">它的分數 z</span></label><input type="range" id="sx-z" min="-20" max="60" value="29"><span class="kval" id="sx-zv"></span></div>
+          <div class="ctrl-row"><label class="ctrl-lab" for="sx-t"><span lang="en">temperature T</span><span lang="zh">溫度 T</span></label><input type="range" id="sx-t" min="20" max="300" value="100"><span class="kval" id="sx-tv"></span></div>
+          <div class="ctrl-row"><label class="ctrl-lab" for="sx-c"><span lang="en">add c to every score</span><span lang="zh">每個分數都加 c</span></label><input type="range" id="sx-c" min="-50" max="50" value="0"><span class="kval" id="sx-cv"></span></div>
+          <div class="ctrl-row"><label class="switch"><input type="checkbox" id="sx-mask"><span lang="en">mask ▁heavier (score = −∞)</span><span lang="zh">遮住 ▁heavier（分數 = −∞）</span></label><button class="btn" id="sx-reset" type="button"><span lang="en">reset</span><span lang="zh">重設</span></button></div>
+        </div>
+        <div class="scores" id="sx-scores"></div>
+        <p class="note" id="sx-note"></p>
+      </div>
+    </div>
+  </div>
+  <aside class="ctrls-drawer" id="ctrls-sx"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
+    <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
+      <tr><td><b><span lang="en">selected token</span><span lang="zh">選取的 token</span></b></td><td><span lang="en">Chooses which candidate the score slider changes and which one the formulas spell out.</span><span lang="zh">選擇分數滑桿要改哪一個候選，公式也會以它為例展開。</span></td></tr>
+      <tr><td><b><span lang="en">its score z</span><span lang="zh">它的分數 z</span></b></td><td><span lang="en">Raises or lowers one score. Its probability goes up, and every other probability goes down, because they share one total.</span><span lang="zh">調高或調低一個分數。它的機率上升，其他每一個的機率下降，因為大家分的是同一個總和。</span></td></tr>
+      <tr><td><b><span lang="en">temperature T</span><span lang="zh">溫度 T</span></b></td><td><span lang="en">Divides every score by T before the exponential. Below 1 the largest takes more; above 1 the probabilities even out.</span><span lang="zh">取指數前先把每個分數除以 T。小於 1 時最高分拿得更多；大於 1 時各機率變平均。</span></td></tr>
+      <tr><td><b><span lang="en">add c to every score</span><span lang="zh">每個分數都加 c</span></b></td><td><span lang="en">Shifts all scores together. The middle column changes a lot, the right column does not change at all.</span><span lang="zh">所有分數一起平移。中間那一欄變很多，右邊那一欄完全不變。</span></td></tr>
+      <tr><td><b><span lang="en">mask</span><span lang="zh">遮住</span></b></td><td><span lang="en">Sets one score to −∞. Its probability becomes exactly 0 and the rest are renormalised.</span><span lang="zh">把一個分數設成 −∞。它的機率剛好變成 0，其餘重新正規化。</span></td></tr>
+    </tbody></table></div>
+    <div class="plain"><p class="plain-h"><span lang="en">In plain words</span><span lang="zh">白話說明</span></p><p><span lang="en">Five people each hold a score. Softmax is a rule for cutting one cake among them: everyone's score is first blown up by the exponential, so a small lead becomes a big lead, and then each person gets the slice that matches their share of the blown-up total. Giving everybody 5 extra points changes nobody's slice. Someone with a score of −∞ gets no cake at all.</span><span lang="zh">五個人各有一個分數。Softmax 是分一塊蛋糕的規則：先用指數把每個人的分數放大，小幅領先會變成大幅領先；再依每個人在放大後總和裡占的比例切蛋糕。每個人都加 5 分，誰的那一片都不會變。分數是 −∞ 的人完全分不到。</span></p><p class="plain-luna"><span lang="en"><b>Link to LUNA:</b> LUNA does not use the probabilities that come out of softmax. It reads the last-layer hidden vector, the one the output scores are computed from.</span><span lang="zh"><b>和 LUNA 的關係：</b>LUNA 不使用 softmax 算出來的機率。它讀的是最後一層的隱藏向量，也就是用來算出輸出分數的那個向量。</span></p></div>
+  </div></aside>
+</section>
 <section id="attention" class="sec-wide">
   <div class="sec-head"><div>
     <h2><span lang="en">Self-attention</span><span lang="zh">自注意力</span></h2>
@@ -531,6 +571,40 @@ body.ctrls-resizing .wrap{transition:none}
       <tr><td><b><span lang="en">Scale τ</span><span lang="zh">縮放 τ</span></b></td><td><span lang="en">Sharpens or flattens the weights before they are drawn (see the legend below).</span><span lang="zh">在畫出權重之前讓它更尖銳或更平均（見下方圖例）。</span></td></tr>
     </tbody></table></div>
     <div class="plain"><p class="plain-h"><span lang="en">In plain words</span><span lang="zh">白話說明</span></p><p><span lang="en">When the model reads a word it asks: “which earlier words matter to me?” It gives each earlier word a relevance score, turns the scores into percentages that add up to 100%, and mixes those words' information into its own vector in those proportions — like working out who “it” refers to. The causal mask is the rule that you may only look at what has already been written, never at words that come later. τ works like a contrast knob: small τ = stare at one word, large τ = look at all of them equally.</span><span lang="zh">模型讀到一個字時會問：「前面哪些字跟我有關？」它幫前面每個字打一個相關分數，換算成加起來 100% 的比例，再照這個比例把那些字的資訊混進自己的向量——就像讀到「it」時回頭找它指的是誰。因果遮罩是一條規則：只能看已經寫出來的字，不能偷看後面還沒寫的。τ 像對比度旋鈕：τ 小＝只盯著一個字，τ 大＝每個字都平均看一點。</span></p><p class="plain-luna"><span lang="en"><b>Link to LUNA:</b> Attention is the only place where tokens share information, which is why a token's hidden state can carry what came before it.</span><span lang="zh"><b>和 LUNA 的關係：</b>注意力是 token 之間唯一交換資訊的地方，所以一個 token 的隱藏狀態才會帶著前文的資訊。</span></p></div>
+  </div></aside>
+</section>
+<section id="rmsnorm" class="sec-wide">
+  <div class="sec-head"><div>
+    <h2><span lang="en">RMSNorm — keeping the vector's size steady</span><span lang="zh">RMSNorm——讓向量的大小保持穩定</span></h2>
+    <p class="sec-sub"><span lang="en">Divide by the root mean square, then multiply by a learned gain</span><span lang="zh">除以均方根，再乘上學得的增益</span></p></div></div>
+  <div class="col" style="margin-bottom:24px">
+    <p><span lang="en">Every <a href="#decoder">decoder block</a> adds something to a token's vector, 32 times in a row. Without any control the numbers could grow or shrink from layer to layer, and the weights of each layer would have to cope with inputs of unpredictable size. <strong>RMSNorm</strong> fixes the size before each computation. It measures the vector with its <strong>root mean square</strong> (square every coordinate, average, take the square root), divides every coordinate by that number so the result has root mean square 1, and then multiplies each coordinate by its own learned <strong>gain</strong> <i>g</i><sub>i</sub>. A tiny constant ε is added under the square root so that an all-zero vector does not cause a division by zero.</span><span lang="zh">每個<a href="#decoder">解碼器區塊</a>都會在 token 的向量上加東西，連續加 32 次。如果完全不管，數字可能一層一層變大或變小，每一層的權重就得面對大小無法預期的輸入。<strong>RMSNorm</strong> 在每次計算之前先把大小固定下來。它用<strong>均方根</strong>衡量向量的大小（每個座標平方、取平均、再開根號），把每個座標除以這個數，讓結果的均方根等於 1，然後每個座標再乘上各自學得的<strong>增益</strong> <i>g</i><sub>i</sub>。根號裡另外加一個很小的常數 ε，避免全為 0 的向量造成除以零。</span></p>
+    <p><span lang="en">Dividing by one number changes the length of the vector but not its direction, so with all gains equal to 1 the information carried by the direction is untouched. It also means the output does not depend on how large the input was: multiply the input by 4 in the figure and the output stays the same. Compared with the LayerNorm of GPT-2, RMSNorm leaves out two things: it does not subtract the mean, and it has no bias term.</span><span lang="zh">整個向量除以同一個數，只改變長度，不改變方向；所以增益全為 1 時，方向所帶的資訊完全沒變。這也表示輸出和輸入原本有多大無關：在圖中把輸入放大 4 倍，輸出還是一樣。和 GPT-2 的 LayerNorm 相比，RMSNorm 少了兩樣東西：不減去平均值，也沒有偏差項。</span></p>
+    <p><span lang="en">Llama-2 is <strong>pre-norm</strong>: RMSNorm is applied to the <em>input</em> of each sub-layer (self-attention and the feed-forward layer), while the residual stream itself is passed on unnormalised. After the last block one more RMSNorm is applied before the output matrix. That is 2 × 32 + 1 = 65 RMSNorm layers, each with its own 4,096 gains, and ε = 10<sup>−5</sup>.</span><span lang="zh">Llama-2 採用 <strong>pre-norm</strong>：RMSNorm 套用在每個子層（自注意力與前饋層）的<em>輸入</em>上，殘差流本身不經正規化，直接往下傳。最後一個區塊之後、乘上輸出矩陣之前，還會再做一次 RMSNorm。總共是 2 × 32 + 1 = 65 個 RMSNorm，各有自己的 4,096 個增益，ε = 10<sup>−5</sup>。</span></p>
+  </div>
+  <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">RMSNorm on an 8-number vector</span><span lang="zh">對 8 個數字的向量做 RMSNorm</span></p><p class="fig-note"><span lang="en">Top: the input vector. Bottom: the output. Dashed lines mark ± the root mean square. Llama-2 does the same with 4,096 numbers.</span><span lang="zh">上：輸入向量。下：輸出。虛線標出 ± 均方根的位置。Llama-2 對 4,096 個數字做同樣的事。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-rms">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
+    <div class="demo">
+      <div class="demo-vis">
+        <p class="vis-label"><span lang="en">input h (top) and RMSNorm(h) (bottom)</span><span lang="zh">輸入 h（上）與 RMSNorm(h)（下）</span></p>
+        <div class="vis-box"><svg class="stage" id="rms-svg" viewBox="0 0 640 340"></svg></div>
+      </div>
+      <div class="demo-side">
+        <div class="ctrls">
+          <div class="ctrl-row"><label class="ctrl-lab" for="rms-s"><span lang="en">scale the input by c</span><span lang="zh">輸入放大 c 倍</span></label><input type="range" id="rms-s" min="25" max="400" value="100"><span class="kval" id="rms-sv"></span></div>
+          <div class="ctrl-row"><label class="ctrl-lab" for="rms-g"><span lang="en">gain g₃ of dimension 3</span><span lang="zh">第 3 維的增益 g₃</span></label><input type="range" id="rms-g" min="0" max="200" value="100"><span class="kval" id="rms-gv"></span></div>
+        </div>
+        <div class="scores" id="rms-scores"></div>
+        <p class="note" id="rms-note"></p>
+      </div>
+    </div>
+  </div>
+  <aside class="ctrls-drawer" id="ctrls-rms"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
+    <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
+      <tr><td><b><span lang="en">scale the input by c</span><span lang="zh">輸入放大 c 倍</span></b></td><td><span lang="en">Multiplies all 8 input numbers by c. The top chart grows or shrinks; the bottom chart stays where it is.</span><span lang="zh">把 8 個輸入數字全部乘上 c。上面的圖會變大或變小，下面的圖留在原地。</span></td></tr>
+      <tr><td><b><span lang="en">gain g₃</span><span lang="zh">增益 g₃</span></b></td><td><span lang="en">The learned multiplier of dimension 3 (the other gains are 1 here). It lets the model make one coordinate matter more or less after normalisation.</span><span lang="zh">第 3 維學得的倍率（這裡其他維的增益都是 1）。模型可以用它讓某個座標在正規化之後更重要或更不重要。</span></td></tr>
+    </tbody></table></div>
+    <div class="plain"><p class="plain-h"><span lang="en">In plain words</span><span lang="zh">白話說明</span></p><p><span lang="en">Before each layer listens, the volume is reset to a standard level. Whether the recording came in loud or quiet, the layer hears it at the same loudness; the tune (the direction of the vector) is unchanged. The gains are per-channel volume knobs the model learned for itself.</span><span lang="zh">每一層開始聽之前，音量先調回標準值。不管進來的錄音大聲還是小聲，這一層聽到的音量都一樣；旋律（向量的方向）沒有變。增益是模型自己學出來的各聲道音量旋鈕。</span></p><p class="plain-luna"><span lang="en"><b>Link to LUNA:</b> LUNA reads the last entry of Hugging Face's <code>hidden_states</code>. That entry is the output of block 32 with the final RMSNorm already applied, so the vectors LUNA feeds into PCA have all been through this step.</span><span lang="zh"><b>和 LUNA 的關係：</b>LUNA 讀的是 Hugging Face <code>hidden_states</code> 的最後一項。那一項是第 32 個區塊的輸出，而且已經做過最終的 RMSNorm，所以 LUNA 送進 PCA 的向量都經過這一步。</span></p></div>
   </div></aside>
 </section>
 <section id="decoder" class="sec-wide">
@@ -602,6 +676,51 @@ body.ctrls-resizing .wrap{transition:none}
     <div class="plain"><p class="plain-h"><span lang="en">In plain words</span><span lang="zh">白話說明</span></p><p><span lang="en">These numbers come from the real GPT-2. Left: the notes get longer block after block (the vector's length grows). Apart from block 1, which rewrites a lot, each block only nudges the direction (cos close to 1), so blocks mostly add and rarely overrule. Right: what each block adds (blue, amber) is usually much smaller than the notes it is added to (grey dashed). The first token is odd: its length shoots up to about 3,000 and then freezes — the model seems to use it as a parking spot for attention.</span><span lang="zh">這些數字是真的 GPT-2 量出來的。左圖：筆記一個區塊接一個區塊越寫越長（向量長度變大）。除了第 1 個區塊大改之外，之後每個區塊只把方向推一點點（cos 接近 1），表示區塊大多是在補充，很少推翻。右圖：每個區塊加上的量（藍、琥珀）通常比原本的筆記（灰色虛線）小很多。第一個 token 很怪：長度衝到約 3,000 之後就不動了——模型好像把它當成注意力的「停車位」。</span></p><p class="plain-luna"><span lang="en"><b>Link to LUNA:</b> Because the vectors change slowly from block to block, neighbouring blocks give LUNA similar states; the first token is usually left out because it would dominate PCA.</span><span lang="zh"><b>和 LUNA 的關係：</b>因為向量在相鄰區塊之間變得很慢，相鄰區塊給 LUNA 的狀態也很像；第一個 token 通常會被排除，否則它會主導 PCA。</span></p></div>
   </div></aside>
 </section>
+<section id="swiglu" class="sec-wide">
+  <div class="sec-head"><div>
+    <h2><span lang="en">SwiGLU — Llama's feed-forward layer</span><span lang="zh">SwiGLU——Llama 的前饋層</span></h2>
+    <p class="sec-sub"><span lang="en">The second sub-layer of every decoder block: two branches, one gates the other</span><span lang="zh">每個解碼器區塊的第二個子層：兩條支路，一條當另一條的閘門</span></p></div></div>
+  <div class="col" style="margin-bottom:24px">
+    <p><span lang="en">Every decoder block has two sub-layers. Attention mixes information between tokens; the <strong>feed-forward layer</strong> then works on <em>one token at a time</em> and reshapes its vector. GPT-2 uses a plain MLP for this: widen, apply a non-linear function, shrink back. Llama replaces it with <strong>SwiGLU</strong>:</span><span lang="zh">每個解碼器區塊有兩個子層。注意力負責在 token 之間混合資訊；接著<strong>前饋層</strong>一次只處理<em>一個 token</em>，改寫它的向量。GPT-2 在這裡用的是普通的 MLP：放大、套一個非線性函數、再縮回來。Llama 把它換成 <strong>SwiGLU</strong>：</span></p>
+    <p style="font-family:var(--mono);font-size:13.5px;line-height:1.9;padding:10px 14px;background:var(--sunk);border:1px solid var(--rule);border-radius:6px">FFN(x) = W<sub>2</sub> ( SiLU(W<sub>1</sub> x) ⊙ W<sub>3</sub> x ),&nbsp;&nbsp; SiLU(u) = u · σ(u) = u / (1 + e<sup>−u</sup>)</p>
+    <p><span lang="en"><strong>Where the three <i>W</i> come from.</strong> <i>W</i><sub>1</sub>, <i>W</i><sub>2</sub> and <i>W</i><sub>3</sub> are <strong>weight matrices</strong>: tables of numbers that belong to the model. Nobody writes them by hand. They start as random numbers and are adjusted during training, together with the embedding table and the attention weights, so that the model predicts the next token better. After training they are fixed; every block has its own three. “<i>W</i><sub>1</sub><i>x</i>” means matrix times vector: <i>W</i><sub>1</sub> has 11,008 rows of 4,096 numbers, and each row is multiplied with the token's vector <i>x</i> (4,096 numbers) and summed, giving one number per row. Those 11,008 numbers are the <em>hidden units</em>. <i>W</i><sub>3</sub> does the same with its own numbers, and <i>W</i><sub>2</sub> (4,096 rows of 11,008) turns the 11,008 products back into 4,096 numbers. The subscripts are only names, taken from the Llama code (<code>w1</code>, <code>w2</code>, <code>w3</code>); they are not the order of use.</span><span lang="zh"><strong>三個 <i>W</i> 是哪來的。</strong><i>W</i><sub>1</sub>、<i>W</i><sub>2</sub>、<i>W</i><sub>3</sub> 是<strong>權重矩陣</strong>：屬於模型的數字表。它們不是人寫的，一開始是亂數，訓練時和嵌入表、注意力的權重一起被調整，讓模型把下一個 token 預測得更準；訓練完就固定下來，每個區塊各有自己的三個。「<i>W</i><sub>1</sub><i>x</i>」是矩陣乘向量：<i>W</i><sub>1</sub> 有 11,008 列、每列 4,096 個數字，每一列都和 token 的向量 <i>x</i>（4,096 個數字）逐項相乘再加總，一列得到一個數字。這 11,008 個數字就是<em>隱藏單元</em>。<i>W</i><sub>3</sub> 用它自己的數字做同樣的事；<i>W</i><sub>2</sub>（4,096 列、每列 11,008 個數字）再把 11,008 個乘積變回 4,096 個數字。下標只是名字，沿用 Llama 程式碼裡的 <code>w1</code>、<code>w2</code>、<code>w3</code>，不代表使用的先後順序。</span></p>
+    <p><span lang="en">The name is two parts. <strong>Swi</strong>sh is another name for the SiLU function. <strong>GLU</strong> means <em>gated linear unit</em>: the input is projected twice, by <i>W</i><sub>1</sub> and by <i>W</i><sub>3</sub>, and the two results are multiplied element by element (⊙). The <i>W</i><sub>1</sub> branch goes through SiLU first and acts as a gate: where it is near 0, that hidden unit passes almost nothing of the <i>W</i><sub>3</sub> branch; where it is large, it passes a lot. Unlike a 0-to-1 gate, SiLU can be slightly negative (its minimum is about −0.28) and has no upper limit. <i>W</i><sub>2</sub> then shrinks the result back to the model's width.</span><span lang="zh">名字是兩個部分。<strong>Swi</strong>sh 是 SiLU 函數的另一個名字。<strong>GLU</strong> 是 <em>gated linear unit</em>（閘控線性單元）：輸入被投影兩次，一次用 <i>W</i><sub>1</sub>、一次用 <i>W</i><sub>3</sub>，兩個結果逐元素相乘（⊙）。<i>W</i><sub>1</sub> 那一路先經過 SiLU，當作閘門：它接近 0 的地方，那個隱藏單元幾乎不讓 <i>W</i><sub>3</sub> 那一路通過；它大的地方就通過很多。和 0 到 1 的閘門不同，SiLU 可以略小於 0（最小值大約是 −0.28），也沒有上限。最後 <i>W</i><sub>2</sub> 把結果縮回模型的寬度。</span></p>
+    <p><span lang="en">In Llama-2-7b the sizes are 4,096 → 11,008 → 4,096, with no bias terms. A plain MLP would widen to 4 × 4,096 = 16,384. SwiGLU has three matrices instead of two, so the hidden width is cut to two thirds (about 10,923, rounded up to a multiple of 256 = 11,008) to keep the number of parameters about the same. The variant comes from Shazeer's 2020 note “GLU Variants Improve Transformer”.</span><span lang="zh">在 Llama-2-7b 裡，大小是 4,096 → 11,008 → 4,096，沒有偏差項。普通 MLP 會放大到 4 × 4,096 = 16,384；SwiGLU 有三個矩陣而不是兩個，所以把隱藏寬度砍成三分之二（約 10,923，再進位到 256 的倍數＝11,008），讓參數量大致不變。這個變體出自 Shazeer 2020 年的短文〈GLU Variants Improve Transformer〉。</span></p>
+    <p class="note"><span lang="en"><b>Link to LUNA.</b> The feed-forward layer's output Δm is added to the residual stream, like the attention output (<a href="#decoder">decoder block</a>). LUNA never looks inside this layer; it reads the stream after the last block.</span><span lang="zh"><b>和 LUNA 的關係。</b>前饋層的輸出 Δm 和注意力的輸出一樣，加回殘差流（<a href="#decoder">解碼器區塊</a>）。LUNA 不看這一層的內部，只讀最後一個區塊之後的殘差流。</span></p>
+  </div>
+  <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">One hidden unit of SwiGLU</span><span lang="zh">SwiGLU 的一個隱藏單元</span></p><p class="fig-note"><span lang="en">Top: the layer as a flow chart, with the numbers of one of the 11,008 hidden units. Bottom: the SiLU curve; the amber point is the gate value for the chosen u.</span><span lang="zh">上：這一層的流程圖，數字是 11,008 個隱藏單元中的一個。下：SiLU 曲線，黃點是所選 u 的閘門值。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-sg">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
+    <div class="demo">
+      <div class="demo-vis">
+        <div class="vis-box"><svg class="stage" id="sg-svg" viewBox="0 0 640 430"></svg></div>
+      </div>
+      <div class="demo-side">
+        <div class="ctrls">
+          <div class="ctrl-row"><label class="ctrl-lab" for="sg-u"><span lang="en">gate branch u = (W₁x)ⱼ</span><span lang="zh">閘門支路 u = (W₁x)ⱼ</span></label><input type="range" id="sg-u" min="-60" max="60" value="15"><span class="kval" id="sg-uv"></span></div>
+          <div class="ctrl-row"><label class="ctrl-lab" for="sg-v"><span lang="en">value branch v = (W₃x)ⱼ</span><span lang="zh">數值支路 v = (W₃x)ⱼ</span></label><input type="range" id="sg-v" min="-30" max="30" value="12"><span class="kval" id="sg-vv"></span></div>
+        </div>
+        <div class="scores" id="sg-scores"></div>
+        <p class="note" id="sg-note"></p>
+      </div>
+    </div>
+    <div class="legend"><span><span class="sw" style="background:#8CB8FF"></span>SiLU(u) = u · σ(u)</span><span><span class="sw" style="background:none;border-top:2px dashed #7C869C;height:0;margin-top:6px"></span><span lang="en">ReLU, for comparison</span><span lang="zh">ReLU（對照）</span></span><span><span class="sw" style="background:#F4C26B"></span><span lang="en">the chosen u</span><span lang="zh">所選的 u</span></span></div>
+  </div>
+  <aside class="ctrls-drawer" id="ctrls-sg"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
+    <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
+      <tr><td><b><span lang="en">gate branch u</span><span lang="zh">閘門支路 u</span></b></td><td><span lang="en">The number one hidden unit gets from W₁: row j of W₁ times the token's vector x. In the real model it is computed, not chosen; here you set it by hand to see what the gate does with it.</span><span lang="zh">某一個隱藏單元從 W₁ 得到的數字：W₁ 的第 j 列乘上 token 的向量 x。真實模型裡它是算出來的，不是選的；這裡讓你手動設定，看閘門怎麼處理它。</span></td></tr>
+      <tr><td><b><span lang="en">value branch v</span><span lang="zh">數值支路 v</span></b></td><td><span lang="en">The number the same hidden unit gets from W₃: row j of W₃ times x. This is the value the gate lets through or holds back.</span><span lang="zh">同一個隱藏單元從 W₃ 得到的數字：W₃ 的第 j 列乘上 x。這是被閘門放行或擋下的值。</span></td></tr>
+    </tbody></table></div>
+    <div class="tablewrap"><table><thead><tr><th><span lang="en">In the figure</span><span lang="zh">圖上的東西</span></th><th><span lang="en">What it is</span><span lang="zh">是什麼</span></th></tr></thead><tbody>
+      <tr><td><b>x</b></td><td><span lang="en">The token's vector entering the layer (after RMSNorm), 4,096 numbers.</span><span lang="zh">進入這一層的 token 向量（已經過 RMSNorm），4,096 個數字。</span></td></tr>
+      <tr><td><b>W₁, W₃</b></td><td><span lang="en">Learned weight matrices, 11,008 × 4,096 each. Each turns x into 11,008 numbers, one per hidden unit.</span><span lang="zh">學出來的權重矩陣，各為 11,008 × 4,096。各自把 x 變成 11,008 個數字，一個隱藏單元一個。</span></td></tr>
+      <tr><td><b>SiLU</b></td><td><span lang="en">A fixed function with no learned numbers, applied to each of the 11,008 values from W₁ separately (the curve below).</span><span lang="zh">固定的函數，沒有要學的數字；對 W₁ 算出的 11,008 個值各自套用（下方的曲線）。</span></td></tr>
+      <tr><td><b>⊙</b></td><td><span lang="en">Multiplies the two branches unit by unit: unit j's gate times unit j's value.</span><span lang="zh">兩條支路逐個單元相乘：第 j 個單元的閘門乘第 j 個單元的數值。</span></td></tr>
+      <tr><td><b>W₂</b></td><td><span lang="en">Learned weight matrix, 4,096 × 11,008. Combines the 11,008 products into 4,096 numbers.</span><span lang="zh">學出來的權重矩陣，4,096 × 11,008。把 11,008 個乘積組合成 4,096 個數字。</span></td></tr>
+      <tr><td><b>Δm</b></td><td><span lang="en">The layer's output: the change added back to the token's vector.</span><span lang="zh">這一層的輸出：要加回 token 向量的修改量。</span></td></tr>
+    </tbody></table></div>
+    <div class="plain"><p class="plain-h"><span lang="en">In plain words</span><span lang="zh">白話說明</span></p><p><span lang="en">Picture 11,008 small taps. For each tap the model works out two things from the token's vector: how far to open it (the gate, from W₁) and how much water is behind it (the value, from W₃). What flows out of a tap is “opening × water”. W₂ then mixes the flow of all taps into the 4,096 numbers that are added to the token's vector. What the taps react to is not designed by anyone: the numbers in the three matrices are learned in training.</span><span lang="zh">想像有 11,008 個小水龍頭。模型從 token 的向量替每個水龍頭算出兩件事：要開多大（閘門，來自 W₁），以及後面有多少水（數值，來自 W₃）。每個水龍頭流出來的就是「開度 × 水量」。W₂ 再把所有水龍頭的流量混合成 4,096 個數字，加回 token 的向量。每個水龍頭對什麼有反應，不是人設計的：三個矩陣裡的數字都是訓練時學出來的。</span></p><p class="plain-luna"><span lang="en"><b>Link to LUNA:</b> LUNA does not open this layer. Its result is already inside the vector LUNA reads after the last block.</span><span lang="zh"><b>和 LUNA 的關係：</b>LUNA 不會打開這一層。它的結果已經包含在 LUNA 於最後一個區塊之後讀到的向量裡。</span></p></div>
+  </div></aside>
+</section>
 <section id="sampling" class="sec-wide">
   <div class="sec-head"><div>
     <h2><span lang="en">Next-token sampling</span><span lang="zh">下一個字怎麼選</span></h2>
@@ -636,6 +755,43 @@ body.ctrls-resizing .wrap{transition:none}
       <tr><td><b><span lang="en">reset</span><span lang="zh">重來</span></b></td><td><span lang="en">Clears the generated text.</span><span lang="zh">清空已產生的文字。</span></td></tr>
     </tbody></table></div>
     <div class="plain"><p class="plain-h"><span lang="en">In plain words</span><span lang="zh">白話說明</span></p><p><span lang="en">At each step the model does not simply say a word. It gives every word in its dictionary a probability and then draws one, like drawing lots. Temperature: low = cautious, it almost always draws the favourite; high = adventurous, unusual words get drawn too. Top-k: only the top k words go into the hat. The drawn word is appended and the next one is drawn — so an answer is a path picked one step at a time, and different draws walk different paths.</span><span lang="zh">模型每一步不是直接說出一個字，而是幫字典裡每個字給一個機率，再像抽籤一樣抽一個。溫度：低溫＝保守，幾乎都抽最有把握的那個；高溫＝大膽，冷門的字也常被抽到。top-k：只讓前 k 名進籤筒。抽到的字接在後面，再抽下一個——所以一個回答是一步一步抽出來的一條路，抽法不同就會走出不同的路。</span></p><p class="plain-luna"><span lang="en"><b>Link to LUNA:</b> That path is exactly what LUNA analyses: one abstract state per step.</span><span lang="zh"><b>和 LUNA 的關係：</b>LUNA 分析的就是這條路：每一步一個抽象狀態。</span></p></div>
+  </div></aside>
+</section>
+<section id="xent" class="sec-wide">
+  <div class="sec-head"><div>
+    <h2><span lang="en">Cross-entropy loss and one gradient step</span><span lang="zh">交叉熵損失與一步梯度更新</span></h2>
+    <p class="sec-sub"><span lang="en">How “predict the next token” becomes a number to minimise</span><span lang="zh">「預測下一個 token」怎麼變成一個可以最小化的數字</span></p></div></div>
+  <div class="col" style="margin-bottom:24px">
+    <p><span lang="en">Training text already contains the answer: at every position the true next token is known. The model gives a probability to every token in the vocabulary (through <a href="#softmax">softmax</a>), and the <strong>loss</strong> at that position is minus the logarithm of the probability it gave to the true token. If that probability is 1 the loss is 0. If it is 0.5 the loss is 0.69; if it is 0.01 the loss is 4.6. The loss is called <strong>cross-entropy</strong> because it is the cross-entropy between the true answer, written as a <strong>one-hot</strong> vector <b>y</b> (1 for the true token, 0 for all others), and the predicted probabilities <b>p</b>.</span><span lang="zh">訓練用的文字本身就帶著答案：每個位置真正的下一個 token 是已知的。模型（經過 <a href="#softmax">softmax</a>）為詞彙表裡每個 token 給一個機率，這個位置的<strong>損失</strong>就是它給正確 token 的機率取對數、再加負號。機率是 1，損失是 0；機率是 0.5，損失是 0.69；機率是 0.01，損失是 4.6。這個損失叫做<strong>交叉熵</strong>，因為它就是正確答案與預測機率 <b>p</b> 之間的交叉熵；正確答案寫成 <strong>one-hot</strong> 向量 <b>y</b>（正確的 token 是 1，其餘都是 0）。</span></p>
+    <p><span lang="en">To lower the loss we need to know how it changes when each score changes: the <strong>gradient</strong>. For softmax followed by cross-entropy the gradient with respect to the scores is simply <b>p</b> − <b>y</b>. For the true token it is <i>p</i> − 1, a negative number, so its score should go up; for every other token it is <i>p</i>, a positive number, so its score should go down, and the more probability a wrong token had, the harder it is pushed. One step of <strong>gradient descent</strong> moves each score against its gradient by a step size η, the <strong>learning rate</strong>. Press “step” below and watch the probability of the true token rise and the loss fall.</span><span lang="zh">要降低損失，得先知道每個分數變動時損失怎麼變，也就是<strong>梯度</strong>。Softmax 接交叉熵時，損失對分數的梯度就是 <b>p</b> − <b>y</b>。對正確的 token，梯度是 <i>p</i> − 1，是負數，所以它的分數要往上調；對其他每個 token，梯度是 <i>p</i>，是正數，所以分數要往下調，而且錯的 token 原本機率越高，被壓得越用力。一步<strong>梯度下降</strong>就是讓每個分數朝梯度的反方向移動，步幅是 η，稱為<strong>學習率</strong>。按下面的「走一步」，看正確 token 的機率上升、損失下降。</span></p>
+    <p><span lang="en">The figure updates the five scores directly so that one step fits on the screen. In a real model the scores are not parameters: they are computed from the weights. The gradient <b>p</b> − <b>y</b> is passed backwards through the output matrix and all 32 blocks (<strong>backpropagation</strong>) to give a gradient for every weight, and the weights are what get updated. Llama-2 averages the loss over all positions of about 2 trillion training tokens and updates with the AdamW optimiser instead of the plain rule shown here. The exponential of the average loss is the <a href="#kl">perplexity</a>.</span><span lang="zh">下面的圖直接更新五個分數，這樣一步更新可以完整畫在畫面上。真實模型裡，分數不是參數，而是由權重算出來的。梯度 <b>p</b> − <b>y</b> 會經過輸出矩陣與全部 32 個區塊往回傳（<strong>反向傳播</strong>），得到每個權重的梯度，真正被更新的是權重。Llama-2 把損失在約 2 兆個訓練 token 的所有位置上取平均，並用 AdamW 最佳化器更新，而不是這裡畫的簡單規則。平均損失取指數就是<a href="#kl">困惑度</a>。</span></p>
+  </div>
+  <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">One position, five candidates, one true answer</span><span lang="zh">一個位置、五個候選、一個正確答案</span></p><p class="fig-note"><span lang="en">Bars = predicted probabilities after “Water vapor is”. Amber = the true next token. The number on the right is the gradient p − y of each score. The curve below is the loss after each step.</span><span lang="zh">長條＝「Water vapor is」之後的預測機率。黃色＝正確的下一個 token。右邊的數字是每個分數的梯度 p − y。下方曲線是每一步之後的損失。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-xe">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
+    <div class="demo">
+      <div class="demo-vis">
+        <p class="vis-label"><span lang="en">probabilities, gradients and the loss curve</span><span lang="zh">機率、梯度與損失曲線</span></p>
+        <div class="vis-box"><svg class="stage" id="xe-svg" viewBox="0 0 640 340"></svg></div>
+      </div>
+      <div class="demo-side">
+        <div class="ctrls">
+          <div class="ctrl-row"><span class="ctrl-lab"><span lang="en">true next token</span><span lang="zh">正確的下一個 token</span></span><div class="seg" id="xe-tg"><button type="button" data-v="0" aria-pressed="false">dens</button><button type="button" data-v="1" aria-pressed="true">less</button><button type="button" data-v="2" aria-pressed="false">lighter</button><button type="button" data-v="3" aria-pressed="false">more</button><button type="button" data-v="4" aria-pressed="false">heavier</button></div></div>
+          <div class="ctrl-row"><label class="ctrl-lab" for="xe-lr"><span lang="en">learning rate η</span><span lang="zh">學習率 η</span></label><input type="range" id="xe-lr" min="10" max="300" value="100"><span class="kval" id="xe-lrv"></span></div>
+          <div class="ctrl-row"><button class="btn" id="xe-step" type="button" style="background:var(--accent);color:#0A1020"><span lang="en">step</span><span lang="zh">走一步</span></button><button class="btn" id="xe-ten" type="button"><span lang="en">10 steps</span><span lang="zh">走 10 步</span></button><button class="btn" id="xe-reset" type="button"><span lang="en">reset</span><span lang="zh">重來</span></button></div>
+        </div>
+        <div class="scores" id="xe-scores"></div>
+        <p class="note" id="xe-note"></p>
+      </div>
+    </div>
+  </div>
+  <aside class="ctrls-drawer" id="ctrls-xe"><div class="ctrls-resizer" aria-hidden="true"></div><div class="ctrls-drawer-in"><div class="dh"><b><span lang="en">Controls</span><span lang="zh">操作說明</span></b><button type="button" class="x" aria-label="Close">×</button></div>
+    <div class="tablewrap"><table><thead><tr><th><span lang="en">Control</span><span lang="zh">控制項</span></th><th><span lang="en">What it does</span><span lang="zh">作用</span></th></tr></thead><tbody>
+      <tr><td><b><span lang="en">true next token</span><span lang="zh">正確的下一個 token</span></b></td><td><span lang="en">Chooses which candidate the training text says is correct. The scores go back to their starting values.</span><span lang="zh">選擇訓練文字裡哪一個候選才是正確的。分數會回到起始值。</span></td></tr>
+      <tr><td><b><span lang="en">learning rate η</span><span lang="zh">學習率 η</span></b></td><td><span lang="en">How far each score moves per step. Small: slow but steady. Large: fast, but each step changes the picture a lot.</span><span lang="zh">每一步每個分數移動多少。小：慢但穩。大：快，但每一步變化都很大。</span></td></tr>
+      <tr><td><b><span lang="en">step / 10 steps</span><span lang="zh">走一步／走 10 步</span></b></td><td><span lang="en">Applies the update rule once or ten times and adds the new loss to the curve.</span><span lang="zh">套用更新規則一次或十次，並把新的損失畫到曲線上。</span></td></tr>
+      <tr><td><b><span lang="en">reset</span><span lang="zh">重來</span></b></td><td><span lang="en">Puts the five scores back to their starting values.</span><span lang="zh">把五個分數還原成起始值。</span></td></tr>
+    </tbody></table></div>
+    <div class="plain"><p class="plain-h"><span lang="en">In plain words</span><span lang="zh">白話說明</span></p><p><span lang="en">The model places bets on what comes next, and the text then reveals the answer. The loss is how surprised the model should be: no surprise if it had bet everything on the right token, a big surprise if it had bet almost nothing on it. After each reveal the bets are nudged: a little more on the token that was right, a little less on each one that was wrong, most of all on the wrong one it had liked best. Repeat this over a very large amount of text and the bets become good.</span><span lang="zh">模型先對「接下來是什麼」下注，然後文字揭曉答案。損失就是模型該有多驚訝：如果它把全部都押在正確的 token，一點也不驚訝；如果它幾乎沒押，就非常驚訝。每次揭曉之後，注碼都微調一下：正確的 token 多押一點，每個錯的少押一點，原本最看好的那個錯答案減得最多。在非常大量的文字上重複這件事，下注就會越來越準。</span></p><p class="plain-luna"><span lang="en"><b>Link to LUNA:</b> LUNA never trains the LLM; it reads a model whose weights are already fixed. This chapter explains where those weights came from, and why the last-layer vector contains whatever helps to predict the next token.</span><span lang="zh"><b>和 LUNA 的關係：</b>LUNA 完全不訓練 LLM，它讀的是權重已經固定的模型。這一章說明那些權重是怎麼來的，以及為什麼最後一層的向量裡會有「有助於預測下一個 token」的資訊。</span></p></div>
   </div></aside>
 </section>
 <section id="probing" class="sec-wide">
@@ -740,9 +896,13 @@ body.ctrls-resizing .wrap{transition:none}
     <p class="sec-sub"><span lang="en">LUNA's first compression step</span><span lang="zh">LUNA 壓縮的第一步</span></p></div></div>
   <div class="col" style="margin-bottom:24px">
     <p><span lang="en">Principal Component Analysis looks for the direction along which the data varies most, and keeps only the coordinates along it. Rotate the axis below: the variance kept is largest when the axis lines up with the long direction of the cloud. LUNA keeps 3, 5 or 10 components for grid partitions and 512–2,048 for clusters.</span><span lang="zh">主成分分析找出資料變動最大的方向，只保留沿該方向的座標。轉動下面的軸：當軸對準點雲的長邊時，保留的變異量最大。LUNA 在網格劃分保留 3、5 或 10 個成分，分群則保留 512～2,048 個。</span></p>
+    <p><span lang="en"><strong>Step 1: centre.</strong> Compute the mean <b>μ</b> of all training points and subtract it from every point, so the cloud sits around the origin. <strong>Step 2: project onto an axis.</strong> An axis through the centre is described by a unit vector <b>u</b>; in two dimensions <b>u</b> = (cos θ, sin θ), where θ is the angle of the axis. This is the only reason cos and sin appear in the formulas below. The position of a point along the axis is the dot product <i>t</i> = <b>u</b><sup>⊤</sup>(<b>x</b> − <b>μ</b>): multiply coordinate by coordinate and add. Geometrically it is the length of the centred point times the cosine of the angle φ between the point and the axis. In the figure the amber point is <b>x</b><sub>1</sub> and its blue shadow on the axis is at distance <i>t</i><sub>1</sub> from the centre.</span><span lang="zh"><strong>第 1 步：中心化。</strong>算出所有訓練點的平均 <b>μ</b>，每個點都減掉它，讓點雲落在原點周圍。<strong>第 2 步：投影到一條軸上。</strong>通過中心的一條軸可以用單位向量 <b>u</b> 表示；在二維裡 <b>u</b> = (cos θ, sin θ)，θ 是軸的角度。下面公式裡會出現 cos 和 sin，原因只有這一個。一個點在軸上的位置是內積 <i>t</i> = <b>u</b><sup>⊤</sup>(<b>x</b> − <b>μ</b>)：座標對座標相乘再相加。幾何上，它等於中心化後這個點的長度，乘上點與軸夾角 φ 的餘弦。圖中黃色的點是 <b>x</b><sub>1</sub>，它在軸上的藍色影子離中心的距離就是 <i>t</i><sub>1</sub>。</span></p>
+    <p><span lang="en"><strong>This is not cosine similarity.</strong> Cosine similarity divides the dot product by the lengths of both vectors, so only the direction counts. PCA divides by nothing: <b>u</b> already has length 1 and the length of the point is kept, so a point far from the centre lands far along the axis. LUNA's PCA step therefore keeps how large the hidden vector is, not only where it points.</span><span lang="zh"><strong>這不是餘弦相似度。</strong>餘弦相似度會把內積除以兩個向量的長度，只剩方向有意義。PCA 什麼都不除：<b>u</b> 的長度本來就是 1，點的長度則被保留，所以離中心遠的點在軸上也落得遠。因此 LUNA 的 PCA 這一步保留了隱藏向量有多大，而不只是它指向哪裡。</span></p>
+    <p><span lang="en"><strong>Step 3: measure the spread.</strong> The variance of the positions <i>t</i> is how much of the cloud's spread the axis keeps. It can be computed for any axis from one small table, the <strong>covariance matrix</strong> Σ: σ<sub>xx</sub> and σ<sub>yy</sub> are the spread along x and along y, and σ<sub>xy</sub> says whether x and y rise together. <strong>Step 4: take the best axis.</strong> The axis with the largest variance is an <strong>eigenvector</strong> of Σ, and the variance it keeps is the matching <strong>eigenvalue</strong> λ<sub>1</sub>. The next axis is perpendicular to it and keeps λ<sub>2</sub>. The eigenvalues add up to the total variance, so λ<sub>1</sub> / (λ<sub>1</sub> + λ<sub>2</sub>) is the share kept by one axis, and whatever is not kept equals the mean squared distance from the points to the axis.</span><span lang="zh"><strong>第 3 步：量分散程度。</strong>這些位置 <i>t</i> 的變異數，就是這條軸保留了點雲多少分散程度。任何一條軸的這個值都可以從一張小表算出來，也就是<strong>共變異矩陣</strong> Σ：σ<sub>xx</sub>、σ<sub>yy</sub> 是沿 x、沿 y 的分散程度，σ<sub>xy</sub> 表示 x 和 y 是不是一起變大。<strong>第 4 步：取最好的軸。</strong>變異數最大的那條軸是 Σ 的<strong>特徵向量</strong>，它保留的變異數就是對應的<strong>特徵值</strong> λ<sub>1</sub>。下一條軸和它垂直，保留 λ<sub>2</sub>。特徵值加起來等於總變異量，所以 λ<sub>1</sub> / (λ<sub>1</sub> + λ<sub>2</sub>) 是一條軸保留的比例；沒被保留的部分，等於各點到軸的平均平方距離。</span></p>
+    <p><span lang="en"><strong>With more dimensions</strong> nothing changes except the count. A cloud in <i>d</i> dimensions has <i>d</i> perpendicular eigenvectors, sorted by eigenvalue. Keep the first <i>k</i> as the columns of a matrix <i>W</i><sub>k</sub>; the compressed point is <b>z</b> = <i>W</i><sub>k</sub><sup>⊤</sup>(<b>h</b> − <b>μ</b>), that is, <i>k</i> dot products. The mean and the axes are fitted on the training data only and reused unchanged for test data. The <a href="luna_v3.html#pca">main walkthrough</a> shows the covariance matrix and the reconstruction error on a 12-dimensional example.</span><span lang="zh"><strong>維度更多時</strong>，除了數量之外什麼都沒變。<i>d</i> 維的點雲有 <i>d</i> 個互相垂直的特徵向量，依特徵值由大到小排列。取前 <i>k</i> 個當作矩陣 <i>W</i><sub>k</sub> 的各欄；壓縮後的點是 <b>z</b> = <i>W</i><sub>k</sub><sup>⊤</sup>(<b>h</b> − <b>μ</b>)，也就是 <i>k</i> 個內積。平均值和各條軸只用訓練資料擬合，測試資料原樣沿用。<a href="luna_v3.html#pca">主頁導讀</a>用 12 維的例子展示了共變異矩陣和重建誤差。</span></p>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">Projection explorer</span><span lang="zh">投影探索器</span></p><p class="fig-note"><span lang="en">Rotate the axis, then press “snap to PC1”.</span><span lang="zh">轉動軸，再按「對準 PC1」。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-pc">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">Projection explorer</span><span lang="zh">投影探索器</span></p><p class="fig-note"><span lang="en">Rotate the axis, then press “snap to PC1”. Amber ring = the sample point x₁ used in the formulas.</span><span lang="zh">轉動軸，再按「對準 PC1」。黃色圓圈＝公式裡當例子的點 x₁。</span></p><button class="btn ctrls-toggle" type="button" aria-expanded="false" aria-controls="ctrls-pc">❓ <span lang="en">Help</span><span lang="zh">說明</span></button><span class="badge-sim">TOY</span></div>
     <div class="demo stack"><div class="demo-vis twin">
         <p class="vis-label"><span lang="en">Points projected onto the axis</span><span lang="zh">點投影到軸上</span></p>
         <div class="vis-box"><svg class="stage" id="pc-plot" viewBox="0 0 400 360"></svg></div>
@@ -1711,7 +1871,20 @@ G('pc-plot', {
   'Σ': ['covariance matrix: describes how spread out the points are in each direction and how x and y move together', '共變異矩陣：描述點在各方向有多分散，以及 x 與 y 怎麼一起變'],
   'σ_xx': ['variance of x: spread of the points along the x direction', 'x 的變異數：點沿 x 方向的分散程度'], 'σ_yy': ['variance of y: spread along the y direction', 'y 的變異數：沿 y 方向的分散程度'], 'σ_xy': ['covariance of x and y: positive when they rise together', 'x 與 y 的共變異：一起上升時為正'],
   'θ': ['angle of the axis', '軸的角度'], 'λ_1': ['first eigenvalue: variance along the best axis (PC1)', '第一特徵值：沿最佳軸（PC1）的變異量'], 'λ_2': ['second eigenvalue: variance along the axis perpendicular to PC1', '第二特徵值：沿垂直於 PC1 的軸的變異量'],
-  'tr': ['trace: sum of the diagonal = total variance of the cloud', '跡：對角線加總＝點雲的總變異量']
+  'tr': ['trace: sum of the diagonal = total variance of the cloud', '跡：對角線加總＝點雲的總變異量'],
+  't': ['position of a point along the axis (its coordinate after projection)', '點在軸上的位置（投影後的座標）'],
+  'x': ['a data point', '一個資料點'], 'μ': ['mean of all points: the centre of the cloud', '所有點的平均：點雲的中心'],
+  'φ': ['angle between the centred point and the axis', '中心化後的點與軸之間的夾角'],
+  'N': ['number of points', '點的數量'], 'n': ['index of a point', '第幾個點'],
+  'w': ['eigenvector of Σ: a principal direction', 'Σ 的特徵向量：一個主成分方向'],
+  'λ': ['eigenvalue of Σ: the variance along its eigenvector', 'Σ 的特徵值：沿對應特徵向量的變異量'],
+  'θ_1': ['angle of the best axis (PC1)', '最佳軸（PC1）的角度'],
+  'atan2': ['two-argument arctangent: the angle of the point (second argument, first argument)', '雙參數反正切：點（第二個參數，第一個參數）的角度'],
+  'W': ['W_k: matrix whose columns are the first k eigenvectors', 'W_k：各欄是前 k 個特徵向量的矩陣'],
+  'z': ['compressed vector: k coordinates', '壓縮後的向量：k 個座標'], 'h': ['hidden vector of one token', '一個 token 的隱藏向量'],
+  'd': ['original number of dimensions', '原本的維度'], 'k': ['number of dimensions kept', '保留的維度數'],
+  '√': ['square root', '平方根'], '±': ['plus for λ₁, minus for λ₂', '取正號得到 λ₁，取負號得到 λ₂'],
+  'σ': ['an entry of the covariance matrix Σ; the subscripts say which two coordinates are multiplied', '共變異矩陣 Σ 的一個元素；下標表示是哪兩個座標相乘']
 });
 G('km-svg', {
   'J': ['objective: total squared distance from every point to its own centre (smaller = tighter clusters)', '目標函數：每個點到自己中心的距離平方總和（越小，分群越緊）'],
@@ -1807,6 +1980,198 @@ G('rc-dots', {
   'these20samples': ['computed from the 10 + 10 samples currently shown', '用目前畫面上這 10 + 10 個樣本算出來的']
 });
 
+/* ============================ 03b softmax ============================ */
+const SX_TOK = ['▁dens', '▁less', '▁lighter', '▁more', '▁heavier'], SX_NAME = ['dens', 'less', 'lighter', 'more', 'heavier'], SX_Z0 = [3.1, 2.9, 2.6, 1.8, 1.5];
+const SX = {sel: 1, z: SX_Z0.slice()};
+const svgT = (x, y, s, o = {}) => `<text x="${x}" y="${y}" text-anchor="${o.a || 'start'}" font-size="${o.fs || 11}" font-weight="${o.w || 400}" fill="${o.c || '#E7EBF3'}" style="font-family:var(--mono)">${esc(s)}</text>`;
+const texNum = v => v < 0 ? `(${f2(v)})` : f2(v);                                   // a negative number inside a sum or product
+const texBig = v => v === 0 ? '0' : (v >= 1e4 || v < 1e-2) ? (() => { const [m, e] = v.toExponential(2).split('e'); return `${m}\\times10^{${+e}}`; })() : f2(v);
+const txtBig = v => v === 0 ? '0' : (v >= 1e4 || v < 1e-2) ? v.toExponential(2) : f2(v);
+function sxRender(){
+  const T0 = +$('#sx-t').value / 100, c = +$('#sx-c').value / 10, mask = $('#sx-mask').checked, sel = SX.sel, n = 5;
+  $('#sx-z').value = Math.round(SX.z[sel] * 10);
+  $('#sx-zv').textContent = f1(SX.z[sel]); $('#sx-tv').textContent = f2(T0); $('#sx-cv').textContent = (c > 0 ? '+' : '') + f1(c);
+  $$('#sx-sel button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.v === sel));
+  const off = i => mask && i === n - 1;
+  const u = SX.z.map((z, i) => off(i) ? -Infinity : (z + c) / T0), e = u.map(v => Math.exp(v)), S = e.reduce((a, b) => a + b, 0), p = e.map(v => v / S);
+  const ord = p.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]), a1 = ord[0][1], a2 = ord[1][1];
+  const fin = u.filter(isFinite), mu = Math.max(1, ...fin.map(Math.abs)), me = Math.max(...e);
+  let s = svgT(150, 16, T('score (z + c) / T', '分數 (z + c) / T'), {a: 'middle', fs: 10.5, c: '#7C869C'}) + svgT(312, 16, T('e^score', 'e 的「分數」次方'), {a: 'middle', fs: 10.5, c: '#7C869C'}) + svgT(500, 16, T('÷ sum = probability p', '÷ 總和 ＝ 機率 p'), {a: 'middle', fs: 10.5, c: '#7C869C'});
+  s += `<path d="M150 26 V288" stroke="#3A4458" stroke-width="1"/>`;
+  SX_TOK.forEach((t, i) => { const y = 34 + i * 52, on = i === sel, col = on ? '#F4C26B' : '#8CB8FF', dim = off(i);
+    const tipTxt = dim ? `${t}: ${T('score', '分數')} = −∞ → e^(−∞) = 0 → p = 0` : `${t}: (${f2(SX.z[i])} + ${texNum(c)}) / ${f2(T0)} = ${f2(u[i])} → e^${f2(u[i])} = ${txtBig(e[i])} → ${txtBig(e[i])} / ${txtBig(S)} = ${f3(p[i])}`;
+    s += `<g class="sxr" data-i="${i}" style="cursor:pointer" data-tip="${esc(tipTxt)}"><rect x="2" y="${y - 6}" width="636" height="46" rx="6" fill="${on ? 'rgba(244,194,107,.07)' : 'transparent'}" stroke="${on ? '#7A6230' : 'none'}"/>`;
+    s += svgT(84, y + 21, t, {a: 'end', fs: 13, c: dim ? '#4A5468' : on ? '#F4C26B' : '#E7EBF3', w: on ? 700 : 400});
+    if (dim) s += svgT(150, y + 21, '−∞', {a: 'middle', fs: 13, c: '#FF7B8B'});
+    else { const w = Math.abs(u[i]) / mu * 52; s += `<rect x="${u[i] >= 0 ? 150 : 150 - w}" y="${y + 4}" width="${Math.max(w, 1)}" height="24" rx="3" fill="${col}" opacity=".85"/>` + svgT(u[i] >= 0 ? 150 + w + 5 : 150 - w - 5, y + 21, f2(u[i]), {a: u[i] >= 0 ? 'start' : 'end', fs: 11, c: '#AEB7CA'}); }
+    const we = e[i] / me * 96; s += `<rect x="264" y="${y + 4}" width="${Math.max(we, 1)}" height="24" rx="3" fill="${col}" opacity="${dim ? .25 : .85}"/>` + svgT(264 + we + 5, y + 21, txtBig(e[i]), {fs: 11, c: '#AEB7CA'});
+    const wp = p[i] * 118; s += `<rect x="440" y="${y + 4}" width="${Math.max(wp, 1)}" height="24" rx="3" fill="${col}" opacity="${dim ? .25 : .9}"/>` + svgT(440 + wp + 5, y + 21, (p[i] * 100).toFixed(1) + '%', {fs: 11.5, c: on ? '#F4C26B' : '#E7EBF3', w: on ? 700 : 400});
+    s += '</g>'; });
+  s += `<path d="M264 296 H420 M440 296 H620" stroke="#3A4458" stroke-width="1"/>` + svgT(264, 314, T('sum = ', '總和 = ') + txtBig(S), {fs: 11.5, c: '#AEB7CA'}) + svgT(440, 314, T('sum = 100.0%', '總和 = 100.0%'), {fs: 11.5, c: '#AEB7CA'});
+  const svg = $('#sx-svg'); svg.innerHTML = s; bindTips(svg);
+  svg.querySelectorAll('.sxr').forEach(g => g.addEventListener('click', () => { SX.sel = +g.dataset.i; hideTip(); sxRender(); }));
+  const ratio = p[a1] / p[a2];
+  $('#sx-scores').innerHTML = stat([[T('sum of exponentials', '指數的總和'), txtBig(S), 'Σ e'], [T('largest probability', '最大的機率'), (p[a1] * 100).toFixed(1) + '%', esc(SX_TOK[a1])], [T('1st ÷ 2nd', '第一 ÷ 第二'), ratio >= 1e4 ? ratio.toExponential(1) : f2(ratio), `e^(${f2(SX.z[a1] - SX.z[a2])} / ${f2(T0)})`], [T('sum of p', '機率總和'), '1.00', T('always', '永遠如此')]]);
+  $('#sx-note').innerHTML = (c !== 0 ? T(`<b>Shift c = ${f1(c)}:</b> every exponential is multiplied by e^(c/T) = ${txtBig(Math.exp(c / T0))}, and so is their sum, so every probability is exactly what it was with c = 0. `, `<b>平移 c = ${f1(c)}：</b>每個指數都乘上 e^(c/T) = ${txtBig(Math.exp(c / T0))}，總和也乘上同樣的倍數，所以每個機率和 c = 0 時完全一樣。`) : '')
+    + (mask ? T('<b>Mask on:</b> ▁heavier has score −∞, its exponential is 0, and the other four share 100%. ', '<b>遮罩開啟：</b>▁heavier 的分數是 −∞，取指數後是 0，其餘四個分掉 100%。') : '')
+    + (T0 < .6 ? T(`<b>Low temperature:</b> gaps are divided by ${f2(T0)}, so they grow; ${esc(SX_TOK[a1])} takes most of the total.`, `<b>低溫：</b>差距除以 ${f2(T0)} 之後變大，${esc(SX_TOK[a1])} 拿走大部分。`)
+      : T0 > 1.8 ? T(`<b>High temperature:</b> gaps are divided by ${f2(T0)}, so they shrink and the probabilities move towards 1/${mask ? 4 : 5} each.`, `<b>高溫：</b>差距除以 ${f2(T0)} 之後變小，各機率往 1/${mask ? 4 : 5} 靠近。`)
+      : T(`${esc(SX_TOK[a1])} leads ${esc(SX_TOK[a2])} by ${f2(SX.z[a1] - SX.z[a2])} in score, which becomes ${f2(ratio)} times the probability.`, `${esc(SX_TOK[a1])} 的分數比 ${esc(SX_TOK[a2])} 高 ${f2(SX.z[a1] - SX.z[a2])}，機率是它的 ${f2(ratio)} 倍。`));
+  const R = String.raw, nm = i => R`\text{${SX_NAME[i]}}`;
+  const eT = i => off(i) ? R`e^{-\infty}` : R`e^{(${f2(SX.z[i])}+${texNum(c)})/${f2(T0)}}`;
+  setFx('sx-svg', [
+    FX(['Softmax', 'Softmax'], R`\begin{aligned}p_i&=\dfrac{e^{(z_i+c)/T}}{\sum_{j=1}^{5}e^{(z_j+c)/T}}\\[6pt]p_{${nm(sel)}}&=\dfrac{${eT(sel)}}{${[0, 1, 2, 3, 4].map(eT).join('+')}}=\dfrac{${texBig(e[sel])}}{${e.map(texBig).join('+')}}=\dfrac{${texBig(e[sel])}}{${texBig(S)}}=${f3(p[sel])}\end{aligned}`,
+      ['Exponentiate each score, then divide by the sum over all five candidates. The second line writes out every term for the selected token; a masked candidate contributes e^(−∞) = 0.', '每個分數取指數，再除以五個候選的總和。第二行把選取 token 的每一項都寫出來；被遮住的候選貢獻 e^(−∞) = 0。']),
+    FX(['Adding a constant changes nothing', '加上常數，結果不變'], R`\dfrac{e^{(z_i+c)/T}}{\sum_{j=1}^{5}e^{(z_j+c)/T}}=\dfrac{e^{c/T}\,e^{z_i/T}}{e^{c/T}\sum_{j=1}^{5}e^{z_j/T}}=\dfrac{e^{z_i/T}}{\sum_{j=1}^{5}e^{z_j/T}},\qquad e^{c/T}=e^{${texNum(c)}/${f2(T0)}}=${texBig(Math.exp(c / T0))}`,
+      ['The factor e^(c/T) appears in the numerator and in every term of the denominator, so it cancels. Only the differences between scores decide the probabilities.', '因子 e^(c/T) 同時出現在分子和分母的每一項，所以會消掉。決定機率的只有分數之間的差距。']),
+    FX(['Gaps are exponential', '差距以指數放大'], R`\dfrac{p_a}{p_b}=\dfrac{e^{(z_a+c)/T}}{e^{(z_b+c)/T}}=e^{(z_a-z_b)/T}:\qquad \dfrac{p_{${nm(a1)}}}{p_{${nm(a2)}}}=e^{(${f2(SX.z[a1])}-${texNum(SX.z[a2])})/${f2(T0)}}=${ratio >= 1e4 ? texBig(ratio) : f2(ratio)}`,
+      ['The ratio of two probabilities depends only on the difference of their scores divided by T. Shown for the two most likely candidates. Lower T to see the ratio explode.', '兩個機率的比值只取決於它們的分數差除以 T。這裡以機率最高的兩個候選為例。把 T 調低，看比值急遽變大。']),
+    FX(['Where Llama-2 uses it', 'Llama-2 用在哪裡'], R`\begin{aligned}\alpha_{ij}&=\dfrac{e^{s_{ij}}}{\sum_{m=1}^{n}e^{s_{im}}},\qquad s_{ij}=\dfrac{\mathbf q_i^{\top}\mathbf k_j}{\sqrt{d_k}}+M_{ij},\qquad M_{ij}=\begin{cases}0,&j\le i\\-\infty,&j>i\end{cases}\\[6pt]p_i&=\dfrac{e^{z_i/T}}{\sum_{j=1}^{32000}e^{z_j/T}},\qquad \mathbf z=W_{\mathrm{out}}\,\mathrm{RMSNorm}_{\mathrm{final}}\big(\mathbf h^{(32)}\big)\end{aligned}`,
+      ['First line: attention weights. Each row i of scores becomes weights that sum to 1; the mask sets later positions to −∞, so their weight is exactly 0. Second line: next-token probabilities over the 32,000-token vocabulary.', '第一行：注意力權重。每一列 i 的分數變成加總為 1 的權重；遮罩把後面的位置設成 −∞，所以權重剛好是 0。第二行：對 32,000 個詞彙算出下一個 token 的機率。'])
+  ]);
+}
+$$('#sx-sel button').forEach(b => b.addEventListener('click', () => { SX.sel = +b.dataset.v; sxRender(); }));
+$('#sx-z').addEventListener('input', () => { SX.z[SX.sel] = +$('#sx-z').value / 10; sxRender(); });
+['sx-t', 'sx-c', 'sx-mask'].forEach(id => $('#' + id).addEventListener('input', sxRender));
+$('#sx-reset').addEventListener('click', () => { SX.z = SX_Z0.slice(); $('#sx-t').value = 100; $('#sx-c').value = 0; $('#sx-mask').checked = false; sxRender(); });
+G('sx-svg', {
+  'p': ['probability of a candidate; all of them are positive and sum to 1', '候選的機率；全部是正數，加起來等於 1'],
+  'z': ['score (logit) of a candidate: any real number', '候選的分數（logit）：任意實數'],
+  'T': ['temperature: every score is divided by it before the exponential', '溫度：取指數前，每個分數先除以它'],
+  'c': ['a constant added to every score (the slider)', '加到每個分數上的常數（滑桿）'],
+  'a': ['index of one candidate (here the most likely one)', '某一個候選的編號（這裡是機率最高的）'], 'b': ['index of another candidate (here the second most likely)', '另一個候選的編號（這裡是機率第二高的）'],
+  'α': ['attention weight from token i to token j', 'token i 分給 token j 的注意力權重'],
+  's': ['attention score of query i and key j, before softmax', 'query i 與 key j 的注意力分數，尚未做 softmax'],
+  'q': ['query vector of token i', 'token i 的 query 向量'], 'k': ['key vector of token j', 'token j 的 key 向量'],
+  'd': ['d_k: dimension of the query and key vectors per head (Llama-2: 128)', 'd_k：每個注意力頭 query、key 向量的維度（Llama-2：128）'],
+  'M': ['causal mask: 0 for positions up to i, −∞ for later positions', '因果遮罩：位置不超過 i 的是 0，之後的位置是 −∞'],
+  'm': ['index summed over all n positions of the row', '對這一列全部 n 個位置求和用的指標'],
+  'n': ['number of tokens in the sequence', '序列裡的 token 數'],
+  'W': ['output matrix W_out, 32,000 × 4,096', '輸出矩陣 W_out，32,000 × 4,096'],
+  'h': ['hidden vector after the last (32nd) block', '最後一個（第 32 個）區塊之後的隱藏向量'],
+  'RMSNorm': ['divide by the root mean square, then multiply by learned gains (see the RMSNorm chapter)', '除以均方根，再乘上學得的增益（見 RMSNorm 一章）'],
+  '√': ['square root', '平方根'], '∞': ['infinity', '無限大']
+});
+
+/* ============================ 04c RMSNorm ============================ */
+const RMS_H = [1.2, -.4, 2.5, .1, -1.8, .6, 3.0, -.9], RMS_EPS = 1e-5;
+function rmsRender(){
+  const c = +$('#rms-s').value / 100, g3 = +$('#rms-g').value / 100, d = RMS_H.length;
+  $('#rms-sv').textContent = '× ' + f2(c); $('#rms-gv').textContent = f2(g3);
+  const h = RMS_H.map(v => v * c), g = h.map((_, i) => i === 2 ? g3 : 1);
+  const ms = h.reduce((a, v) => a + v * v, 0) / d, rms = Math.sqrt(ms + RMS_EPS), y = h.map((v, i) => v / rms * g[i]);
+  const rmsY = Math.sqrt(y.reduce((a, v) => a + v * v, 0) / d), rms0 = Math.sqrt(RMS_H.reduce((a, v) => a + v * v, 0) / d + RMS_EPS);
+  const cosv = h.reduce((a, v, i) => a + v * y[i], 0) / (Math.hypot(...h) * Math.hypot(...y) || 1);
+  const X = i => 92 + i * 66, bw = 38, kIn = 5, kOut = 17, yIn = 84, yOut = 252;
+  const chart = (y0, vals, k, lim, col, mark, lab, sub) => { let o = `<path d="M70 ${y0} H622" stroke="#3A4458" stroke-width="1"/>`
+      + `<path d="M70 ${y0 - mark * k} H622 M70 ${y0 + mark * k} H622" stroke="${col}" stroke-width="1" stroke-dasharray="4 4" opacity=".55"/>`
+      + svgT(626, y0 - mark * k - 4, '+' + f2(mark), {a: 'end', fs: 9.5, c: col}) + svgT(626, y0 + mark * k + 11, '−' + f2(mark), {a: 'end', fs: 9.5, c: col})
+      + svgT(8, y0 - 8, lab, {fs: 12, w: 700, c: col}) + svgT(8, y0 + 8, sub, {fs: 9.5, c: '#7C869C'});
+    vals.forEach((v, i) => { const hgt = Math.min(Math.abs(v) * k, lim), up = v >= 0, on = i === 2;
+      o += `<rect x="${X(i)}" y="${up ? y0 - hgt : y0}" width="${bw}" height="${Math.max(hgt, 1)}" rx="3" fill="${col}" opacity="${on ? 1 : .7}" stroke="${on ? '#fff' : 'none'}" stroke-width="1.2" data-tip="${esc(T(`dimension ${i + 1}: `, `第 ${i + 1} 維：`) + f2(v))}"/>`
+        + svgT(X(i) + bw / 2, up ? y0 - hgt - 4 : y0 + hgt + 12, f2(v), {a: 'middle', fs: 10, c: '#E7EBF3'}); });
+    return o; };
+  let s = chart(yIn, h, kIn, 64, '#8CB8FF', rms, 'h', T('input', '輸入')) + chart(yOut, y, kOut, 64, '#F4C26B', 1, 'y', T('output', '輸出'));
+  s += `<path d="M346 160 V178" stroke="#7C869C" stroke-width="1.4"/><path d="M341 174 L346 182 L351 174z" fill="#7C869C"/>` + svgT(358, 174, T(`÷ RMS ${f2(rms)}, then × g`, `÷ 均方根 ${f2(rms)}，再 × g`), {fs: 10.5, c: '#AEB7CA'});
+  RMS_H.forEach((_, i) => { s += svgT(X(i) + bw / 2, 334, String(i + 1), {a: 'middle', fs: 9.5, c: i === 2 ? '#fff' : '#7C869C'}); });
+  s += svgT(8, 334, T('dimension', '維度'), {fs: 9.5, c: '#7C869C'});
+  const svg = $('#rms-svg'); svg.innerHTML = s; bindTips(svg);
+  $('#rms-scores').innerHTML = stat([[T('RMS of input', '輸入的均方根'), f2(rms), `c = ${f2(c)}`], [T('RMS of output', '輸出的均方根'), f2(rmsY), g3 === 1 ? T('1 when all gains are 1', '增益全為 1 時是 1') : `g₃ = ${f2(g3)}`], ['cos(h, y)', f3(cosv), g3 === 1 ? T('same direction', '方向相同') : T('g₃ turned it', '被 g₃ 轉了一點')]]);
+  $('#rms-note').innerHTML = (g3 === 1 ? T(`With all gains 1, the output has root mean square 1 and points the same way as the input. The input is now ${f2(c)} times its original size; the output is unchanged.`, `增益全為 1 時，輸出的均方根是 1，方向和輸入相同。輸入現在是原本的 ${f2(c)} 倍大，輸出沒有變。`)
+    : T(`g₃ = ${f2(g3)} rescales dimension 3 only, after the division. The output's root mean square is no longer exactly 1 and its direction turns slightly: the gains are how the model re-weights coordinates.`, `g₃ = ${f2(g3)} 只在相除之後改變第 3 維。輸出的均方根不再剛好是 1，方向也轉了一點：模型就是用增益來重新分配各座標的比重。`));
+  const R = String.raw;
+  setFx('rms-svg', [
+    FX(['Root mean square', '均方根'], R`\mathrm{RMS}(\mathbf h)=\sqrt{\dfrac1d\sum_{i=1}^{d}h_i^2+\epsilon}=\sqrt{\dfrac{${h.map(v => texNum(v) + '^2').join('+')}}{${d}}+10^{-5}}=\sqrt{${f3(ms)}+10^{-5}}=${f2(rms)}`,
+      ['Square every coordinate, average the 8 squares, add ε, take the square root. It is a measure of the typical size of one coordinate.', '每個座標平方，8 個平方取平均，加上 ε，再開根號。它衡量的是「一個座標通常有多大」。']),
+    FX(['RMSNorm', 'RMSNorm'], R`\mathrm{RMSNorm}(\mathbf h)=\dfrac{\mathbf h}{\sqrt{\dfrac1d\sum_{i=1}^{d}h_i^2+\epsilon}}\odot\mathbf g,\qquad y_i=\dfrac{h_i}{\mathrm{RMS}(\mathbf h)}\,g_i:\quad y_3=\dfrac{${f2(h[2])}}{${f2(rms)}}\times${f2(g3)}=${f2(y[2])}`,
+      ['Each coordinate is divided by the same root mean square and then multiplied by its own learned gain. The toy keeps every gain at 1 except g₃, which the slider sets.', '每個座標都除以同一個均方根，再乘上各自學得的增益。玩具裡除了滑桿控制的 g₃ 之外，其餘增益都是 1。']),
+    FX(['The input size cancels', '輸入的大小會消掉'], R`\mathrm{RMS}(c\,\mathbf h)=\sqrt{\dfrac1d\sum_{i=1}^{d}(c\,h_i)^2+\epsilon}=c\sqrt{\dfrac1d\sum_{i=1}^{d}h_i^2+\dfrac{\epsilon}{c^2}}\ \Rightarrow\ \dfrac{c\,h_i}{\mathrm{RMS}(c\,\mathbf h)}=\dfrac{h_i}{\sqrt{\dfrac1d\sum_{i=1}^{d}h_i^2+\dfrac{\epsilon}{c^2}}},\qquad c=${f2(c)}:\ \mathrm{RMS}(c\,\mathbf h)=${f2(rms)},\quad \mathrm{RMS}(\mathbf h)=${f2(rms0)}`,
+      ['For c > 0 the factor c cancels between numerator and denominator. The only trace it leaves is ε / c² in place of ε, which is negligible unless the vector is almost zero.', 'c > 0 時，因子 c 在分子和分母之間消掉。唯一留下的痕跡是 ε 變成 ε / c²，除非向量幾乎是 0，否則可以忽略。']),
+    FX(['Where Llama-2 uses it', 'Llama-2 用在哪裡'], R`\begin{aligned}\mathbf a^{(l)}&=\mathbf h^{(l-1)}+\mathrm{Attn}^{(l)}\big(\mathrm{RMSNorm}^{(l)}_{1}(\mathbf h^{(l-1)})\big),\qquad \mathbf h^{(l)}=\mathbf a^{(l)}+\mathrm{FFN}^{(l)}\big(\mathrm{RMSNorm}^{(l)}_{2}(\mathbf a^{(l)})\big),\qquad l=1,\dots,32\\[6pt]\widehat{\mathbf h}&=\mathrm{RMSNorm}_{\mathrm{final}}\big(\mathbf h^{(32)}\big),\qquad 2\times32+1=65\ \text{norms}\times4096\ \text{gains}=266{,}240\ \text{parameters}\end{aligned}`,
+      ['Pre-norm: each sub-layer reads a normalised copy of the vector and adds its result to the unnormalised one. A last RMSNorm is applied before the output matrix. Every RMSNorm has its own gains.', 'Pre-norm：每個子層讀的是正規化後的副本，算出的結果加回未正規化的向量。乘上輸出矩陣之前再做最後一次 RMSNorm。每個 RMSNorm 都有自己的增益。'])
+  ]);
+}
+['rms-s', 'rms-g'].forEach(id => $('#' + id).addEventListener('input', rmsRender));
+G('rms-svg', {
+  'RMS': ['root mean square: square, average, square root', '均方根：平方、取平均、開根號'],
+  'RMSNorm': ['divide a vector by its root mean square, then multiply by learned gains', '把向量除以自己的均方根，再乘上學得的增益'],
+  'h': ['the vector being normalised (one token\'s hidden vector)', '要被正規化的向量（某個 token 的隱藏向量）'],
+  'y': ['the normalised output vector', '正規化後的輸出向量'],
+  'g': ['learned gain: one multiplier per coordinate', '學得的增益：每個座標一個倍率'],
+  'd': ['number of coordinates (8 in the toy, 4,096 in Llama-2)', '座標數（玩具是 8，Llama-2 是 4,096）'],
+  'ϵ': ['tiny constant that prevents division by zero (10⁻⁵ in Llama-2)', '避免除以零的極小常數（Llama-2 用 10⁻⁵）'],
+  'c': ['a positive factor multiplying the whole input (the slider)', '乘在整個輸入上的正數倍率（滑桿）'],
+  'a': ['the vector after the attention sub-layer has added its result', '注意力子層把結果加上去之後的向量'],
+  'l': ['block number, 1 to 32', '第幾個區塊，1 到 32'],
+  'Attn': ['self-attention sub-layer of block l', '第 l 個區塊的自注意力子層'], 'FFN': ['feed-forward (SwiGLU) sub-layer of block l', '第 l 個區塊的前饋（SwiGLU）子層'],
+  'ĥ': ['the last block\'s vector after the final RMSNorm; the output matrix reads this', '最後一個區塊的向量做完最終 RMSNorm 的結果；輸出矩陣讀的是它'],
+  '⊙': ['element-wise product: multiply coordinate by coordinate', '逐元素相乘：座標對座標相乘'], '√': ['square root', '平方根']
+});
+
+/* ============================ 04d cross-entropy and one gradient step ============================ */
+const XE = {tg: 1, z: SX_Z0.slice(), hist: []};
+const xeProbs = z => { const mx = Math.max(...z), e = z.map(v => Math.exp(v - mx)), S = e.reduce((a, b) => a + b, 0); return e.map(v => v / S); };
+function xeRender(){
+  const lr = +$('#xe-lr').value / 100, tg = XE.tg, z = XE.z, p = xeProbs(z), y = z.map((_, i) => i === tg ? 1 : 0), gr = p.map((v, i) => v - y[i]), L = -Math.log(p[tg]);
+  if (!XE.hist.length) XE.hist = [L];
+  $('#xe-lrv').textContent = f2(lr);
+  $$('#xe-tg button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.v === tg));
+  let s = svgT(118, 14, T('probability p', '機率 p'), {fs: 10.5, c: '#7C869C'}) + svgT(632, 14, T('gradient p − y', '梯度 p − y'), {a: 'end', fs: 10.5, c: '#7C869C'});
+  SX_TOK.forEach((t, i) => { const yy = 24 + i * 38, on = i === tg, w = p[i] * 330, up = gr[i] < 0;
+    s += svgT(108, yy + 17, t, {a: 'end', fs: 13, c: on ? '#F4C26B' : '#E7EBF3', w: on ? 700 : 400})
+      + `<rect x="118" y="${yy}" width="${Math.max(w, 1)}" height="24" rx="4" fill="${on ? '#F4C26B' : '#3B5E99'}" opacity=".9" data-tip="${esc(`${t}: z = ${f2(z[i])}, p = ${f3(p[i])}, y = ${y[i]}, p − y = ${f3(gr[i])}`)}"/>`
+      + svgT(124 + w, yy + 17, (p[i] * 100).toFixed(1) + '%', {fs: 11.5, c: '#AEB7CA'})
+      + svgT(632, yy + 17, (gr[i] < 0 ? '−' : '+') + Math.abs(gr[i]).toFixed(3) + (up ? T('  score ↑', '  分數 ↑') : T('  score ↓', '  分數 ↓')), {a: 'end', fs: 11.5, c: up ? '#5FD3A0' : '#FF9E7B'}); });
+  /* loss curve */
+  const H = XE.hist, x0 = 118, x1 = 620, y0 = 318, y1 = 236, mxL = Math.max(1, ...H), nx = Math.max(10, H.length - 1);
+  const PX = i => x0 + i / nx * (x1 - x0), PY = v => y0 - v / mxL * (y0 - y1);
+  s += `<path d="M${x0} ${y1 - 6} V${y0} H${x1}" fill="none" stroke="#3A4458" stroke-width="1"/>` + svgT(x0 - 6, y1 + 4, f2(mxL), {a: 'end', fs: 9.5, c: '#7C869C'}) + svgT(x0 - 6, y0 + 3, '0', {a: 'end', fs: 9.5, c: '#7C869C'})
+    + svgT(8, 280, T('loss', '損失'), {fs: 11, c: '#AEB7CA'}) + svgT(8, 294, '−ln p', {fs: 9.5, c: '#7C869C'}) + svgT(x1, y0 + 16, T(`step ${H.length - 1}`, `第 ${H.length - 1} 步`), {a: 'end', fs: 9.5, c: '#7C869C'});
+  s += `<path d="${H.map((v, i) => (i ? 'L' : 'M') + PX(i).toFixed(1) + ' ' + PY(v).toFixed(1)).join(' ')}" fill="none" stroke="#F4C26B" stroke-width="1.8"/>`;
+  H.forEach((v, i) => { s += `<circle cx="${PX(i).toFixed(1)}" cy="${PY(v).toFixed(1)}" r="${i === H.length - 1 ? 4 : 2.4}" fill="#F4C26B" stroke="#080B12" data-tip="${esc(T(`after step ${i}: loss = `, `第 ${i} 步之後：損失 = `) + f3(v))}"/>`; });
+  const svg = $('#xe-svg'); svg.innerHTML = s; bindTips(svg);
+  $('#xe-scores').innerHTML = stat([[T('p(true token)', 'p(正確 token)'), f3(p[tg]), esc(SX_TOK[tg])], [T('loss', '損失'), f3(L), '−ln p'], [T('equivalent choices', '等效選項數'), f2(Math.exp(L)), 'e^L = 1 / p'], [T('steps taken', '已走步數'), H.length - 1, `η = ${f2(lr)}`]]);
+  const worst = gr.map((v, i) => [v, i]).filter(x => x[1] !== tg).sort((a, b) => b[0] - a[0])[0];
+  $('#xe-note').innerHTML = T(`The true token ${esc(SX_TOK[tg])} has probability ${f3(p[tg])}, so the loss is −ln ${f3(p[tg])} = ${f3(L)}. Its gradient is −${f3(-gr[tg])} (negative: raise its score). The wrong token pushed down hardest is ${esc(SX_TOK[worst[1]])}, with gradient +${f3(worst[0])}.`, `正確的 token ${esc(SX_TOK[tg])} 機率是 ${f3(p[tg])}，所以損失是 −ln ${f3(p[tg])} = ${f3(L)}。它的梯度是 −${f3(-gr[tg])}（負的：分數要調高）。被壓得最用力的錯誤 token 是 ${esc(SX_TOK[worst[1]])}，梯度 +${f3(worst[0])}。`)
+    + (H.length > 1 ? T(` After ${H.length - 1} step(s) the loss went from ${f3(H[0])} to ${f3(L)}.`, ` 走了 ${H.length - 1} 步，損失從 ${f3(H[0])} 變成 ${f3(L)}。`) : '');
+  const R = String.raw, nm = i => R`\text{${SX_NAME[i]}}`, zn = z.map((v, i) => v - lr * gr[i]);
+  setFx('xe-svg', [
+    FX(['Loss at one position', '一個位置的損失'], R`\mathcal L=-\sum_{i=1}^{5}y_i\ln p_i=-\ln p_{${nm(tg)}}=-\ln ${f3(p[tg])}=${f3(L)},\qquad \mathbf y=(${y.join(',\\ ')}),\quad \mathbf p=(${p.map(f3).join(',\\ ')})`,
+      ['y is 1 for the true token and 0 elsewhere, so only one term of the sum survives: minus the log of the probability given to the true token.', 'y 在正確的 token 是 1、其餘是 0，所以求和只剩一項：正確 token 所得機率的負對數。']),
+    FX(['Gradient with respect to the scores', '損失對分數的梯度'], R`\begin{aligned}\dfrac{\partial\mathcal L}{\partial z_i}&=-\sum_{k=1}^{5}y_k\dfrac{\partial\ln p_k}{\partial z_i}=-\sum_{k=1}^{5}y_k\,(\delta_{ki}-p_i)=p_i\sum_{k=1}^{5}y_k-y_i=p_i-y_i\\[6pt]\mathbf p-\mathbf y&=(${gr.map(f3).join(',\\ ')})\end{aligned}`,
+      ['Uses ln p_k = z_k − ln Σ_j e^{z_j}, whose derivative with respect to z_i is δ_ki − p_i, and Σ_k y_k = 1. The result: predicted probability minus the one-hot answer.', '用到 ln p_k = z_k − ln Σ_j e^{z_j}，它對 z_i 的微分是 δ_ki − p_i；以及 Σ_k y_k = 1。結果就是：預測機率減去 one-hot 答案。']),
+    FX(['One gradient-descent step', '一步梯度下降'], R`\begin{aligned}z_i&\leftarrow z_i-\eta\,(p_i-y_i),\qquad \eta=${f2(lr)}\\[6pt]${[0, 1, 2, 3, 4].map(i => R`z_{${nm(i)}}&=${f2(z[i])}-${f2(lr)}\times${gr[i] < 0 ? `(${f3(gr[i])})` : f3(gr[i])}=${f2(zn[i])}`).join(R`\\[3pt]`)}\end{aligned}`,
+      ['Each score moves against its gradient. The true token\'s score rises, every other score falls. Press “step” to apply exactly these five updates.', '每個分數朝梯度的反方向移動。正確 token 的分數上升，其他每個分數下降。按「走一步」就是套用這五個更新。']),
+    FX(['Over a whole text, in the real model', '整段文字、真實模型'], R`\begin{aligned}\mathcal L_{\mathrm{train}}&=-\dfrac1N\sum_{t=1}^{N}\ln p_\theta\big(x_{t+1}\mid x_1,\dots,x_t\big),\qquad \mathrm{PPL}=e^{\mathcal L_{\mathrm{train}}}\\[6pt]\theta&\leftarrow\operatorname{AdamW}\big(\theta,\ \nabla_\theta\mathcal L_{\mathrm{train}};\ \eta,\beta_1,\beta_2,\epsilon,\lambda\big)\end{aligned}`,
+      ['The loss is averaged over all N positions. The scores are not parameters, so the gradient p − y is propagated back through the output matrix and the 32 blocks to every weight in θ, and AdamW (gradient descent with running averages and weight decay) updates the weights.', '損失在全部 N 個位置上取平均。分數不是參數，所以梯度 p − y 會經過輸出矩陣和 32 個區塊往回傳到 θ 裡的每個權重，再由 AdamW（帶有移動平均與權重衰減的梯度下降）更新權重。'])
+  ]);
+}
+function xeStep(k){ const lr = +$('#xe-lr').value / 100; for (let s = 0; s < k; s++) { const p = xeProbs(XE.z); XE.z = XE.z.map((v, i) => v - lr * (p[i] - (i === XE.tg ? 1 : 0))); XE.hist.push(-Math.log(xeProbs(XE.z)[XE.tg])); }
+  if (XE.hist.length > 61) XE.hist = XE.hist.slice(-61); xeRender(); }
+function xeReset(){ XE.z = SX_Z0.slice(); XE.hist = []; xeRender(); }
+$$('#xe-tg button').forEach(b => b.addEventListener('click', () => { XE.tg = +b.dataset.v; xeReset(); }));
+$('#xe-lr').addEventListener('input', xeRender);
+$('#xe-step').addEventListener('click', () => xeStep(1)); $('#xe-ten').addEventListener('click', () => xeStep(10)); $('#xe-reset').addEventListener('click', xeReset);
+G('xe-svg', {
+  'calL': ['loss: the number training tries to make small', '損失：訓練要盡量壓低的數字'],
+  'y': ['one-hot answer: 1 for the true next token, 0 for every other token', 'one-hot 答案：正確的下一個 token 是 1，其餘都是 0'],
+  'p': ['predicted probability (softmax of the scores)', '預測機率（分數經過 softmax）'],
+  'z': ['score (logit) of a candidate token', '候選 token 的分數（logit）'],
+  'η': ['learning rate: the size of one update step', '學習率：一步更新的步幅'],
+  'δ': ['Kronecker delta: 1 when its two indices are equal, 0 otherwise', 'Kronecker delta：兩個下標相同時是 1，否則是 0'],
+  '∂': ['partial derivative: how much the top changes when the bottom changes a little', '偏微分：下面的量變動一點點時，上面的量變多少'],
+  '∇': ['gradient: the partial derivatives with respect to every parameter', '梯度：對每個參數的偏微分'],
+  '←': ['update: replace the left side with the value on the right', '更新：用右邊的值取代左邊'],
+  'θ': ['all weights of the model', '模型的所有權重'],
+  'x': ['tokens of the training text; x_{t+1} is the true next token at position t', '訓練文字的 token；x_{t+1} 是第 t 個位置正確的下一個 token'],
+  'N': ['number of positions in the training text', '訓練文字的位置數'],
+  'PPL': ['perplexity: e to the power of the average loss', '困惑度：e 的「平均損失」次方'],
+  'AdamW': ['optimiser: gradient descent with running averages of the gradient and weight decay', '最佳化器：帶有梯度移動平均與權重衰減的梯度下降'],
+  'β': ['AdamW decay rates of the two running averages', 'AdamW 兩個移動平均的衰減率'],
+  'ϵ': ['AdamW\'s small constant that prevents division by zero', 'AdamW 用來避免除以零的小常數'],
+  'λ': ['AdamW weight-decay strength', 'AdamW 的權重衰減強度']
+});
+
 /* ============================ shared toy datasets ============================ */
 const KX = x => 320 + 50 * x, KY = y => 200 - 50 * y;       // uniform scale: 50 px per unit
 function makeData(kind, seed){
@@ -1840,6 +2205,8 @@ function pcaRender(){
   s += ax(t1, '#F4C26B', 1.4, true) + ax(th, '#8CB8FF', 2.2, false);
   PC.pts.forEach(p => { const t = (p[0] - mx) * u[0] + (p[1] - my) * u[1], q = [mx + t * u[0], my + t * u[1]];
     s += `<path d="M${PCX(p[0])} ${PCY(p[1])} L${PCX(q[0])} ${PCY(q[1])}" stroke="#8CB8FF" stroke-width=".6" opacity=".28"/><circle cx="${PCX(p[0])}" cy="${PCY(p[1])}" r="2.4" fill="#7C869C" opacity=".8"/><circle cx="${PCX(q[0])}" cy="${PCY(q[1])}" r="2.4" fill="#8CB8FF"/>`; });
+  { const p = PC.pts[0], t = (p[0] - mx) * u[0] + (p[1] - my) * u[1], q = [mx + t * u[0], my + t * u[1]];
+    s += `<path d="M${PCX(p[0])} ${PCY(p[1])} L${PCX(q[0])} ${PCY(q[1])}" stroke="#F4C26B" stroke-width="1.4"/><path d="M${PCX(mx)} ${PCY(my)} L${PCX(q[0])} ${PCY(q[1])}" stroke="#F4C26B" stroke-width="2.4" opacity=".8"/><circle cx="${PCX(p[0])}" cy="${PCY(p[1])}" r="5.5" fill="#080B12" stroke="#F4C26B" stroke-width="2"/><circle cx="${PCX(q[0])}" cy="${PCY(q[1])}" r="4" fill="#F4C26B"/><text x="${PCX(p[0]) + 8}" y="${PCY(p[1]) - 7}" font-size="11" fill="#F4C26B" style="font-family:var(--mono)">x₁</text>`; }
   s += `<text x="8" y="352" font-size="10.5" fill="#F4C26B">${T('dashed = PC1 (best axis)', '虛線＝PC1（最佳軸）')}</text>`;
   $('#pc-plot').innerHTML = s;
   /* variance vs angle */
@@ -1855,18 +2222,72 @@ function pcaRender(){
   $('#pc-note').innerHTML = $('#pc-data').value === 'round' ? T('<b>Reading:</b> a round cloud varies equally in every direction, so no axis is better — PCA has nothing to compress.', '<b>解讀：</b>圓形點雲每個方向的變動都一樣，沒有哪個軸比較好——PCA 沒有東西可以壓縮。')
     : near ? T('<b>Reading:</b> the axis lines up with the long direction of the cloud: the projected points (blue) keep the most spread.', '<b>解讀：</b>軸對準了點雲的長邊：投影後的點（藍色）保留了最大的分散程度。')
     : T('<b>Reading:</b> the blue dots are the points squeezed onto the axis. The more they bunch together, the more information was lost. Try “snap to PC1”.', '<b>解讀：</b>藍點是被壓到軸上的點。擠得越緊，丟掉的資訊越多。試試「對準 PC1」。');
+  const R = String.raw, N = PC.pts.length, p0 = PC.pts[0], dx0 = p0[0] - mx, dy0 = p0[1] - my, t0 = dx0 * u[0] + dy0 * u[1], len0 = Math.hypot(dx0, dy0), cphi = t0 / (len0 || 1);
   setFx('pc-plot', [
-    FX(['Variance along the axis', '沿軸的變異量'], `\\mathbf u^{\\top}\\Sigma\\,\\mathbf u=\\sigma_{xx}\\cos^2\\theta+2\\sigma_{xy}\\cos\\theta\\sin\\theta+\\sigma_{yy}\\sin^2\\theta=${f2(a)}(${f2(Math.cos(th) ** 2)})+${f2(2 * b)}(${f2(Math.cos(th) * Math.sin(th))})+${f2(c)}(${f2(Math.sin(th) ** 2)})=${f2(kept)}`,
-      ['Σ is the covariance matrix of the cloud and u the unit vector of the axis. This number is how spread out the points still are after projection. PCA chooses the u that makes it largest.', 'Σ 是點雲的共變異矩陣，u 是軸的單位向量。這個數字是投影後點還剩多分散。PCA 就是挑出讓它最大的 u。']),
-    FX(['Explained variance ratio', '解釋變異比'], `\\dfrac{\\lambda_1}{\\lambda_1+\\lambda_2}=\\dfrac{${f2(l1)}}{${f2(l1)}+${f2(l2)}}=${f2(l1 / tot)}`,
-      ['λ₁ and λ₂ are the eigenvalues of Σ: the variance along the best axis and along the axis perpendicular to it. With more dimensions you keep the first k components and report the share of variance they hold (LUNA keeps 3–10 for grids, 512–2,048 for clusters).', 'λ₁、λ₂ 是 Σ 的特徵值：最佳軸上的變異量，和垂直於它的軸上的變異量。維度更多時就保留前 k 個成分，並回報它們佔總變異的比例（LUNA 在網格劃分保留 3～10 個，分群保留 512～2,048 個）。']),
-    FX(['Information lost', '丟掉的資訊'], `\\operatorname{tr}\\Sigma-\\mathbf u^{\\top}\\Sigma\\,\\mathbf u=${f2(tot)}-${f2(kept)}=${f2(tot - kept)}`,
-      ['What is thrown away equals the average squared distance from each point to the axis (the thin lines in the figure). Best axis ⇒ least thrown away.', '丟掉的量等於每個點到軸的平均平方距離（圖中的細線）。軸最佳 ⇒ 丟得最少。'])
+    FX(['Project a point onto the axis', '把一個點投影到軸上'], R`\mathbf u=(\cos\theta,\ \sin\theta)=(${f2(u[0])},\ ${f2(u[1])}),\qquad t_n=\mathbf u^{\top}(\mathbf x_n-\boldsymbol\mu)=\lVert\mathbf x_n-\boldsymbol\mu\rVert\cos\varphi_n:\qquad t_1=${texNum(u[0])}\times${texNum(dx0)}+${texNum(u[1])}\times${texNum(dy0)}=${f2(t0)}=${f2(len0)}\times${texNum(cphi)}`,
+      ['u is the unit vector of the axis; cos θ and sin θ are simply its two coordinates. The position t of a point along the axis is a dot product, which equals the point\'s distance from the centre times the cosine of the angle φ between the point and the axis. Unlike cosine similarity, the length is not divided out.', 'u 是軸的單位向量，cos θ 和 sin θ 就是它的兩個座標。點在軸上的位置 t 是一個內積，等於這個點離中心的距離乘上點與軸夾角 φ 的餘弦。和餘弦相似度不同的是，長度沒有被除掉。']),
+    FX(['Mean and covariance matrix', '平均與共變異矩陣'], R`\boldsymbol\mu=\dfrac1N\sum_{n=1}^{N}\mathbf x_n=(${f2(mx)},\ ${f2(my)}),\qquad \Sigma=\dfrac1N\sum_{n=1}^{N}(\mathbf x_n-\boldsymbol\mu)(\mathbf x_n-\boldsymbol\mu)^{\top}=\begin{bmatrix}\sigma_{xx}&\sigma_{xy}\\\sigma_{xy}&\sigma_{yy}\end{bmatrix}=\begin{bmatrix}${f2(a)}&${f2(b)}\\${f2(b)}&${f2(c)}\end{bmatrix},\qquad N=${N}`,
+      ['The mean is the centre of the cloud. Σ averages, over all points, the products of the centred coordinates: x with x, x with y, y with y. It is all PCA needs to know about the cloud.', '平均值是點雲的中心。Σ 是對所有點，把中心化後的座標兩兩相乘再取平均：x 乘 x、x 乘 y、y 乘 y。PCA 需要知道的點雲資訊全在這裡。']),
+    FX(['Variance along the axis', '沿軸的變異量'], R`\dfrac1N\sum_{n=1}^{N}t_n^2=\mathbf u^{\top}\Sigma\,\mathbf u=\sigma_{xx}\cos^2\theta+2\sigma_{xy}\cos\theta\sin\theta+\sigma_{yy}\sin^2\theta=${f2(a)}\times${f2(Math.cos(th) ** 2)}+2\times${texNum(b)}\times${texNum(Math.cos(th) * Math.sin(th))}+${f2(c)}\times${f2(Math.sin(th) ** 2)}=${f2(kept)}`,
+      ['The variance of the positions t is how spread out the points still are after projection. Writing u as (cos θ, sin θ) and multiplying out gives the three terms. PCA chooses the u that makes this largest.', '位置 t 的變異數，就是投影後點還剩多分散。把 u 寫成 (cos θ, sin θ) 再乘開，就得到這三項。PCA 就是挑出讓它最大的 u。']),
+    FX(['Best axis: eigenvector of Σ', '最佳軸：Σ 的特徵向量'], R`\Sigma\,\mathbf w_i=\lambda_i\mathbf w_i,\qquad \lambda_{1},\lambda_{2}=\dfrac{\sigma_{xx}+\sigma_{yy}}{2}\pm\sqrt{\Big(\dfrac{\sigma_{xx}-\sigma_{yy}}{2}\Big)^{2}+\sigma_{xy}^{2}}=${f2(tot / 2)}\pm${f2(d)}:\quad \lambda_1=${f2(l1)},\ \lambda_2=${f2(l2)},\qquad \theta_1=\tfrac12\operatorname{atan2}\big(2\sigma_{xy},\ \sigma_{xx}-\sigma_{yy}\big)=${(t1 * 180 / Math.PI).toFixed(0)}^{\circ}`,
+      ['An eigenvector is a direction that Σ only stretches, without turning it; the stretch factor is the eigenvalue. The eigenvector with the largest eigenvalue is PC1 (the dashed line), and the variance along it is λ₁. For a 2 × 2 matrix both have a closed form.', '特徵向量是被 Σ 作用後只會伸縮、不會轉向的方向；伸縮的倍數就是特徵值。特徵值最大的特徵向量就是 PC1（虛線），沿它的變異量是 λ₁。2 × 2 矩陣的這兩個量都有公式解。']),
+    FX(['Explained variance ratio', '解釋變異比'], R`\dfrac{\lambda_1}{\lambda_1+\lambda_2}=\dfrac{${f2(l1)}}{${f2(l1)}+${f2(l2)}}=${f2(l1 / tot)}`,
+      ['λ₁ and λ₂ are the variance along the best axis and along the axis perpendicular to it; together they are the total variance. The ratio is the share one axis keeps.', 'λ₁、λ₂ 是最佳軸上、以及垂直於它的軸上的變異量；兩者相加就是總變異量。這個比值是一條軸保留的比例。']),
+    FX(['Information lost', '丟掉的資訊'], R`\dfrac1N\sum_{n=1}^{N}\big\lVert(\mathbf x_n-\boldsymbol\mu)-t_n\mathbf u\big\rVert^{2}=\operatorname{tr}\Sigma-\mathbf u^{\top}\Sigma\,\mathbf u=(\sigma_{xx}+\sigma_{yy})-\mathbf u^{\top}\Sigma\,\mathbf u=(${f2(a)}+${f2(c)})-${f2(kept)}=${f2(tot - kept)}`,
+      ['What is thrown away equals the average squared distance from each point to the axis (the thin lines in the figure). Best axis ⇒ least thrown away.', '丟掉的量等於每個點到軸的平均平方距離（圖中的細線）。軸最佳 ⇒ 丟得最少。']),
+    FX(['In LUNA: k of d dimensions', '在 LUNA 裡：d 維取 k 維'], R`W_k=[\mathbf w_1,\mathbf w_2,\dots,\mathbf w_k]\in\mathbb R^{d\times k},\qquad \mathbf z=W_k^{\top}(\mathbf h-\boldsymbol\mu)\in\mathbb R^{k},\qquad d=4096,\quad k\in\{3,5,10\}\ (\text{Grid}),\quad k\in\{512,1024,2048\}\ (\text{KMeans, GMM})`,
+      ['The first k eigenvectors become the columns of W_k. Compressing a hidden vector is k dot products with the centred vector. μ and W_k are fitted on the training data only.', '前 k 個特徵向量排成 W_k 的各欄。壓縮一個隱藏向量，就是把中心化後的向量做 k 個內積。μ 和 W_k 只用訓練資料擬合。'])
   ]);
 }
 $('#pc-data').addEventListener('input', () => { pcaInit(); pcaRender(); });
 $('#pc-ang').addEventListener('input', pcaRender);
 $('#pc-snap').addEventListener('click', () => { let t1 = .5 * Math.atan2(2 * PC.S[1], PC.S[0] - PC.S[2]); if (t1 < 0) t1 += Math.PI; $('#pc-ang').value = Math.round(t1 * 180 / Math.PI) % 180; pcaRender(); });
+
+/* ============================ 04b SwiGLU ============================ */
+function sgRender(){
+  const u = +$('#sg-u').value / 10, v = +$('#sg-v').value / 10, silu = x => x / (1 + Math.exp(-x)), sig = 1 / (1 + Math.exp(-u)), g = silu(u), out = g * v;
+  $('#sg-uv').textContent = f1(u); $('#sg-vv').textContent = f1(v);
+  const CM = '#7C869C', nm = x => (x < 0 ? '−' : '') + Math.abs(x).toFixed(2);
+  const tx = (x, y, s, o = {}) => `<text x="${x}" y="${y}" text-anchor="${o.a || 'start'}" font-size="${o.fs || 11}" font-weight="${o.w || 400}" fill="${o.c || '#E7EBF3'}" style="font-family:var(--${o.sans ? 'sans' : 'mono'})">${esc(s)}</text>`;
+  const box = (x, y, w, t1, t2, col) => `<rect x="${x}" y="${y}" width="${w}" height="40" rx="7" fill="#161D2B" stroke="${col || '#3A4458'}" stroke-width="1.3"/>` + tx(x + w / 2, y + 17, t1, {a: 'middle', fs: 12, w: 700}) + tx(x + w / 2, y + 32, t2, {a: 'middle', fs: 9.5, c: CM, sans: 1});
+  const arr = d => `<path d="${d}" fill="none" stroke="${CM}" stroke-width="1.4" marker-end="url(#sga)"/>`;
+  let s = `<defs><marker id="sga" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="${CM}"/></marker></defs>`;
+  /* flow chart: x -> W1 -> SiLU -> (x) <- W3 <- x ; -> W2 -> out */
+  s += box(10, 46, 70, 'x', '4,096') + arr('M80 56 H118') + arr('M80 76 H96 V118 H118')
+    + box(120, 16, 84, 'W₁', '→ 11,008', '#7A6230') + arr('M204 36 H238') + box(240, 16, 84, 'SiLU', T('gate', '閘門'), '#8CB8FF')
+    + box(120, 98, 84, 'W₃', '→ 11,008', '#7A6230')
+    + arr('M324 36 H386 V54') + arr('M204 118 H386 V80')
+    + `<circle cx="386" cy="67" r="12" fill="#0B0F17" stroke="#F4C26B" stroke-width="1.5"/>` + tx(386, 72, '⊙', {a: 'middle', fs: 14, c: '#F4C26B'})
+    + arr('M398 67 H448') + box(450, 47, 84, 'W₂', '→ 4,096', '#7A6230') + arr('M534 67 H566') + box(568, 47, 62, 'Δm', '4,096');
+  s += tx(222, 10, 'u = ' + nm(u), {a: 'middle', fs: 10.5, c: '#F4C26B'}) + tx(356, 28, nm(g), {a: 'middle', fs: 10.5, c: '#F4C26B'}) + tx(296, 112, 'v = ' + nm(v), {a: 'middle', fs: 10.5, c: '#5FD3A0'}) + tx(424, 60, nm(out), {a: 'middle', fs: 10.5, c: '#F4C26B', w: 700});
+  /* SiLU curve */
+  const X = x => 60 + (x + 6) / 12 * 540, Y = y => 400 - (y + 1) / 7 * 230, pts = [...Array(121)].map((_, i) => -6 + i * .1);
+  s += `<path d="M${X(-6)} ${Y(0)} H${X(6)} M${X(0)} ${Y(-1)} V${Y(6)}" stroke="#2F3A50" fill="none"/>`
+    + [-6, -4, -2, 2, 4, 6].map(t => tx(X(t), Y(0) + 14, t, {a: 'middle', fs: 9.5, c: CM})).join('') + [2, 4, 6].map(t => tx(X(0) - 6, Y(t) + 4, t, {a: 'end', fs: 9.5, c: CM})).join('') + tx(X(6), Y(0) - 6, 'u', {a: 'end', fs: 10.5, c: CM})
+    + `<path d="M${X(-6)} ${Y(0)} L${X(0)} ${Y(0)} L${X(6)} ${Y(6)}" fill="none" stroke="${CM}" stroke-width="1.3" stroke-dasharray="5 4"/>`
+    + `<path d="${pts.map((x, i) => (i ? 'L' : 'M') + X(x).toFixed(1) + ' ' + Y(silu(x)).toFixed(1)).join(' ')}" fill="none" stroke="#8CB8FF" stroke-width="2.2"/>`
+    + `<circle cx="${X(-1.278)}" cy="${Y(-.278)}" r="3" fill="#8CB8FF"/>` + tx(X(-1.278), Y(-.278) + 16, T('minimum ≈ −0.28', '最小值 ≈ −0.28'), {a: 'middle', fs: 9.5, c: '#8CB8FF', sans: 1})
+    + `<path d="M${X(u)} ${Y(0)} V${Y(g)} H${X(0)}" fill="none" stroke="#F4C26B" stroke-width="1" stroke-dasharray="3 3"/><circle cx="${X(u)}" cy="${Y(g)}" r="6" fill="#F4C26B" stroke="#080B12" stroke-width="1.5"/>`
+    + tx(X(u) + (u > 3.5 ? -10 : 10), Y(g) - 9, `SiLU(${nm(u)}) = ${nm(g)}`, {a: u > 3.5 ? 'end' : 'start', fs: 11, c: '#F4C26B', w: 700});
+  $('#sg-svg').innerHTML = s;
+  $('#sg-scores').innerHTML = stat([['σ(u)', f2(sig), T('between 0 and 1', '介於 0 和 1')], [T('gate SiLU(u)', '閘門 SiLU(u)'), nm(g), 'u · σ(u)'], [T('unit output', '單元輸出'), nm(out), 'SiLU(u) · v']]);
+  $('#sg-note').innerHTML = u < -3 ? T('<b>Gate nearly closed:</b> for a clearly negative u, SiLU is close to 0, so this unit passes almost nothing whatever v is.', '<b>閘門幾乎關上：</b>u 明顯為負時，SiLU 接近 0，不管 v 是多少，這個單元幾乎不輸出。')
+    : u < 0 ? T('<b>Slightly negative gate:</b> between about −3 and 0, SiLU dips below 0 (lowest near u = −1.28), so the unit passes a small amount of v with the sign flipped. ReLU would give exactly 0 here.', '<b>閘門略為負：</b>u 大約在 −3 到 0 之間時，SiLU 會略低於 0（最低點在 u ≈ −1.28），所以這個單元會讓一小部分 v 以相反的正負號通過。ReLU 在這裡會剛好是 0。')
+    : T('<b>Gate open:</b> for positive u, SiLU is close to u itself, so the output is roughly u × v — the two branches multiply each other.', '<b>閘門打開：</b>u 為正時，SiLU 接近 u 本身，所以輸出大約是 u × v——兩條支路互相相乘。');
+  const pn = x => x < 0 ? `(${x.toFixed(2)})` : x.toFixed(2);
+  setFx('sg-svg', [
+    FX(['SiLU (Swish)', 'SiLU（Swish）'], `\\mathrm{SiLU}(u)=u\\,\\sigma(u)=\\dfrac{u}{1+e^{-u}}:\\qquad \\mathrm{SiLU}(${pn(u)})=${pn(u)}\\times${f2(sig)}=${g.toFixed(2)}`,
+      ['σ is the sigmoid, a number between 0 and 1. Multiplying u by it gives a smooth curve that is about 0 for very negative u and about u for large positive u.', 'σ 是 sigmoid，一個介於 0 和 1 的數。把 u 乘上它，得到一條平滑的曲線：u 很負時約為 0，u 很大時約等於 u。']),
+    FX(['One hidden unit', '一個隱藏單元'], `\\big(\\mathrm{SiLU}(W_1\\mathbf x)\\odot W_3\\mathbf x\\big)_j=\\mathrm{SiLU}(u_j)\\,v_j=${g.toFixed(2)}\\times${pn(v)}=${out.toFixed(2)}`,
+      ['⊙ multiplies the two branches unit by unit. Each of the 11,008 hidden units does this with its own u and v.', '⊙ 把兩條支路逐個單元相乘。11,008 個隱藏單元各自用自己的 u 和 v 做這件事。']),
+    FX(['The whole layer', '整個前饋層'], `\\mathrm{FFN}(\\mathbf x)=W_2\\big(\\mathrm{SiLU}(W_1\\mathbf x)\\odot W_3\\mathbf x\\big),\\qquad W_1,W_3\\in\\mathbb R^{11008\\times4096},\\quad W_2\\in\\mathbb R^{4096\\times11008}`,
+      ['Three matrices and no bias. The result is the change Δm that the block adds back to the token’s vector.', '三個矩陣，沒有偏差項。算出來的就是區塊要加回 token 向量的修改量 Δm。']),
+    FX(['Why 11,008', '為什麼是 11,008'], `\\tfrac23\\times4\\times4096=10922.7\\ \\xrightarrow{\\ \\text{round up to a multiple of }256\\ }\\ 43\\times256=11008`,
+      ['A plain MLP has two matrices and a hidden width of 4d. SwiGLU has three, so the hidden width is cut to two thirds to keep the parameter count about the same.', '普通 MLP 有兩個矩陣、隱藏寬度 4d。SwiGLU 有三個矩陣，所以把隱藏寬度砍成三分之二，讓參數量大致不變。'])
+  ]);
+}
+['sg-u', 'sg-v'].forEach(id => $('#' + id).addEventListener('input', sgRender));
 
 /* ============================ 05b Grid + history step ============================ */
 const CG = {N: 1};
@@ -2983,7 +3404,7 @@ G('rn-mk', {
 /* ============================ menu + one section per page ============================ */
 const NAV = [
   {g: ['Home', '首頁'], items: [['home', 'Home', '首頁']]},
-  {g: ['LLM', 'LLM'], items: [['llm', 'LLM overview', 'LLM 概觀'], ['tokenization', 'Tokenization', '分詞'], ['embedding', 'Embedding', '嵌入向量'], ['attention', 'Self-attention', '自注意力'], ['decoder', 'Decoder block', '解碼器區塊'], ['sampling', 'Next-token sampling', '下一字取樣'], ['probing', 'Probing / ITI', '探測 / ITI'], ['rnn', 'RNN vs Transformer', 'RNN 與 Transformer']]},
+  {g: ['LLM', 'LLM'], items: [['llm', 'LLM overview', 'LLM 概觀'], ['tokenization', 'Tokenization', '分詞'], ['embedding', 'Embedding', '嵌入向量'], ['softmax', 'Softmax', 'Softmax'], ['attention', 'Self-attention', '自注意力'], ['rmsnorm', 'RMSNorm', 'RMSNorm'], ['decoder', 'Decoder block', '解碼器區塊'], ['swiglu', 'SwiGLU', 'SwiGLU'], ['sampling', 'Next-token sampling', '下一字取樣'], ['xent', 'Cross-entropy & gradient step', '交叉熵與梯度更新'], ['probing', 'Probing / ITI', '探測 / ITI'], ['rnn', 'RNN vs Transformer', 'RNN 與 Transformer']]},
   {g: ['Abstraction', '降維與分群'], items: [['pca', 'PCA', 'PCA'], ['grid', 'Grid', 'Grid'], ['kmeans', 'K-Means', 'K-Means'], ['gmm', 'GMM', 'GMM']]},
   {g: ['Probabilistic models', '機率模型'], items: [['markov', 'Markov chain', '馬可夫鏈'], ['hmm', 'HMM', 'HMM']]},
   {g: ['Detection & metrics', '偵測與評估'], items: [['ood', 'Out-of-distribution', '分布外'], ['adv', 'Adversarial attacks', '對抗攻擊'], ['hal', 'Hallucination', '幻覺'], ['roc', 'ROC / AUC', 'ROC / AUC'], ['kl', 'KL & perplexity', 'KL 與困惑度'], ['metrics', 'Equations & the 12 metrics', '公式與 12 個指標']]},
@@ -3115,7 +3536,7 @@ function showSec(id){
 function route(){ showSec(decodeURIComponent(location.hash.slice(1))); }
 addEventListener('hashchange', route);
 
-function renderAll(){ menuRender(); renderLoop(); tokenizer(); bpe(); embedding(); attention(); decoderPage(); sampling(); pcaRender(); cgRender(); kmRender(); gmRender(); markov(); hmm(); klRender(); rocPage(); oodPage(); adxPage(); advPage(); hlxPage(); halPage(); probing(); rnPage(); metricsPage(); }
+function renderAll(){ menuRender(); renderLoop(); tokenizer(); bpe(); embedding(); sxRender(); attention(); rmsRender(); decoderPage(); sampling(); xeRender(); pcaRender(); sgRender(); cgRender(); kmRender(); gmRender(); markov(); hmm(); klRender(); rocPage(); oodPage(); adxPage(); advPage(); hlxPage(); halPage(); probing(); rnPage(); metricsPage(); }
 function setLang(l){
   lang = l; document.documentElement.setAttribute('data-lang', l); document.documentElement.lang = l === 'zh' ? 'zh-Hant' : 'en';
   $('#lang-en').setAttribute('aria-pressed', l === 'en'); $('#lang-zh').setAttribute('aria-pressed', l === 'zh');
@@ -3189,7 +3610,7 @@ addEventListener('keydown', e => {   // ` toggles EN / 中文 (e.code so it also
     'GPT-judge':['GPT-judge: a GPT-3 model fine-tuned to label TruthfulQA answers true or false','GPT-judge：微調過、用來把 TruthfulQA 答案標成真或假的 GPT-3 模型'],
     'DATASET':['Copied from a real dataset (AdvGLUE++), not made up','直接取自真實資料集（AdvGLUE++），不是編的']
   };
-  const CONCEPT = {LLM:'llm', LLMs:'llm', PCA:'pca', PC1:'pca', GMM:'gmm', KMeans:'kmeans', 'K-Means':'kmeans', 'Self-attention':'attention', 'self-attention':'attention', Embedding:'embedding', embedding:'embedding', Softmax:'sampling', softmax:'sampling', DTMC:'markov', DTMCs:'markov', Markov:'markov', SDE:'markov', SS:'markov', HMM:'hmm', HMMs:'hmm', 'Baum-Welch':'hmm', Viterbi:'hmm', KL:'kl', PERP:'kl', SL:'kl', Perplexity:'kl', perplexity:'kl', ROC:'roc', AUC:'roc', AUCs:'roc', TPR:'roc', FPR:'roc', TP:'roc', TN:'roc', FP:'roc', FN:'roc', OOD:'ood', TruthfulQA:'hal', 'GPT-judge':'hal', AdvGLUE:'adv', TextBugger:'adv', TextFooler:'adv', SememePSO:'adv', SemAttack:'adv', 'BERT-ATTACK':'adv', SAPLMA:'probing', ITI:'probing', RNN:'rnn', RNNs:'rnn', KV:'rnn', BPE:'tokenization', WordPiece:'tokenization', SentencePiece:'tokenization', Tokenizer:'tokenization', tokenizer:'tokenization', Tokenization:'tokenization', tokenization:'tokenization'};
+  const CONCEPT = {LLM:'llm', LLMs:'llm', PCA:'pca', PC1:'pca', GMM:'gmm', KMeans:'kmeans', 'K-Means':'kmeans', 'Self-attention':'attention', 'self-attention':'attention', Embedding:'embedding', embedding:'embedding', Softmax:'softmax', softmax:'softmax', RMSNorm:'rmsnorm', 'Cross-entropy':'xent', 'cross-entropy':'xent', DTMC:'markov', DTMCs:'markov', Markov:'markov', SDE:'markov', SS:'markov', HMM:'hmm', HMMs:'hmm', 'Baum-Welch':'hmm', Viterbi:'hmm', KL:'kl', PERP:'kl', SL:'kl', Perplexity:'kl', perplexity:'kl', ROC:'roc', AUC:'roc', AUCs:'roc', TPR:'roc', FPR:'roc', TP:'roc', TN:'roc', FP:'roc', FN:'roc', OOD:'ood', TruthfulQA:'hal', 'GPT-judge':'hal', AdvGLUE:'adv', TextBugger:'adv', TextFooler:'adv', SememePSO:'adv', SemAttack:'adv', 'BERT-ATTACK':'adv', SAPLMA:'probing', ITI:'probing', RNN:'rnn', RNNs:'rnn', KV:'rnn', BPE:'tokenization', WordPiece:'tokenization', SentencePiece:'tokenization', Tokenizer:'tokenization', tokenizer:'tokenization', Tokenization:'tokenization', tokenization:'tokenization'};
   const TOK = /[A-Za-z0-9\-]/;
   const SKIP = 'script,style,code,pre,input,select,textarea,button,option,[data-tip],#tip,#drawer,.katex';
   let raf = 0, last = null;
