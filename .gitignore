@@ -24,6 +24,9 @@ notes/LUNA_翻譯.md
 # third-party reference code (cloned, not our work)
 luna-author-code/
 
+# Manim render caches (partial clips, Text / image caches); the encoded *.mp4 next to each scene is what the pages use
+web/assets/*/media/
+
 # python / tooling
 __pycache__/
 *.pyc

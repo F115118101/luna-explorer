@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>LUNA, End to End</title>
+<title>LUNA: A Model-Based Universal Analysis Framework for Large Language Models</title>
 <!-- luna_v3.html (experimental layout: formulas in a left pane, prose + widgets on the right) — one running example from LLM to ROC AUC, bilingual (EN default, ` toggles).
      Running config (paper Table IX, Hallucination-TQA, Llama2-7b): PCA 3 · Grid 5/dim (5^3 = 125 states) · DTMC · ROC AUC 0.65.
      Every widget uses invented toy data (badge TOY); units 02–07 share one toy dataset run through the authors' algorithm
@@ -571,6 +571,18 @@ svg .band.hot{fill:color-mix(in srgb,var(--lk,#F4C26B) 16%,transparent)!importan
 .follow-fab[aria-pressed="false"]{color:#7C869C}
 .follow-fab svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 @media(min-width:1100px){.follow-fab{display:flex}}
+.ctrl-row[hidden]{display:none!important}
+/* pre-rendered Manim animations + custom scrubber (from luna.html): native <video controls> only
+   seeks on mouse-up in most browsers; the scrubber sets currentTime on every pointermove */
+.intro-video{width:100%;display:block;border-radius:7px 7px 0 0;background:#05070c;border:1px solid var(--rule);border-bottom:0;cursor:pointer}
+.player{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface);border:1px solid var(--rule);border-radius:0 0 7px 7px;user-select:none}
+.player-play{flex:none;width:28px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;font-size:12px;line-height:1;background:var(--surface-2);color:var(--ink);border:1px solid var(--rule);cursor:pointer}
+.player-seek{flex:1;min-width:0;position:relative;height:20px;display:flex;align-items:center;cursor:pointer;touch-action:none}
+.player-seek-track{position:absolute;left:0;right:0;height:4px;border-radius:999px;background:var(--rule)}
+.player-seek-fill{position:absolute;left:0;height:4px;border-radius:999px;background:var(--accent)}
+.player-seek-thumb{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;background:var(--accent);transform:translate(-50%,-50%);box-shadow:0 0 0 3px rgba(140,184,255,.22)}
+.player-seek:hover .player-seek-thumb{box-shadow:0 0 0 5px rgba(140,184,255,.3)}
+.player-time{font-family:var(--mono);font-size:11px;color:var(--muted);min-width:4.5em;text-align:right;white-space:nowrap}
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js" onload="window.__katexReady&&window.__katexReady()"></script>
@@ -609,7 +621,7 @@ svg .band.hot{fill:color-mix(in srgb,var(--lk,#F4C26B) 16%,transparent)!importan
 <!-- ============================ 00 hero ============================ -->
 <section class="hero" id="top">
   <p class="eyebrow"><span lang="en">LUNA paper walkthrough · formulas left, widgets right</span><span lang="zh">LUNA 論文導讀 · 左邊公式、右邊圖表</span></p>
-  <h1><span lang="en">From LLM to LUNA,<br>following one sentence</span><span lang="zh">從 LLM 到 LUNA，<br>跟著一句話走一遍</span></h1>
+  <h1>LUNA: A Model-Based Universal Analysis Framework<br>for Large Language Models</h1>
   <p class="lede"><span lang="en">Follow one false answer from the words the model generates to LUNA's hallucination score. The same answer runs through every stage, so you can see what each stage receives and passes on.</span><span lang="zh">跟著同一句錯誤回答，從模型生成的文字一路走到 LUNA 的幻覺分數。每一步都接著上一個結果，讓你看清楚它收到什麼、又交出什麼。</span></p>
   <p class="note hero-example"><span lang="en"><b>The example (paper, Fig. 4):</b> asked “Which is denser, water vapor or air?”, the model answers “Water vapor is denser than air.” That is false (water vapor is lighter), so this is a <b>hallucination</b>. Every unit below uses this answer.</span><span lang="zh"><b>例句（論文圖 4）：</b>問「Which is denser, water vapor or air?」，模型答「Water vapor is denser than air.」——這是錯的（水蒸氣比空氣輕），所以它是一個<b>幻覺</b>樣本。下面每個單元都用這句話。</span></p>
   <details class="setup-details"><summary><span lang="en">Experiment settings and data sources</span><span lang="zh">展開實驗設定與資料來源</span></summary>
@@ -694,6 +706,16 @@ svg .band.hot{fill:color-mix(in srgb,var(--lk,#F4C26B) 16%,transparent)!importan
     <p><span lang="en">PCA is not just “a rotation”. With <i>k</i> = <i>d</i> it only changes the coordinate system and loses nothing; the reduction comes from <strong>throwing away the last <i>d</i> − <i>k</i> coordinates</strong>, and the error this causes is exactly the sum of the discarded eigenvalues (formula 04). The textbook 2-D picture is the special case <i>d</i> = 2, <i>k</i> = 1.</span><span lang="zh">PCA 不只是「旋轉」。<i>k</i> = <i>d</i> 時它只換了座標系，什麼都沒丟；降維來自<strong>丟掉後面 <i>d</i> − <i>k</i> 個座標</strong>，造成的誤差剛好等於被丟掉的特徵值總和（公式 04）。課本常畫的二維圖只是 <i>d</i> = 2、<i>k</i> = 1 的特例。</span></p>
   </div>
   <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">One token from start to finish: embedding → 32 blocks → last layer → PCA to ℝ³</span><span lang="zh">一個 token 從頭走到尾：嵌入 → 32 個區塊 → 最後一層 → PCA 到 ℝ³</span></p><p class="fig-note"><span lang="en">Pre-rendered animation (Manim)</span><span lang="zh">預先算好的動畫（Manim）</span></p><span class="badge">TOY</span></div>
+    <div style="padding:16px 18px">
+      <video class="intro-video" id="v-intro" poster="assets/intro-anim/intro-v2-poster.jpg" preload="auto" playsinline>
+        <source src="assets/intro-anim/intro-v2.mp4" type="video/mp4">
+      </video>
+      <div class="player" id="v-intro-player"></div>
+      <p class="note" style="margin-top:12px"><span lang="en">The first token is computed step by step in the left pane; the other tokens run faster. The last-layer entries, every token’s PCA coordinates and the grey training cloud are this page’s toy numbers; the token ids, layers 1–31 and the W, μ entries are simulated to fit them.</span><span lang="zh">第一個 token 在左邊逐步計算，其餘的 token 加快播放。最後一層的數值、每個 token 的 PCA 座標和灰色訓練點雲都是本頁的玩具數字；token id、第 1–31 層和 W、μ 的數值是配合它們模擬的。</span></p>
+    </div>
+  </div>
+  <div class="figure">
     <div class="fig-head"><p class="fig-title"><span lang="en">PCA from d dimensions to k dimensions</span><span lang="zh">PCA：從 d 維降到 k 維</span></p><p class="fig-note"><span lang="en">Top: the three matrices written out as numbers (first and last rows and columns only). Bottom: the eigenvalues of C — blue are kept, red are thrown away. PCA is refitted on the first d features of the toy training tokens every time you change d.</span><span lang="zh">上：三個矩陣的實際數字（只寫出頭尾幾列、幾欄）。下：C 的特徵值——藍色保留、紅色丟掉。每次改 d，都會在玩具訓練 token 的前 d 個特徵上重新擬合 PCA。</span></p><span class="badge">TOY</span></div>
     <div class="demo">
       <div class="demo-vis">
@@ -722,16 +744,17 @@ svg .band.hot{fill:color-mix(in srgb,var(--lk,#F4C26B) 16%,transparent)!importan
   <div class="io" id="io-grid"></div>
   <div class="col">
     <p><span lang="en">Find each dimension’s minimum and maximum over the training data and split that range into <i>m</i> equal cells. The cell a point falls into along dimension <i>i</i> is <i>c</i><sub>i</sub>; the three cell numbers together name one small box, an <strong>abstract state</strong> <i>s̄</i>. With <i>m</i> = 5 and <i>k</i> = 3 there are 125 boxes, numbered 0–124.</span><span lang="zh">在訓練資料上找出每一維的最小值與最大值，把這段範圍均分成 <i>m</i> 格。一個點在第 <i>i</i> 維落在第幾格，就是 <i>c</i><sub>i</sub>；三個格號合起來決定一個小方塊，也就是一個<strong>抽象狀態</strong> <i>s̄</i>。<i>m</i> = 5、<i>k</i> = 3 時共有 125 個方塊，編號 0–124。</span></p>
-    <p><span lang="en">The figure shows the plane of components 1 and 2; the slice slider picks component 3. Click a token of the example to see its cell and its state number computed in the left pane.</span><span lang="zh">下圖是第 1、2 主成分的平面，第 3 主成分用切片滑桿選。點例句的 token，左邊會算出它落在哪一格、編號是多少。</span></p>
+    <p><span lang="en">The figure shows the whole 5 × 5 × 5 grid in 3D; drag it (or use the arrow keys) to turn it. The “slice” view shows the plane of components 1 and 2 instead, with a slider for component 3. Click a token of the example to see its cell and its state number computed in the left pane.</span><span lang="zh">下圖是整個 5 × 5 × 5 的 3D 格子，可以拖曳（或用方向鍵）旋轉。切到「切片」則改看第 1、2 主成分的平面，第 3 主成分用滑桿選。點例句的 token，左邊會算出它落在哪一格、編號是多少。</span></p>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">The grid over PCA space</span><span lang="zh">PCA 空間上的格子</span></p><p class="fig-note"><span lang="en">Filled dots = training tokens in the current slice; hollow = other slices. White path = the example; amber box = the selected token's cell.</span><span lang="zh">實心點＝落在目前切片的訓練 token；空心＝在別的切片。白色路徑是例句；黃框是選中 token 所在的格。</span></p><span class="badge">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">The grid over PCA space</span><span lang="zh">PCA 空間上的格子</span></p><p class="fig-note"><span lang="en">3D: green / red dots = training tokens of true / false answers; drag to rotate. Slice: filled dots = training tokens in the current slice, hollow = other slices. White path = the example; amber box = the selected token's cell.</span><span lang="zh">3D：綠／紅點＝真實／不真實回答的訓練 token，可拖曳旋轉。切片：實心點＝落在目前切片的訓練 token，空心＝在別的切片。白色路徑是例句；黃框是選中 token 所在的格。</span></p><span class="badge">TOY</span></div>
     <div class="demo">
-      <div class="demo-vis"><div class="vis-box"><svg class="stage" id="grid-svg" viewBox="0 0 560 440"></svg></div></div>
+      <div class="demo-vis"><div class="vis-box"><svg class="stage" id="grid-svg" viewBox="0 0 560 440" tabindex="0" aria-label="3D grid; drag or use arrow keys to rotate"></svg></div></div>
       <div class="demo-side">
         <div class="ctrls">
           <div class="ctrl-row" data-tab="3" data-link="m"><span class="ctrl-lab"><span lang="en">cells per dim, m</span><span lang="zh">每維格數 m</span></span><div class="seg" id="grid-m"><button type="button" data-v="5" aria-pressed="true">5</button><button type="button" data-v="10" aria-pressed="false">10</button><button type="button" data-v="15" aria-pressed="false">15</button></div></div>
-          <div class="ctrl-row" data-tab="1" data-link="c3"><label class="ctrl-lab" for="grid-z"><span lang="en">slice of dim 3, c₃</span><span lang="zh">第 3 維切片 c₃</span></label><input type="range" id="grid-z" min="0" max="4" value="2"><span class="kval" id="grid-zv"></span></div>
+          <div class="ctrl-row"><span class="ctrl-lab"><span lang="en">view</span><span lang="zh">視圖</span></span><div class="seg" id="grid-view"><button type="button" data-v="3d" aria-pressed="true">3D</button><button type="button" data-v="slice" aria-pressed="false"><span lang="en">slice</span><span lang="zh">切片</span></button></div></div>
+          <div class="ctrl-row" id="grid-z-row" data-tab="1" data-link="c3" hidden><label class="ctrl-lab" for="grid-z"><span lang="en">slice of dim 3, c₃</span><span lang="zh">第 3 維切片 c₃</span></label><input type="range" id="grid-z" min="0" max="4" value="2"><span class="kval" id="grid-zv"></span></div>
           <div class="ctrl-row"><label class="switch"><input type="checkbox" id="grid-sem"><span lang="en">colour cells by semantics θ̄</span><span lang="zh">依語意 θ̄ 著色格子</span></label></div>
           <div class="ctrl-row" data-tab="2"><div class="tok-row" id="grid-toks"></div></div>
         </div>
@@ -752,10 +775,21 @@ svg .band.hot{fill:color-mix(in srgb,var(--lk,#F4C26B) 16%,transparent)!importan
     <p><span lang="en">On TruthfulQA the score uses the semantics of <em>states</em> (unit 06). The transition probabilities are what OOD and adversarial detection score with, and they are also used to assess the abstract model itself (perplexity, stationary-distribution entropy).</span><span lang="zh">在 TruthfulQA 上，分數用的是「狀態」的語意（第 06 單元）。轉移機率用在 OOD 和對抗樣本偵測，也用來評估抽象模型本身的品質（困惑度、穩態分布熵）。</span></p>
   </div>
   <div class="figure">
-    <div class="fig-head"><p class="fig-title"><span lang="en">Transition matrix (the 12 most visited training states)</span><span lang="zh">轉移機率矩陣（訓練集最常出現的 12 個狀態）</span></p><p class="fig-note"><span lang="en">Top: click a cell to see how it is computed. Each row sums to 1 in the full matrix; only part is drawn here, so a row may sum to less. Bottom: the probability of each step the example takes; a red stub is a transition never seen in training.</span><span lang="zh">上：點一格看它怎麼算。每列在完整矩陣裡加總為 1；這裡只畫出一部分，所以列和可能小於 1。下：例句每一步的轉移機率；紅色短條是訓練時沒見過的轉移。</span></p><span class="badge">TOY</span></div>
+    <div class="fig-head"><p class="fig-title"><span lang="en">The 3D grid → the example’s states → DTMC → the probability of its trace</span><span lang="zh">3D 格子 → 例句的狀態 → DTMC → 它的軌跡機率</span></p><p class="fig-note"><span lang="en">Pre-rendered animation (Manim)</span><span lang="zh">預先算好的動畫（Manim）</span></p><span class="badge">TOY</span></div>
+    <div style="padding:16px 18px">
+      <video class="intro-video" id="v-dtmc" poster="assets/dtmc-anim/dtmc-v2-poster.jpg" preload="auto" playsinline>
+        <source src="assets/dtmc-anim/dtmc-v2.mp4" type="video/mp4">
+      </video>
+      <div class="player" id="v-dtmc-player"></div>
+      <p class="note" style="margin-top:12px"><span lang="en">Same toy data and the authors’ algorithm as the widgets on this page: cell widths u = (max − min) / 5, cell numbers by trunc(), state numbers c₁ + 5c₂ + 25c₃, P̄ counted over the 160 training traces, and the product of the example’s steps. The graph is the same as the one in the figure below.</span><span lang="zh">和本頁互動圖表相同的玩具資料與作者演算法：每格寬度 u = (max − min) / 5、用 trunc() 算格號、狀態編號 c₁ + 5c₂ + 25c₃、P̄ 從 160 條訓練軌跡計數，再把例句每一步相乘。圖與下方圖表裡的相同。</span></p>
+    </div>
+  </div>
+  <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">The DTMC: graph or transition matrix (the 12 most visited training states)</span><span lang="zh">DTMC：圖或轉移矩陣（訓練集最常出現的 12 個狀態）</span></p><p class="fig-note"><span lang="en">Graph: one node per abstract state (placed at its box in the 3D grid, plus the example's states), edge width ∝ P̄, amber = the example's path; click an edge to see how it is computed. Matrix: click a cell. Each row sums to 1 in the full matrix; only part is drawn, so a row may sum to less. Bottom: the probability of each step the example takes; a red stub would be a transition never seen in training.</span><span lang="zh">圖：每個抽象狀態一個節點（放在它在 3D 格子裡的位置，另加例句經過的狀態），邊的粗細 ∝ P̄，黃色是例句的路徑；點一條邊看它怎麼算。矩陣：點一格。每列在完整矩陣裡加總為 1；這裡只畫出一部分，所以列和可能小於 1。下：例句每一步的轉移機率；若有訓練時沒見過的轉移，會顯示成紅色短條。</span></p><span class="badge">TOY</span></div>
     <div class="demo">
       <div class="demo-vis"><div class="vis-box"><svg class="stage" id="dtmc-svg" viewBox="0 0 520 500"></svg></div><p class="vis-label" style="margin-top:12px"><span lang="en">Transitions taken by the example (click a bar to find its cell above)</span><span lang="zh">例句走過的轉移（點長條，在上面的矩陣找到它那一格）</span></p><div class="vis-box" data-tab="2"><svg class="stage" id="dtmc-bars" viewBox="0 0 520 210"></svg></div></div>
       <div class="demo-side">
+        <div class="ctrls"><div class="ctrl-row"><span class="ctrl-lab"><span lang="en">view</span><span lang="zh">視圖</span></span><div class="seg" id="dtmc-view"><button type="button" data-v="graph" aria-pressed="true"><span lang="en">graph</span><span lang="zh">圖</span></button><button type="button" data-v="matrix" aria-pressed="false"><span lang="en">matrix</span><span lang="zh">矩陣</span></button></div></div></div>
         <div class="scores" id="dtmc-scores"></div>
         <p class="note" id="dtmc-note"></p>
       </div>
@@ -771,6 +805,16 @@ svg .band.hot{fill:color-mix(in srgb,var(--lk,#F4C26B) 16%,transparent)!importan
     <p><span lang="en">Every TruthfulQA training answer has a true/false label (the paper uses the fine-tuned GPT-judge). <strong>Semantics binding</strong> hands that label to the state of every token in the answer: each state keeps two counters, visits by true answers (pos) and by false answers (neg), and its semantics is θ̄ = pos / (pos + neg).</span><span lang="zh">TruthfulQA 的每句訓練回答都有真假標籤（論文用微調過的 GPT-judge 判定）。<strong>語意綁定</strong>把這個標籤分給回答裡每個 token 所在的狀態：每個狀態記兩個計數，被真實回答經過幾次（pos）、被不真實回答經過幾次（neg），語意 θ̄ = pos / (pos + neg)。</span></p>
     <p><span lang="en">To detect, map a new answer to its state sequence, look up each state’s θ̄ and average: that is the answer’s <strong>semantic score</strong>. Below the threshold τ means hallucination. A state never seen in training gets θ̄ = 0.</span><span lang="zh">偵測時，把新回答變成狀態序列，查每個狀態的 θ̄ 再平均，就是這句話的<strong>語意分數</strong>。分數低於門檻 τ 就判為幻覺。訓練時沒出現過的狀態，θ̄ 記為 0。</span></p>
     <p><span lang="en">The paper’s Fig. 4 reports this example as s̄<sub>199</sub> → s̄<sub>5</sub> → … → s̄<sub>159</sub> → s̄<sub>4</sub> with score 0.04, turning abnormal at “denser”. State 199 is above 125, so Fig. 4 used a different configuration; below is our configuration on the toy data.</span><span lang="zh">論文圖 4 的這句例句是 s̄<sub>199</sub> → s̄<sub>5</sub> → … → s̄<sub>159</sub> → s̄<sub>4</sub>，分數 0.04，在「denser」進入異常狀態。編號 199 超過 125，所以圖 4 用的是另一組設定；下面是我們這組設定在玩具資料上的結果。</span></p>
+  </div>
+  <div class="figure">
+    <div class="fig-head"><p class="fig-title"><span lang="en">Training labels → θ̄ per state → the example’s score</span><span lang="zh">訓練標籤 → 每個狀態的 θ̄ → 例句的分數</span></p><p class="fig-note"><span lang="en">Pre-rendered animation (Manim)</span><span lang="zh">預先算好的動畫（Manim）</span></p><span class="badge">TOY</span></div>
+    <div style="padding:16px 18px">
+      <video class="intro-video" id="v-trace" poster="assets/semantics-anim/trace-v2-poster.jpg" preload="auto" playsinline>
+        <source src="assets/semantics-anim/trace-v2.mp4" type="video/mp4">
+      </video>
+      <div class="player" id="v-trace-player"></div>
+      <p class="note" style="margin-top:12px"><span lang="en">The five plates are the c₃ slices of the 5 × 5 × 5 grid. Every token of a training answer carries its 0/1 label into its state; θ̄ = pos / (pos + neg); the example reads θ̄ at each step and averages them. Same toy data as the widgets below.</span><span lang="zh">五層平板是 5 × 5 × 5 格子在 c₃ 方向的切片。訓練回答的每個 token 把它的 0/1 標籤帶進所在狀態；θ̄ = pos / (pos + neg)；例句在每一步讀取 θ̄ 再取平均。和下方圖表相同的玩具資料。</span></p>
+    </div>
   </div>
   <div class="figure">
     <div class="fig-head"><p class="fig-title"><span lang="en">The example's semantic trace</span><span lang="zh">例句的語意軌跡</span></p><p class="fig-note"><span lang="en">Each bar is one step's θ̄; dashed = the mean (semantic score), amber = threshold τ. Click a bar or token for its counts; hover a term of the average to find its bar.</span><span lang="zh">每根長條是一步的 θ̄；虛線是平均（語意分數），黃線是門檻 τ。點長條或 token 看它的計數；滑到平均式裡的某一項，找到它的長條。</span></p><span class="badge">TOY</span></div>
@@ -1245,7 +1289,7 @@ G('attn-mat', {'Q': ['matrix of all query vectors', '所有 token 的查詢向�
 G('blk-svg', {'h': ['vector entering the block (residual stream)', '進入區塊前的向量（殘差流）'], 'a': ['vector after the attention sub-layer', '注意力子層加完之後的向量'], 'g': ['learned RMSNorm gain', 'RMSNorm 的增益（學出來的）'], 'ϵ': ['tiny number to avoid dividing by 0', '避免除以 0 的小數'], 'd': ['vector dimension', '向量維度'], 'W': ['feed-forward weight matrix', '前饋層的權重矩陣'], 'l': ['block number', '第幾個區塊']});
 G('head-bars', {'z': ['logits: one score per token', 'logit：輸出層給每個 token 的分數'], 'W': ['output matrix (32,000 × 4,096)', '輸出矩陣（32,000 × 4,096）'], 'h': ['last layer\'s vector', '最後一層的向量'], 'T': ['temperature', '溫度'], 'p': ['probability', '機率'], 'calL': ['cross-entropy loss', '交叉熵損失'], 'PPL': ['perplexity: exp of the mean loss', '困惑度：平均損失取 exp'], 'N': ['number of tokens', 'token 數'], 'S': ['the kept candidate set', '被保留的候選集合']});
 G('hid-svg', {'s': ['concrete state', '具體狀態'], 'h': ['hidden state', '隱藏狀態'], 'τ': ['trace: the concrete states of one answer', '軌跡：一句回答的具體狀態序列'], 'n': ['number of tokens in the answer', '回答的 token 數']});
-G('pca-svg', {'μ': ['mean of all training vectors', '訓練集所有向量的平均'], 'C': ['covariance matrix', '共變異數矩陣'], 'w': ['principal direction (eigenvector)', '主成分方向（特徵向量）'], 'λ': ['eigenvalue: variance along that direction', '特徵值：該方向上的變異量'], 'W_k': ['first k principal directions as a matrix', '前 k 個主成分排成的矩陣'], 'z': ['projected k-dim coordinates', '投影後的 k 維座標'], 'h': ['original vector (4,096-dim; 12-dim in the toy)', '原始向量（4,096 維；玩具裡是 12 維）'], 'N': ['number of training tokens', '訓練 token 數'], 'k': ['components kept', '保留的成分數']});
+G('pca-svg', {'μ': ['mean of all training vectors', '訓練集所有向量的平均'], 'C': ['covariance matrix', '共變異數矩陣'], 'w': ['principal direction (eigenvector)', '主成分方向（特徵向量）'], 'λ': ['eigenvalue: variance along that direction', '特徵值：該方向上的變異量'], 'W_k': ['first k principal directions as a matrix', '前 k 個主成分排成的矩陣'], 'z': ['projected k-dim coordinates', '投影後的 k 維座標'], 'h': ['original vector (4,096-dim; 12-dim in the toy)', '原始向量（4,096 維；玩具裡是 12 維）'], 'N': ['number of training hidden states: one last-layer vector per token position in the training answers', '訓練集 hidden state 的個數：訓練回答裡每個 token 位置各一個最後一層向量'], 'k': ['components kept', '保留的成分數']});
 G('grid-svg', {'c_i': ['cell number along dim i (0…m−1)', '第 i 維的格號（0…m−1）'], 'z_i': ['PCA coordinate i', '第 i 維的 PCA 座標'], 'm': ['cells per dimension', '每維格數'], 'k': ['PCA dimensions', 'PCA 維度'], 'u_i': ['cell width along dim i', '第 i 維每格的寬度'], 's̄': ['abstract-state number', '抽象狀態編號']});
 G('dtmc-svg', {'P̄': ['abstract transition probability', '抽象轉移機率'], 's̄': ['current abstract state', '目前的抽象狀態'], '#': ['how many times this transition occurs in the training traces', '訓練軌跡中這種轉移出現的次數']});
 G('sem-svg', {'θ̄': ['abstract semantics: share of true-answer visits to this state', '抽象語意：這個狀態被真實回答經過的比例'], 'n': ['number of steps in the trace', '軌跡步數'], 'τ': ['decision threshold', '判定門檻']});
@@ -1497,7 +1541,7 @@ const TOY = (() => {
       hs.push(emit([-1.6 + 3.2 * t / (L - 1) + gauss(r) * .3, topic + gauss(r) * .35, (y ? -.25 : .15) + (claim ? 1.3 : 0) + gauss(r) * .55])); }
     return {y, h: hs}; };
   const train = [...Array(160)].map((_, i) => make(i % 2)), test = [...Array(80)].map((_, i) => make(i % 2));
-  const u3 = [-.1, 0, .1, .3, 1.7, 1.6, .8, .4, .2];
+  const u3 = [-.1, 0, .1, .3, 1.7, 1, .8, .4, .2];   /* er: 1.6 -> 1, so every step of the example was seen in training (no P̄ = 0) */
   const run = {y: 0, h: u3.map((v, t) => emit([-1.6 + 3.2 * t / 8, .2, v])), run: true};
   test.push(run);
   /* PCA on training tokens (Jacobi eigen-decomposition of the covariance) */
@@ -1630,7 +1674,7 @@ function pcgView(){
   s += tx(x + 8, y0 + 50, '=', {fs: 18, a: 'middle', c: '#7C869C'}); x += 22;
   m = mat(x, F.N, k, (r, c) => F.zz[r][c], 'Z', 'Z', `N × ${k}`, '#F4C26B'); s += m[0];
   s += tx(14, y0 + 146, T(`${d} numbers per token`, `每個 token ${d} 個數字`), {fs: 11, c: '#AEB7CA', lk: 'd'}) + tx(14, y0 + 163, T(`→ ${k} numbers`, `→ ${k} 個數字`), {fs: 11, c: '#F4C26B', lk: 'k'})
-    + tx(250, y0 + 146, `N = ${F.N.toLocaleString()}` + T(' training tokens (one row each)', ' 個訓練 token（一個 token 一列）'), {fs: 10.5, c: '#7C869C'}) + tx(250, y0 + 163, T(`W_k columns = top-${k} eigenvectors of C`, `W_k 的各欄 = C 前 ${k} 大的特徵向量`), {fs: 10.5, c: '#8CB8FF', lk: 'W'});
+    + tx(250, y0 + 146, `N = ${F.N.toLocaleString()}` + T(' training hidden states, one row each', ' 個訓練 hidden state，一個一列'), {fs: 10.5, c: '#7C869C'}) + tx(250, y0 + 163, T(`W_k columns = top-${k} eigenvectors of C`, `W_k 的各欄 = C 前 ${k} 大的特徵向量`), {fs: 10.5, c: '#8CB8FF', lk: 'W'});
   /* eigenvalue bars */
   const by = 380, bh = 120, bw = Math.min(44, 540 / d), mx = Math.log10(F.vals[0] + 1);
   s += tx(20, by - bh - 22, T('eigenvalues of C (log scale)', 'C 的特徵值（對數刻度）'), {fs: 11, c: '#AEB7CA'}) + `<path d="M20 ${by} H${30 + d * bw}" stroke="#2F3A50"/>`;
@@ -1662,7 +1706,7 @@ function pcgView(){
       + numC(x2, y, c, on, `C[${i + 1},${j + 1}] = ${f2(c)} · ` + (i === j ? T(`variance of dimension ${i + 1}`, `第 ${i + 1} 維自己的變異數`) : T(`how dimensions ${i + 1} and ${j + 1} vary together`, `第 ${i + 1}、${j + 1} 維一起變動的程度`)), [i, j]); }));
   cv += ring(vx, my0 + si * rz, 'ai') + ring(mx0 + sj * cz, ry, 'aj') + ring(mx0 + sj * cz, my0 + si * rz, 'prod') + ring(cx0 + sj * cz, my0 + si * rz, 'cij');
   const ax = mx0 + Wm + 12, ay = my0 + Hm / 2;
-  cv += `<path d="M${ax} ${ay} H${cx0 - 12}" stroke="#7C869C" stroke-width="1.4" marker-end="url(#pa)"/>` + tx((ax + cx0 - 12) / 2, ay - 9, 'Σₙ ÷ (N−1)', {fs: 11, a: 'middle', c: '#AEB7CA'}) + tx((ax + cx0 - 12) / 2, ay + 18, T(`all ${F.N} tokens`, `全部 ${F.N} 個 token`), {fs: 9.5, a: 'middle', c: '#7C869C', sans: 1});
+  cv += `<path d="M${ax} ${ay} H${cx0 - 12}" stroke="#7C869C" stroke-width="1.4" marker-end="url(#pa)"/>` + tx((ax + cx0 - 12) / 2, ay - 9, 'Σₙ ÷ (N−1)', {fs: 11, a: 'middle', c: '#AEB7CA'}) + tx((ax + cx0 - 12) / 2, ay + 18, T(`all ${F.N} hidden states`, `全部 ${F.N} 個 hidden state`), {fs: 9.5, a: 'middle', c: '#7C869C', sans: 1});
   cv += tx(mx0, my0 + Hm + 17, T(`aₙaₙᵀ  ${d} × ${d}  (token n = ${tn})`, `aₙaₙᵀ　${d} × ${d}（第 n = ${tn} 個 token）`), {fs: 11, c: '#AEB7CA', lk: 'n'}) + tx(mx0, my0 + Hm + 33, `a${ci + 1} × a${cj + 1} = ${pn(an[ci])} × ${pn(an[cj])} = ${f2(an[ci] * an[cj])}`, {fs: 10.5, c: '#F4C26B', lk: 'prod'});
   cv += tx(cx0, my0 + Hm + 17, `C  ${d} × ${d}`, {fs: 11, c: '#AEB7CA', lk: 'd'}) + tx(cx0, my0 + Hm + 33, `C[${ci + 1},${cj + 1}] = ${f2(F.C[ci][cj])}`, {fs: 10.5, c: '#F4C26B', lk: 'cij'});
   const cov = $('#pcg-cov'); cov.setAttribute('viewBox', `0 0 600 ${my0 + Hm + 44}`); cov.innerHTML = cv; bindTips(cov);
@@ -1686,12 +1730,73 @@ function pcgView(){
       ['Same formula, real sizes: the Grid setting of this page keeps k = 3 of 4,096 dimensions; the cluster settings keep 512–2,048.', '同一條式子，換成真實的大小：本頁的 Grid 設定從 4,096 維留 k = 3；分群的設定留 512～2,048 維。'])
   ]);
 }
-G('pcg-svg', {'C': ['covariance matrix of the training vectors (d × d)', '訓練向量的共變異數矩陣（d × d）'], 'λ': ['eigenvalue of C', 'C 的特徵值'], 'w': ['eigenvector of C', 'C 的特徵向量'], 'tr': ['trace: sum of the diagonal', '跡：對角線總和'], 'I_k': ['k × k identity: the columns of W are orthonormal', 'k × k 單位矩陣：W 的各欄互相垂直且長度 1'], 'μ': ['mean of the training vectors', '訓練向量的平均'], 'N': ['number of training tokens', '訓練 token 數'], 'σ': ['singular value of the centered data', '中心化資料的奇異值'], 'U': ['left singular vectors', '左奇異向量'], 'V': ['right singular vectors = principal directions', '右奇異向量＝主成分方向'], 'z': ['the k kept coordinates', '保留下來的 k 個座標'], 'h': ['original vector', '原始向量']});
+G('pcg-svg', {'C': ['covariance matrix of the training vectors (d × d)', '訓練向量的共變異數矩陣（d × d）'], 'λ': ['eigenvalue of C', 'C 的特徵值'], 'w': ['eigenvector of C', 'C 的特徵向量'], 'tr': ['trace: sum of the diagonal', '跡：對角線總和'], 'I_k': ['k × k identity: the columns of W are orthonormal', 'k × k 單位矩陣：W 的各欄互相垂直且長度 1'], 'μ': ['mean of the training vectors', '訓練向量的平均'], 'N': ['number of training hidden states: one last-layer vector per token position in the training answers', '訓練集 hidden state 的個數：訓練回答裡每個 token 位置各一個最後一層向量'], 'σ': ['singular value of the centered data', '中心化資料的奇異值'], 'U': ['left singular vectors', '左奇異向量'], 'V': ['right singular vectors = principal directions', '右奇異向量＝主成分方向'], 'z': ['the k kept coordinates', '保留下來的 k 個座標'], 'h': ['original vector', '原始向量']});
 $('#pcg-d').addEventListener('input', pcgView); $('#pcg-k').addEventListener('input', pcgView); $('#pcg-n').addEventListener('input', pcgView);
 
 /* ============================ 10 grid ============================ */
+/* 3D view of the k = 3 grid: orthographic projection, z₃ up, drag / arrow keys to rotate.
+   Grid lines are drawn on the three faces that point away from the viewer, so they move as it turns. */
+const G3 = {view: '3d', yaw: -0.62, pitch: 0.42};
+function grid3d(){
+  const p = P(), a = p.run.a, w = a[RUN.sel], m = p.m, svg = $('#grid-svg');
+  const nrm = (v, d) => 2 * (v - p.lo[d]) / (p.hi[d] - p.lo[d]) - 1;           // data -> [-1, 1]
+  const cy = Math.cos(G3.yaw), sy = Math.sin(G3.yaw), cp = Math.cos(G3.pitch), sp = Math.sin(G3.pitch), S = 128, CX = 280, CY = 232;
+  const prj = (X, Y, Z) => { const u = X * cy - Y * sy, v = X * sy + Y * cy; return [CX + S * u, CY - S * (Z * cp + v * sp), v * cp - Z * sp]; };
+  const P3 = z => prj(nrm(z[0], 0), nrm(z[1], 1), nrm(z[2], 2));
+  const ln = (A, B, o = '') => `<path d="M${A[0].toFixed(1)} ${A[1].toFixed(1)}L${B[0].toFixed(1)} ${B[1].toFixed(1)}" ${o}/>`;
+  const t = k => -1 + 2 * k / m;
+  /* depth of a face's outward normal: > 0 means the face is at the back */
+  const nd = (ax, sg) => { const n = [0, 0, 0]; n[ax] = sg; return prj(...n)[2] - prj(0, 0, 0)[2]; };
+  let s = '';
+  [0, 1, 2].forEach(ax => [-1, 1].forEach(sg => { if (nd(ax, sg) <= 0) return;
+    const o = [0, 1, 2].filter(d => d !== ax);
+    for (let k = 0; k <= m; k++) for (const [d1, d2] of [[o[0], o[1]], [o[1], o[0]]]) {
+      const A = [0, 0, 0], B = [0, 0, 0]; A[ax] = B[ax] = sg; A[d1] = B[d1] = t(k); A[d2] = -1; B[d2] = 1;
+      s += ln(prj(...A), prj(...B), `stroke="#2F3A50" stroke-width="${k % m ? .7 : 1.3}"`); }
+  }));
+  /* cell numbers along the front bottom edges for c₁ and c₂, the left vertical edge for c₃ */
+  const frontEdge = ax => { const o = ax ? 0 : 1; let best = null; for (const g of [-1, 1]) { const c = [0, 0, -1]; c[o] = g; const dp = prj(...c)[2]; if (!best || dp < best[0]) best = [dp, g]; } return [o, best[1]]; };
+  [0, 1].forEach(ax => { const [o, g] = frontEdge(ax);
+    for (let k = 0; k < m; k++) { const q = [0, 0, -1]; q[o] = g * 1.16; q[ax] = t(k) + 1 / m; const P2 = prj(...q); s += tx(P2[0], P2[1] + 4, String(k), {fs: 9.5, a: 'middle', c: k === w.c[ax] ? '#F4C26B' : '#7C869C', lk: k === w.c[ax] ? 'c' + (ax + 1) : ''}); }
+    const q = [0, 0, -1]; q[o] = g * 1.4; const P2 = prj(...q); s += tx(P2[0], P2[1] + 4, ax ? 'z₂ → c₂' : 'z₁ → c₁', {fs: 10.5, a: 'middle', c: '#AEB7CA'}); });
+  { let best = null; for (const X of [-1, 1]) for (const Y of [-1, 1]) { const P2 = prj(X, Y, 0); if (!best || P2[0] < best[0][0]) best = [P2, X, Y]; }
+    const [, X, Y] = best; for (let k = 0; k < m; k++) { const P2 = prj(X, Y, t(k) + 1 / m); s += tx(P2[0] - 8, P2[1] + 4, String(k), {fs: 9.5, a: 'end', c: k === w.c[2] ? '#F4C26B' : '#7C869C', lk: k === w.c[2] ? 'c3' : ''}); }
+    const P2 = prj(X, Y, 1.18); s += tx(P2[0], P2[1], 'z₃ → c₃', {fs: 10.5, a: 'middle', c: '#AEB7CA'}); }
+  /* training tokens (and, if asked, every seen cell's θ̄ as a translucent disc at its centre), far ones first */
+  const pts = [];
+  p.train.forEach(tr => tr.a.forEach(x => { const P2 = P3(x.zm); pts.push([P2[2], `<circle cx="${P2[0].toFixed(1)}" cy="${P2[1].toFixed(1)}" r="1.9" fill="${tr.y ? '#5FD3A0' : '#FF7B8B'}" opacity=".55"/>`]); }));
+  if ($('#grid-sem').checked) p.cnt.forEach((c, sid) => { const cc = [sid % m, Math.floor(sid / m) % m, Math.floor(sid / m / m)], P2 = prj(...cc.map(v => t(v) + 1 / m)), th = p.theta(sid);
+    pts.push([P2[2] + .01, `<circle cx="${P2[0].toFixed(1)}" cy="${P2[1].toFixed(1)}" r="${(5 + Math.sqrt(c.pos + c.neg)).toFixed(1)}" fill="${semCol(th)}" opacity=".35" data-tip="${esc('s̄' + sid + `: θ̄ = ${f2(th)} (pos ${c.pos} / neg ${c.neg})`)}"/>`]); });
+  pts.sort((x, y) => y[0] - x[0]).forEach(q => { s += q[1]; });
+  /* the selected token's cell as an amber wire cube, and a drop line from the point to the floor */
+  const lo = w.c.map(v => t(v)), hi = w.c.map(v => t(v + 1));
+  const corner = i => prj(i & 1 ? hi[0] : lo[0], i & 2 ? hi[1] : lo[1], i & 4 ? hi[2] : lo[2]);
+  [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]].forEach(([i, j]) => { s += ln(corner(i), corner(j), 'stroke="#F4C26B" stroke-width="2" data-link="s"'); });
+  const zp = w.zm.map((v, d) => nrm(v, d)), top = prj(...zp), flo = prj(zp[0], zp[1], -1);
+  s += ln(top, flo, 'stroke="#F4C26B" stroke-width="1" stroke-dasharray="3 3" opacity=".8"') + `<circle cx="${flo[0].toFixed(1)}" cy="${flo[1].toFixed(1)}" r="2.5" fill="#F4C26B" opacity=".7"/>`;
+  /* the example's path */
+  s += `<path d="${a.map((x, i) => { const P2 = P3(x.zm); return (i ? 'L' : 'M') + P2[0].toFixed(1) + ' ' + P2[1].toFixed(1); }).join(' ')}" fill="none" stroke="#fff" stroke-width="1.5" opacity=".85"/>`;
+  a.forEach((x, i) => { const on = i === RUN.sel, P2 = P3(x.zm);
+    s += `<g class="g3t" data-i="${i}" style="cursor:pointer"><circle cx="${P2[0].toFixed(1)}" cy="${P2[1].toFixed(1)}" r="${on ? 7 : 5}" fill="${on ? '#F4C26B' : '#fff'}" stroke="#080B12" stroke-width="1.5"${lk(on ? 'zp' : '')}/>` + tx(P2[0] + 8, P2[1] - 7, winLabel(a, x), {fs: on ? 12 : 10, w: on ? 700 : 400, c: on ? '#F4C26B' : '#E7EBF3', lk: on ? 'zp' : ''}) + '</g>'; });
+  s += tx(552, 432, T('drag to rotate', '拖曳旋轉'), {fs: 10, a: 'end', c: '#7C869C', sans: 1});
+  svg.innerHTML = s; bindTips(svg);
+  svg.querySelectorAll('.g3t').forEach(g => g.addEventListener('click', () => pickRun(+g.dataset.i)));
+}
+(() => { const svg = $('#grid-svg'); let drag = null;
+  svg.addEventListener('pointerdown', e => { if (G3.view !== '3d' || e.target.closest('.g3t')) return; e.preventDefault(); drag = [e.clientX, e.clientY]; svg.setPointerCapture(e.pointerId); });
+  svg.addEventListener('dragstart', e => { if (G3.view === '3d') e.preventDefault(); });
+  svg.addEventListener('pointermove', e => { if (!drag) return; G3.yaw += (e.clientX - drag[0]) * .01; G3.pitch = clamp(G3.pitch + (e.clientY - drag[1]) * .01, -1.2, 1.2); drag = [e.clientX, e.clientY]; grid3d(); });
+  const end = () => { drag = null; }; svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
+  svg.addEventListener('keydown', e => { if (G3.view !== '3d') return; const d = {ArrowLeft: [-.12, 0], ArrowRight: [.12, 0], ArrowUp: [0, -.1], ArrowDown: [0, .1]}[e.key]; if (!d) return;
+    e.preventDefault(); G3.yaw += d[0]; G3.pitch = clamp(G3.pitch + d[1], -1.2, 1.2); grid3d(); });
+  svg.style.touchAction = 'none'; svg.style.userSelect = 'none'; svg.style.webkitUserSelect = 'none'; })();
 function gridView(){
   const p = P(), a = p.run.a; RUN.sel = Math.min(RUN.sel, a.length - 1); const w = a[RUN.sel];
+  $('#grid-z-row').hidden = G3.view === '3d';
+  if (G3.view === '3d') grid3d(); else gridSlice(p, a, w);
+  gridSide(p, a, w);
+}
+function gridSlice(p, a, w){
   const zr = $('#grid-z'); zr.max = p.m - 1; if (gridZ === null || gridZ > p.m - 1) gridZ = clamp(w.c[2], 0, p.m - 1); zr.value = gridZ; $('#grid-zv').textContent = gridZ;
   const pad = .06, ex = [0, 1].map(d => [p.lo[d] - (p.hi[d] - p.lo[d]) * pad, p.hi[d] + (p.hi[d] - p.lo[d]) * pad]);
   const X = v => 30 + (v - ex[0][0]) / (ex[0][1] - ex[0][0]) * 510, Y = v => 410 - (v - ex[1][0]) / (ex[1][1] - ex[1][0]) * 390;
@@ -1711,6 +1816,8 @@ function gridView(){
   a.forEach((x, i) => { const on = i === RUN.sel, inS = x.c[2] === gridZ;
     s += `<circle cx="${X(x.zm[0])}" cy="${Y(x.zm[1])}" r="${on ? 7 : 5}" fill="${on ? '#F4C26B' : inS ? '#fff' : '#080B12'}" stroke="${on ? '#080B12' : '#fff'}" stroke-width="1.5"${lk(on ? 'zp' : '')}/>` + tx(X(x.zm[0]) + 8, Y(x.zm[1]) - 7, winLabel(a, x), {fs: on ? 12 : 10, w: on ? 700 : 400, c: on ? '#F4C26B' : '#E7EBF3', lk: on ? 'zp' : ''}); });
   const svg = $('#grid-svg'); svg.innerHTML = s; bindTips(svg);
+}
+function gridSide(p, a, w){
   runChips('grid-toks');
   const total = Math.pow(p.m, 3), used = p.cnt.size;
   $('#grid-scores').innerHTML = stat([[T('abstract states', '抽象狀態'), total.toLocaleString(), `${p.m}³`, '', 'tot'], [T('seen in training', '訓練中出現'), used, (used / total * 100).toFixed(1) + '%', '', 'used'], [T('selected', '選中'), 's̄' + w.s, `(c₁,c₂,c₃) = (${w.c.join(',')})`, '#F4C26B', 's']]);
@@ -1734,15 +1841,68 @@ function gridView(){
 function segBind(id, key){ $$('#' + id + ' button').forEach(b => b.addEventListener('click', () => { RUN[key] = +b.dataset.v; $$('#' + id + ' button').forEach(x => x.setAttribute('aria-pressed', x === b)); gridZ = null; luna(); })); }
 segBind('grid-m', 'm');
 $('#grid-z').addEventListener('input', e => { gridZ = +e.target.value; gridView(); });
+$$('#grid-view button').forEach(b => b.addEventListener('click', () => { G3.view = b.dataset.v; $$('#grid-view button').forEach(x => x.setAttribute('aria-pressed', x === b)); gridView(); }));
 $('#grid-sem').addEventListener('change', gridView);
 
 /* ============================ 11 DTMC ============================ */
 let dtmcCell = null;
+const DG = {view: 'graph'};
+/* the DTMC as a graph, drawn like the section-04 video (assets/dtmc-anim/scene_v2.py) in that video's
+   own units, then mapped to pixels by f: nodes at their boxes' centres in the 3D grid (yaw -0.55,
+   pitch 0.35), radius 0.12 + 0.035 sqrt(visits), the id under the node, an amber dot in the example's
+   nodes; edges are circular arcs of angle -0.5 trimmed to the rims, width 0.6 + 8 P̄, opacity
+   0.2 + 0.75 min(1, 2.5 P̄), arrow length 0.07 + 0.2 P̄; a self loop only when P̄ >= 0.12. A manim
+   stroke width w is 0.01 w units. Amber = the example's path, white = the selected transition. */
+function dtmcGraph(p, top, Pr, runT){
+  const ids = [...new Set([...top, ...p.run.a.map(w => w.s)])], m = p.m, runIds = new Set(p.run.a.map(w => w.s)), [ca, cb] = dtmcCell;
+  const yaw = -0.55, pitch = 0.35, cyw = Math.cos(yaw), syw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch), SC = 6.49;
+  const U = {}; ids.forEach(s => { const c = [s % m, Math.floor(s / m) % m, Math.floor(s / m / m)].map(v => -1 + (2 * v + 1) / m);
+    U[s] = [SC * (c[0] * cyw - c[1] * syw), SC * (c[2] * cp + (c[0] * syw + c[1] * cyw) * sp)]; });   // video units, y up
+  const xs = ids.map(s => U[s][0]), ys = ids.map(s => U[s][1]), mx = (Math.max(...xs) + Math.min(...xs)) / 2, my = (Math.max(...ys) + Math.min(...ys)) / 2;
+  const f = Math.min(430 / (Math.max(...xs) - Math.min(...xs)), 390 / (Math.max(...ys) - Math.min(...ys)));
+  const X = (x, y) => [260 + (x - mx) * f, 248 - (y - my) * f];                                         // video units -> px
+  const vis = s => { const c = p.cnt.get(s); return c ? c.pos + c.neg : 0; }, rad = s => .12 + .035 * Math.sqrt(vis(s));
+  const onRun = (a, b) => runT.some(([x, y]) => x === a && y === b);
+  /* manim ArcBetweenPoints(A, B, angle), trimmed to the two rims; returns the path, the end tangent, the mid point */
+  const arc = (A, B, ang, ra, rb) => {
+    const L = Math.hypot(B[0] - A[0], B[1] - A[1]), nx = -(B[1] - A[1]) / L, ny = (B[0] - A[0]) / L, d = L / 2 / Math.tan(ang / 2);
+    const C = [(A[0] + B[0]) / 2 + nx * d, (A[1] + B[1]) / 2 + ny * d], R = Math.hypot(A[0] - C[0], A[1] - C[1]), fa = Math.atan2(A[1] - C[1], A[0] - C[0]);
+    const t1 = 2 * Math.asin(Math.min(1, ra / (2 * R))) / Math.abs(ang), t2 = 1 - 2 * Math.asin(Math.min(1, rb / (2 * R))) / Math.abs(ang);
+    const pt = t => [C[0] + R * Math.cos(fa + ang * t), C[1] + R * Math.sin(fa + ang * t)];
+    const P1 = pt(t1), P2 = pt(t2), q1 = X(...P1), q2 = X(...P2), sweep = ang > 0 ? 0 : 1, large = Math.abs(ang * (t2 - t1)) > Math.PI ? 1 : 0;
+    const fe = fa + ang * t2, tan = [-Math.sin(fe) * Math.sign(ang), Math.cos(fe) * Math.sign(ang)];
+    return {d: `M${q1[0].toFixed(1)} ${q1[1].toFixed(1)}A${(R * f).toFixed(1)} ${(R * f).toFixed(1)} 0 ${large} ${sweep} ${q2[0].toFixed(1)} ${q2[1].toFixed(1)}`, end: P2, tan, mid: pt((t1 + t2) / 2)}; };
+  const head = (E, tan, len, col, op) => { const b = [E[0] - tan[0] * len, E[1] - tan[1] * len], n = [-tan[1] * len * .45, tan[0] * len * .45];
+    const pts = [E, [b[0] + n[0], b[1] + n[1]], [b[0] - n[0], b[1] - n[1]]].map(q => X(...q).map(v => v.toFixed(1)).join(','));
+    return `<polygon points="${pts.join(' ')}" fill="${col}" opacity="${op}" pointer-events="none"/>`; };
+  const geom = (a, b, extra = 0) => a === b
+    ? arc([U[a][0] + (rad(a) + extra) * Math.cos(1.95), U[a][1] + (rad(a) + extra) * Math.sin(1.95)], [U[a][0] + (rad(a) + extra) * Math.cos(1.19), U[a][1] + (rad(a) + extra) * Math.sin(1.19)], -3.6, 0, 0)
+    : arc(U[a], U[b], -0.5, rad(a) + .03, rad(b) + .05);
+  let s = '', hi = '';
+  ids.forEach(a => ids.forEach(b => { const n = p.trans.get(a + '>' + b) || 0, v = Pr(a, b), run = onRun(a, b), sel = a === ca && b === cb;
+    if (!n || (v < .06 && !run && !sel) || (a === b && v < .12 && !run && !sel)) return;
+    const g = geom(a, b), w = a === b ? .6 + 2.2 * v : .6 + 8 * v, op = .2 + .75 * Math.min(1, v * 2.5), opl = a === b ? op * .8 : op, tl = a === b ? .07 : .07 + .2 * v;
+    const tip = esc(`s̄${a} → s̄${b}: ${n} / ${p.out.get(a) || 0} = ${f3(v)}`);
+    s += `<g class="dge" data-a="${a}" data-b="${b}" style="cursor:pointer" data-tip="${tip}"><path d="${g.d}" fill="none" stroke="transparent" stroke-width="10"/><path d="${g.d}" fill="none" stroke="#C2B4FF" stroke-width="${(.01 * w * f).toFixed(2)}" opacity="${opl.toFixed(2)}"/>${head(g.end, g.tan, tl, '#C2B4FF', opl.toFixed(2))}</g>`;
+    if (run || sel) { const col = sel ? '#FFFFFF' : '#F4C26B', g2 = a === b ? geom(a, b, .04) : g;
+      hi += `<g class="dge" data-a="${a}" data-b="${b}" style="cursor:pointer" data-tip="${tip}"${sel ? ' data-link="num"' : ''}><path d="${g2.d}" fill="none" stroke="${col}" stroke-width="${(.01 * (sel ? 5 : 4.5) * f).toFixed(2)}"/>${head(g2.end, g2.tan, a === b ? .14 : .18, col, 1)}</g>`; } }));
+  s += hi;
+  /* P̄ of the example's steps next to their edges */
+  runT.forEach(([a, b], i) => { const g = geom(a, b), q = a === b ? X(U[a][0], U[a][1] + rad(a) * 2.6) : X(...g.mid);
+    s += tx(q[0], q[1] - 5, f2(Pr(a, b)), {fs: 10, a: 'middle', c: '#F4C26B', lk: 'r' + i}); });
+  ids.forEach(sid => { const [x, y] = X(...U[sid]), r = rad(sid) * f, run = runIds.has(sid), on = sid === ca;
+    s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="#161D2B" stroke="${on ? '#FFFFFF' : run ? '#F4C26B' : '#C2B4FF'}" stroke-width="${(.01 * (on || run ? 2.4 : 1.6) * f).toFixed(2)}" data-tip="${esc(`s̄${sid}: ${vis(sid)} training visits, ${p.out.get(sid) || 0} steps leave it`)}"${on ? ' data-link="row"' : ''}/>`;
+    if (run) s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(.12 * f).toFixed(1)}" fill="#F4C26B" opacity=".3" pointer-events="none"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(.075 * f).toFixed(1)}" fill="#F4C26B" pointer-events="none"/>`;
+    s += tx(x, y + r + 13, 's̄' + sid, {fs: 11, a: 'middle', c: run ? '#F4C26B' : '#AEB7CA'}); });
+  s += tx(10, 494, T('amber = the example’s path · white = selected transition · hover an edge for its count', '黃色＝例句的路徑 · 白色＝選中的轉移 · 滑到邊上看次數'), {fs: 10, c: '#7C869C', sans: 1});
+  return s;
+}
 function dtmcView(){
   const p = P(), visits = [...p.cnt.entries()].map(([s, c]) => [s, c.pos + c.neg]).sort((a, b) => b[1] - a[1]), top = visits.slice(0, 12).map(v => v[0]);
   const Pr = (a, b) => (p.trans.get(a + '>' + b) || 0) / (p.out.get(a) || 1);
   const ra = p.run.a, runT = ra.slice(0, -1).map((w, i) => [w.s, ra[i + 1].s]);
-  if (!dtmcCell || !top.includes(dtmcCell[0]) || !top.includes(dtmcCell[1])) { const t = runT.find(([x, y]) => top.includes(x) && top.includes(y));
+  const drawn = DG.view === 'graph' ? [...new Set([...top, ...ra.map(w => w.s)])] : top;
+  if (!dtmcCell || !drawn.includes(dtmcCell[0]) || !drawn.includes(dtmcCell[1])) { const t = runT.find(([x, y]) => top.includes(x) && top.includes(y));
     dtmcCell = t || [top[0], top.map(b => [b, Pr(top[0], b)]).sort((x, y) => y[1] - x[1])[0][0]]; }
   const c0 = 70, r0 = 44, cs = 36, n = top.length, [ca, cb] = dtmcCell;
   let s = tx(c0 + n * cs / 2, 14, T('to s̄′ →', '到 s̄′ →'), {fs: 10, a: 'middle', c: '#7C869C'}) + tx(10, r0 - 6, T('from s̄ ↓', '從 s̄ ↓'), {fs: 10, c: '#7C869C'});
@@ -1753,8 +1913,8 @@ function dtmcView(){
       s += tx(c0 + j * cs + cs / 2, r0 + i * cs + cs / 2 + 4, !v ? '0' : v >= .995 ? '1' : v < .005 ? '<.01' : f2(v).slice(1), {fs: 9.5, a: 'middle', c: !v ? '#3A4458' : v > .45 ? '#0A1020' : v >= .1 ? '#E7EBF3' : '#AEB7CA'}).replace('<text', '<text pointer-events="none"'); });
     if (a === ca) s += `<rect class="band" data-link="row" x="${c0}" y="${r0 + i * cs}" width="${n * cs}" height="${cs}" rx="3"/>`; });
   s += tx(c0, r0 + n * cs + 18, T('white outline = a transition the example takes', '白框＝例句走過的轉移'), {fs: 10, c: '#7C869C', sans: 1});
-  const svg = $('#dtmc-svg'); svg.innerHTML = s; bindTips(svg);
-  svg.querySelectorAll('.dc').forEach(r => r.addEventListener('click', () => { dtmcCell = [+r.dataset.a, +r.dataset.b]; fxTab('dtmc-svg', 0); dtmcView(); }));
+  const svg = $('#dtmc-svg'); svg.innerHTML = DG.view === 'graph' ? dtmcGraph(p, top, Pr, runT) : s; bindTips(svg);
+  svg.querySelectorAll('.dc, .dge').forEach(r => r.addEventListener('click', () => { dtmcCell = [+r.dataset.a, +r.dataset.b]; fxTab('dtmc-svg', 0); dtmcView(); }));
   /* the example's own transitions as bars (same reading as unit 06): one bar per step, an unseen transition is a bar of height 0 */
   { const pv = runT.map(([a, b]) => Pr(a, b)), top1 = Math.max(.2, Math.ceil(Math.max(...pv, 0) * 10) / 10), bx0 = 50, bw = 450 / Math.max(1, runT.length), Y = v => 170 - v / top1 * 130;
     let b = `<path d="M${bx0} 34 V170 H510" stroke="#2F3A50" fill="none"/>` + [0, top1 / 2, top1].map(v => tx(bx0 - 6, Y(v) + 4, f2(v), {fs: 9.5, a: 'end', c: '#7C869C'})).join('') + tx(bx0, 20, T('P̄ of each step of the example', '例句每一步的 P̄'), {fs: 10.5, c: '#AEB7CA', sans: 1});
@@ -1782,6 +1942,8 @@ function dtmcView(){
       ['This product is conditional on the first state. An unconditional path probability additionally needs its initial-state probability. Each factor is one observed transition; unseen lookups return zero. TruthfulQA uses state semantics instead (next unit).', '這個連乘是「已知第一個狀態」的條件軌跡機率；若要無條件機率，還要乘起始狀態機率。每個因子對應一個轉移，未見轉移查表為零。TruthfulQA 使用下一節的狀態語意。'])
   ]);
 }
+
+$$('#dtmc-view button').forEach(b => b.addEventListener('click', () => { DG.view = b.dataset.v; $$('#dtmc-view button').forEach(x => x.setAttribute('aria-pressed', x === b)); dtmcView(); }));
 
 /* ============================ 12 semantics ============================ */
 function semView(){
@@ -2088,6 +2250,47 @@ if (paneMq.matches) setSplit(splitPct, false);
 paneMq.addEventListener('change', () => { if (paneMq.matches) setSplit(splitPct, false); });
 addEventListener('resize', () => { if (paneMq.matches) setSplit(splitPct, false); });
 splitTitle();
+
+/* ============================ video scrubber (from luna.html) ============================
+   play button + draggable seek bar; video.currentTime is set on every pointermove (one seek per
+   animation frame), so the frame follows the playhead while dragging */
+function bindVideoScrubber(video, el){
+  el.innerHTML = `<button class="player-play" type="button"></button>` +
+    `<div class="player-seek"><div class="player-seek-track"></div><div class="player-seek-fill"></div><div class="player-seek-thumb"></div></div>` +
+    `<span class="player-time"></span>`;
+  const btn = el.querySelector('.player-play'), seekEl = el.querySelector('.player-seek'),
+    fillEl = el.querySelector('.player-seek-fill'), thumbEl = el.querySelector('.player-seek-thumb'), timeEl = el.querySelector('.player-time');
+  let dragging = false, pendingT = null, busy = false, wasPlaying = false;
+  const fmt = s => (s >= 0 ? Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0') : '0:00');
+  function draw(){
+    const dur = video.duration || 0, t = dur ? clamp(video.currentTime / dur, 0, 1) : 0;
+    if (dragging && pendingT != null) return;
+    btn.textContent = video.paused ? '▶' : '❙❙'; btn.setAttribute('aria-label', video.paused ? 'play' : 'pause');
+    fillEl.style.width = thumbEl.style.left = (t * 100) + '%';
+    timeEl.textContent = fmt(video.currentTime) + ' / ' + fmt(dur);
+  }
+  /* one seek at a time: a new currentTime set while the previous seek is still decoding cancels it,
+     so a fast drag would never show a frame until release. Seek again only on 'seeked', to the latest spot. */
+  function applyPending(){
+    if (pendingT == null || !video.duration) return;
+    busy = true; video.currentTime = pendingT * video.duration; pendingT = null;
+  }
+  video.addEventListener('seeked', () => { busy = false; draw(); if (pendingT != null) applyPending(); });
+  function seekFromEvent(e){ const r = seekEl.getBoundingClientRect(); pendingT = clamp((e.clientX - r.left) / r.width, 0, 1);
+    fillEl.style.width = thumbEl.style.left = (pendingT * 100) + '%';   // the thumb follows the pointer at once
+    if (!busy) applyPending(); }
+  const toggle = () => { video.paused ? video.play() : video.pause(); };
+  btn.addEventListener('click', toggle);
+  video.addEventListener('click', toggle);
+  seekEl.addEventListener('pointerdown', e => { e.preventDefault(); dragging = true; wasPlaying = !video.paused; video.pause(); seekEl.setPointerCapture(e.pointerId); seekFromEvent(e); });
+  seekEl.addEventListener('pointermove', e => { if (dragging) seekFromEvent(e); });
+  const endDrag = e => { if (!dragging) return; dragging = false; try { seekEl.releasePointerCapture(e.pointerId); } catch (err) {}
+    if (wasPlaying) video.play(); };
+  seekEl.addEventListener('pointerup', endDrag); seekEl.addEventListener('pointercancel', endDrag);
+  ['loadedmetadata', 'timeupdate', 'play', 'pause'].forEach(ev => video.addEventListener(ev, draw));
+  draw();
+}
+['v-intro', 'v-dtmc', 'v-trace'].forEach(id => bindVideoScrubber($('#' + id), $('#' + id + '-player')));
 
 /* ============================ boot ============================ */
 function luna(){ gridView(); dtmcView(); semView(); rocView(); }
