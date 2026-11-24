@@ -1006,6 +1006,8 @@ function formulaFlowMarkup(anchor, index, availableKeys, tex=''){
   return `<details class="formula-details"><summary>${T('Show calculation steps', '展開計算步驟')}</summary><div class="formula-flow"><ol class="flow-steps" aria-label="${T('Equation computation steps','公式計算步驟')}">${nodes}</ol>${branch}</div></details>`;
 }
 const FXS = {}, FXI = {}, FXP = {}, FXHTML = {};
+const SYM_SHUT = new Set();
+document.addEventListener('toggle', e => { const d = e.target; if (d.classList && d.classList.contains('sym-details') && d.dataset.sk) { if (d.open) SYM_SHUT.delete(d.dataset.sk); else SYM_SHUT.add(d.dataset.sk); } }, true);
 function setFx(anchor, items){
   let el = document.getElementById(anchor + '-fx');
   const figure = document.getElementById(anchor).closest('.figure');
@@ -1042,7 +1044,7 @@ function drawFx(anchor){
       + `<div class="fx-item">${texPieces(it.tex).map(p => `<span class="tex" data-display="1" data-ctx="${anchor}" data-tex="${esc(p)}"></span>`).join('')}</div>`
       + `<div class="fx-role"><p>${T(it.role[0], it.role[1])}</p></div>`
       + formulaFlowMarkup(anchor, i, keys, it.tex)
-      + `<details class="formula-details sym-details" hidden><summary>${T('Symbols in this formula', '展開符號表')}<small></small></summary><table class="sym-table"><thead><tr><th>${T('Symbol', '符號')}</th><th>${T('Meaning', '意思')}</th></tr></thead><tbody></tbody></table></details>`;
+      + `<details class="formula-details sym-details" data-sk="${anchor}:${i}"${SYM_SHUT.has(anchor + ':' + i) ? '' : ' open'} hidden><summary>${T('Symbols in this formula', '符號表')}<small></small></summary><table class="sym-table"><thead><tr><th>${T('Symbol', '符號')}</th><th>${T('Meaning', '意思')}</th></tr></thead><tbody></tbody></table></details>`;
     let step = list.children[i];
     if (!step) { step = document.createElement('div'); step.className = 'fx-body fx-step'; list.appendChild(step); }
     if (cache[i] !== html) {
@@ -1088,10 +1090,10 @@ function symTable(step, anchor){
   /* "s" read off the glyph under a bar is the same symbol as "s̄" */
   for (const [k, r] of rows) if (r.acc && !MARK.test(k) && [...rows.keys()].some(o => o !== k && MARK.test(o) && o.replace(/[̀-ͯ]/g, '') === k)) rows.delete(k);
   const tr = ([k, r]) => '<tr' + (r.lk ? ' data-link="' + esc(r.lk) + '" style="--lk:' + colors[r.lk] + '"' : '') + '><td>' + r.html + '</td><td>' + esc(T(r.v[0], r.v[1])) + '</td></tr>';
-  const all = [...rows], names = all.filter(e => !e[1].op), ops = all.filter(e => e[1].op);
-  box.hidden = !all.length;
-  box.querySelector('small').textContent = all.length ? '(' + all.length + ')' : '';
-  box.querySelector('tbody').innerHTML = names.map(tr).join('') + (ops.length ? '<tr class="sym-grp"><th colspan="2">' + T('Operators and notation', '運算與記號') + '</th></tr>' + ops.map(tr).join('') : '');
+  const all = [...rows], names = all.filter(e => !e[1].op);
+  box.hidden = !names.length;
+  box.querySelector('small').textContent = names.length ? '(' + names.length + ')' : '';
+  box.querySelector('tbody').innerHTML = names.map(tr).join('');
 }
 /* one colour per link key, in order of first appearance in the figure's formulas; shared by formula terms and widget parts */
 const LK_PAL = ['#F4C26B', '#8CB8FF', '#5FD3A0', '#FF8FB3', '#C2B4FF', '#FF9E7B', '#5CD6E0', '#C5E478'], FXA = {};
